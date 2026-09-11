@@ -49,37 +49,79 @@ class _CodeEditorWidgetState extends State<CodeEditorWidget> {
 
   @override
   Widget build(BuildContext context) {
-    if(_isLoading) {
+    final hasNoProject = widget.rootPath == null || widget.rootPath!.trim().isEmpty;
+    final hasNoFile = widget.filePath == null || widget.filePath!.trim().isEmpty;
+
+    if (hasNoProject && hasNoFile) {
+      return Center(
+        child: Text(
+          "当前未打开文件目录",
+          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+            color: Theme.of(context).colorScheme.onSurfaceVariant,
+          ),
+        ),
+      );
+    }
+
+    if (_isLoading) {
       return const Center(child: CircularProgressIndicator());
     }
-    return CodeTheme(
-      data: CodeThemeData(styles: atomOneDarkTheme),
-      child: CodeField(
-        controller: _controller,
-        gutterStyle: const GutterStyle(
-          showLineNumbers: true,
-          showFoldingHandles: true,
+    if (_errorMessage != null) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Text(
+            _errorMessage!,
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+              color: Theme.of(context).colorScheme.error,
+            ),
+          ),
+        ),
+      );
+    }
+
+    if (hasNoFile) {
+      return Center(
+        child: Text(
+          "当前未打开文件",
+          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+            color: Theme.of(context).colorScheme.onSurfaceVariant,
+          ),
+        ),
+      );
+    }
+
+    // atomOneDark 默认背景色为 0xFF282C34
+    const editorBgColor = Color(0xFF282C34);
+
+    return Container(
+      color: editorBgColor,
+      width: double.infinity,
+      height: double.infinity,
+      child: CodeTheme(
+        data: CodeThemeData(styles: atomOneDarkTheme),
+        child: SingleChildScrollView(
+          child: CodeField(
+            controller: _controller,
+            gutterStyle: const GutterStyle(
+              showLineNumbers: true,
+              showFoldingHandles: true,
+            ),
+          ),
         ),
       ),
     );
   }
 
   Future<void> _loadFileContent() async {
-    String? fullFilePath;
-    final filePath = widget.filePath;
     final rootPath = widget.rootPath;
+    final filePath = widget.filePath;
+    final hasNoProject = rootPath == null || rootPath.trim().isEmpty;
+    final hasNoFile = filePath == null || filePath.trim().isEmpty;
 
-    if (filePath != null && filePath.isNotEmpty) {
-      if (rootPath != null && rootPath.isNotEmpty && !p.isAbsolute(filePath)) {
-        fullFilePath = p.join(rootPath, filePath);
-      } else {
-        fullFilePath = filePath;
-      }
-    }
-
-    if(fullFilePath == null) {
+    if (hasNoFile) {
       _controller.text = '';
-      if(mounted) {
+      if (mounted) {
         setState(() {
           _isLoading = false;
           _errorMessage = null;
@@ -87,6 +129,10 @@ class _CodeEditorWidgetState extends State<CodeEditorWidget> {
       }
       return;
     }
+
+    final String fullFilePath = (hasNoProject || p.isAbsolute(filePath))
+        ? filePath
+        : p.join(rootPath, filePath);
 
     final int requestVersion = ++_currentLoadVersion;
 
@@ -106,7 +152,7 @@ class _CodeEditorWidgetState extends State<CodeEditorWidget> {
     }catch(e) {
       if(!mounted || requestVersion != _currentLoadVersion) return;
       setState(() {
-        _errorMessage = '读取文件失败: $e';
+        _errorMessage = '$e';
       });
     }finally {
       if(mounted && requestVersion == _currentLoadVersion) {
