@@ -1,7 +1,7 @@
 import 'package:code_editor/l10n/app_localizations.dart';
 import 'package:code_editor/models/editor_tab_item.dart';
 import 'package:code_editor/models/editor_theme.dart';
-import 'package:code_editor/providers/editor_provider.dart';
+import 'package:code_editor/models/virtual_keyboard_config.dart';
 import 'package:code_editor/providers/settings_provider.dart';
 import 'package:code_editor/providers/tab_provider.dart';
 import 'package:code_editor/services/file_service.dart';
@@ -9,6 +9,7 @@ import 'package:code_editor/services/file_watcher_service.dart';
 import 'package:code_editor/utils/dialog_utils.dart';
 import 'package:code_editor/utils/syntax_highlight_helper.dart';
 import 'package:code_editor/widgets/code_editor_menu.dart';
+import 'package:code_editor/widgets/virtual_keyboard_widget.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:path/path.dart' as p;
@@ -31,21 +32,11 @@ class CodeEditorWidget extends StatefulWidget {
 
 class _CodeEditorWidgetState extends State<CodeEditorWidget> {
   static SettingsProvider _getSettingsProvider(BuildContext context, {bool listen = false}) {
-    try {
-      return listen ? context.watch<SettingsProvider>() : context.read<SettingsProvider>();
-    } catch (_) {
-      final editor = listen ? context.watch<EditorProvider>() : context.read<EditorProvider>();
-      return editor.settingsProvider;
-    }
+    return listen ? context.watch<SettingsProvider>() : context.read<SettingsProvider>();
   }
 
   static TabProvider _getTabProvider(BuildContext context, {bool listen = false}) {
-    try {
-      return listen ? context.watch<TabProvider>() : context.read<TabProvider>();
-    } catch (_) {
-      final editor = listen ? context.watch<EditorProvider>() : context.read<EditorProvider>();
-      return editor.tabProvider;
-    }
+    return listen ? context.watch<TabProvider>() : context.read<TabProvider>();
   }
 
   CodeLineEditingController? _controller;
@@ -303,7 +294,7 @@ class _CodeEditorWidgetState extends State<CodeEditorWidget> {
     if (hasNoProject && hasNoFile) {
       return Center(
         child: Text(
-          l10n?.noOpenDirectory ?? "当前未打开文件目录",
+          l10n?.noOpenDirectory ?? "当前未打开项目",
           style: Theme.of(context).textTheme.bodyMedium?.copyWith(
             color: Theme.of(context).colorScheme.onSurfaceVariant,
           ),
@@ -348,65 +339,80 @@ class _CodeEditorWidgetState extends State<CodeEditorWidget> {
     EditorTheme activeTheme = EditorTheme.atomOneDark;
     double activeFontSize = 14.0;
     bool activeWordWrap = true;
+    bool enableVirtualKeyboard = false;
+    VirtualKeyboardConfig? keyboardConfig;
     try {
       final settings = _getSettingsProvider(context, listen: true);
       activeTheme = settings.editorTheme;
       activeFontSize = settings.fontSize;
       activeWordWrap = settings.wordWrap;
+      enableVirtualKeyboard = settings.enableVirtualKeyboard;
+      keyboardConfig = settings.virtualKeyboardConfig;
     } catch (_) {}
 
     return Container(
       color: activeTheme.backgroundColor,
       width: double.infinity,
       height: double.infinity,
-      child: CodeEditor(
-        key: ValueKey(_currentLoadedPath),
-        controller: controller,
-        scrollController: _scrollController,
-        wordWrap: activeWordWrap,
-        toolbarController: const CodeEditorToolbarController(),
-        style: CodeEditorStyle(
-          fontSize: activeFontSize,
-          textColor: activeTheme.textColor,
-          backgroundColor: activeTheme.backgroundColor,
-          cursorColor: activeTheme.cursorColor,
-          cursorLineColor: activeTheme.cursorLineColor,
-          selectionColor: activeTheme.selectionColor,
-          fontFamily: 'Consolas, Monaco, "Courier New", monospace',
-          codeTheme: CodeHighlightTheme(
-            languages: SyntaxHighlightHelper.getLanguagesForFile(_currentLoadedPath ?? widget.filePath),
-            theme: activeTheme.highlightTheme,
+      child: Column(
+        children: [
+          Expanded(
+            child: CodeEditor(
+              key: ValueKey(_currentLoadedPath),
+              controller: controller,
+              scrollController: _scrollController,
+              wordWrap: activeWordWrap,
+              toolbarController: const CodeEditorToolbarController(),
+              style: CodeEditorStyle(
+                fontSize: activeFontSize,
+                textColor: activeTheme.textColor,
+                backgroundColor: activeTheme.backgroundColor,
+                cursorColor: activeTheme.cursorColor,
+                cursorLineColor: activeTheme.cursorLineColor,
+                selectionColor: activeTheme.selectionColor,
+                fontFamily: 'Consolas, Monaco, "Courier New", monospace',
+                codeTheme: CodeHighlightTheme(
+                  languages: SyntaxHighlightHelper.getLanguagesForFile(_currentLoadedPath ?? widget.filePath),
+                  theme: activeTheme.highlightTheme,
+                ),
+              ),
+              indicatorBuilder: (context, editingController, chunkController, notifier) {
+                return Row(
+                  children: [
+                    DefaultCodeLineNumber(
+                      controller: editingController,
+                      notifier: notifier,
+                      textStyle: TextStyle(
+                        color: activeTheme.gutterTextColor,
+                        fontSize: (activeFontSize - 1).clamp(9.0, 30.0),
+                        fontFamily: 'Consolas, Monaco, "Courier New", monospace',
+                      ),
+                      focusedTextStyle: TextStyle(
+                        color: activeTheme.focusedGutterTextColor,
+                        fontSize: (activeFontSize - 1).clamp(9.0, 30.0),
+                        fontWeight: FontWeight.bold,
+                        fontFamily: 'Consolas, Monaco, "Courier New", monospace',
+                      ),
+                    ),
+                    DefaultCodeChunkIndicator(
+                      width: 20,
+                      controller: chunkController,
+                      notifier: notifier,
+                      painter: DefaultCodeChunkIndicatorPainter(
+                        color: activeTheme.gutterTextColor,
+                      ),
+                    ),
+                  ],
+                );
+              },
+            ),
           ),
-        ),
-        indicatorBuilder: (context, editingController, chunkController, notifier) {
-          return Row(
-            children: [
-              DefaultCodeLineNumber(
-                controller: editingController,
-                notifier: notifier,
-                textStyle: TextStyle(
-                  color: activeTheme.gutterTextColor,
-                  fontSize: (activeFontSize - 1).clamp(9.0, 30.0),
-                  fontFamily: 'Consolas, Monaco, "Courier New", monospace',
-                ),
-                focusedTextStyle: TextStyle(
-                  color: activeTheme.focusedGutterTextColor,
-                  fontSize: (activeFontSize - 1).clamp(9.0, 30.0),
-                  fontWeight: FontWeight.bold,
-                  fontFamily: 'Consolas, Monaco, "Courier New", monospace',
-                ),
-              ),
-              DefaultCodeChunkIndicator(
-                width: 20,
-                controller: chunkController,
-                notifier: notifier,
-                painter: DefaultCodeChunkIndicatorPainter(
-                  color: activeTheme.gutterTextColor,
-                ),
-              ),
-            ],
-          );
-        },
+          if (enableVirtualKeyboard && keyboardConfig != null)
+            VirtualKeyboardWidget(
+              controller: controller,
+              config: keyboardConfig,
+            ),
+        ],
       ),
     );
   }

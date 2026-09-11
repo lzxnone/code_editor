@@ -1,5 +1,4 @@
 import 'package:code_editor/l10n/app_localizations.dart';
-import 'package:code_editor/providers/editor_provider.dart';
 import 'package:code_editor/providers/project_provider.dart';
 import 'package:code_editor/providers/settings_provider.dart';
 import 'package:code_editor/providers/tab_provider.dart';
@@ -24,11 +23,6 @@ class MyApp extends StatelessWidget {
           create: (_) => TabProvider()..init(),
           update: (_, project, tab) =>
               (tab ?? (TabProvider()..init()))..bindProjectProvider(project),
-        ),
-        ChangeNotifierProxyProvider3<SettingsProvider, ProjectProvider, TabProvider, EditorProvider>(
-          create: (ctx) => EditorProvider(),
-          update: (_, settings, project, tab, editor) =>
-              EditorProvider(settings: settings, project: project, tab: tab),
         ),
       ],
       child: Consumer<SettingsProvider>(

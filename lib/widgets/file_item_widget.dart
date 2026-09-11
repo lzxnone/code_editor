@@ -1,6 +1,5 @@
 import 'package:code_editor/l10n/app_localizations.dart';
 import 'package:code_editor/models/file_item.dart';
-import 'package:code_editor/providers/editor_provider.dart';
 import 'package:code_editor/providers/project_provider.dart';
 import 'package:code_editor/providers/tab_provider.dart';
 import 'package:code_editor/utils/dialog_utils.dart';
@@ -22,21 +21,11 @@ class FileItemWidget extends StatefulWidget {
 
 class _FileItemWidgetState extends State<FileItemWidget> {
   static ProjectProvider _getProjectProvider(BuildContext context, {bool listen = false}) {
-    try {
-      return listen ? context.watch<ProjectProvider>() : context.read<ProjectProvider>();
-    } catch (_) {
-      final editor = listen ? context.watch<EditorProvider>() : context.read<EditorProvider>();
-      return editor.projectProvider;
-    }
+    return listen ? context.watch<ProjectProvider>() : context.read<ProjectProvider>();
   }
 
   static TabProvider _getTabProvider(BuildContext context, {bool listen = false}) {
-    try {
-      return listen ? context.watch<TabProvider>() : context.read<TabProvider>();
-    } catch (_) {
-      final editor = listen ? context.watch<EditorProvider>() : context.read<EditorProvider>();
-      return editor.tabProvider;
-    }
+    return listen ? context.watch<TabProvider>() : context.read<TabProvider>();
   }
 
   @override

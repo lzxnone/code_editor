@@ -2,7 +2,7 @@ import 'package:code_editor/l10n/app_localizations.dart';
 import 'package:code_editor/models/editor_tab_item.dart';
 import 'package:code_editor/models/file_item.dart';
 import 'package:code_editor/providers/project_provider.dart';
-import 'package:code_editor/services/file_directory_history_service.dart';
+import 'package:code_editor/services/project_history_service.dart';
 import 'package:code_editor/services/file_service.dart';
 import 'package:code_editor/services/file_watcher_service.dart';
 import 'package:code_editor/utils/dialog_utils.dart';
@@ -48,7 +48,7 @@ class TabProvider extends ChangeNotifier {
 
   Future<void> _loadTabsFromHistory() async {
     try {
-      final lastHistory = await FileDirectoryHistoryService.instance.getLastHistory();
+      final lastHistory = await ProjectHistoryService.instance.getLastHistory();
       if (lastHistory == null) return;
       await handleProjectChanged(
         lastHistory.rootPath,
@@ -237,7 +237,7 @@ class TabProvider extends ChangeNotifier {
     final root = _projectProvider?.rootPath;
     if (root != null) {
       final openPaths = _openTabs.map((t) => t.path).toList();
-      await FileDirectoryHistoryService.instance.recordHistory(
+      await ProjectHistoryService.instance.recordHistory(
         rootPath: root,
         lastOpenedFilePath: _activeFilePath,
         openDirectoryPaths: _projectProvider?.openDirectoryPaths ?? const [],
@@ -348,7 +348,6 @@ class TabProvider extends ChangeNotifier {
           if (!saved) return false;
           break;
         case SavePromptResult.discard:
-          tab.isModified = false;
           break;
         case SavePromptResult.cancel:
           return false;
@@ -369,6 +368,20 @@ class TabProvider extends ChangeNotifier {
       }
     }
 
+    await _persistTabsHistory();
+    notifyListeners();
+    return true;
+  }
+
+  /// 关闭所有打开的标签页
+  Future<bool> closeAllTabs(BuildContext context) async {
+    if (_openTabs.isEmpty) return true;
+    final canProceed = await checkUnsavedChanges(context);
+    if (!canProceed) return false;
+
+    _openTabs.clear();
+    _activeFilePath = null;
+    _isModified = false;
     await _persistTabsHistory();
     notifyListeners();
     return true;
@@ -456,11 +469,6 @@ class TabProvider extends ChangeNotifier {
         return saved;
 
       case SavePromptResult.discard:
-        for (final tab in _openTabs) {
-          tab.isModified = false;
-        }
-        _isModified = false;
-        notifyListeners();
         return true;
 
       case SavePromptResult.cancel:

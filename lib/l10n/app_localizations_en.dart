@@ -18,7 +18,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settings => 'Settings';
 
   @override
-  String get fileDirectory => 'File Directory';
+  String get fileDirectory => 'Project';
 
   @override
   String get undo => 'Undo';
@@ -30,16 +30,20 @@ class AppLocalizationsEn extends AppLocalizations {
   String get save => 'Save';
 
   @override
-  String get openFileDirectory => 'Open File Directory';
+  String get openFileDirectory => 'Open Project';
 
   @override
-  String get viewFileDirectoryHistory => 'View Directory History';
+  String get openProjectPrompt =>
+      'Please tap the button above to open a project';
+
+  @override
+  String get viewProjectHistory => 'View Project History';
 
   @override
   String get more => 'More';
 
   @override
-  String get noOpenDirectory => 'No directory opened';
+  String get noOpenDirectory => 'No project opened';
 
   @override
   String get noOpenFile => 'No file opened';
@@ -51,7 +55,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get unknownDirectory => 'Unknown Directory';
 
   @override
-  String get historyFileDirectories => 'Directory History';
+  String get projectHistory => 'Project History';
 
   @override
   String get noHistory => 'No history records';
@@ -83,6 +87,12 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get close => 'Close';
+
+  @override
+  String get closeAllTabs => 'Close All Tabs';
+
+  @override
+  String get closeProject => 'Close Project';
 
   @override
   String get gotIt => 'Got it';
@@ -247,6 +257,35 @@ class AppLocalizationsEn extends AppLocalizations {
   String get wordWrapSubtitle => 'Wrap long lines to fit the editor width';
 
   @override
+  String get virtualKeyboard => 'Accessory Keyboard';
+
+  @override
+  String get virtualKeyboardSubtitle =>
+      'Show accessory symbols and shortcuts below the code editor';
+
+  @override
+  String get editVirtualKeyboardConfig => 'Edit Keyboard Config';
+
+  @override
+  String get editVirtualKeyboardConfigSubtitle =>
+      'Customize keyboard layout and shortcuts (JSON)';
+
+  @override
+  String get virtualKeyboardDialogTitle => 'Keyboard Config (JSON)';
+
+  @override
+  String get resetDefault => 'Reset to Default';
+
+  @override
+  String get configFormatError => 'Configuration format error';
+
+  @override
+  String get configSavedSuccess => 'Keyboard configuration saved';
+
+  @override
+  String get formatJson => 'Format';
+
+  @override
   String get languageSection => 'Language';
 
   @override
@@ -265,7 +304,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get languageEnglish => 'English';
 
   @override
-  String get refreshDirectory => 'Refresh Directory';
+  String get refreshDirectory => 'Refresh Project';
 
   @override
   String get back => 'Back';

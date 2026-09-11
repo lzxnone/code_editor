@@ -1,11 +1,14 @@
 import 'package:re_editor/re_editor.dart';
 import 'package:code_editor/models/editor_tab_item.dart';
-import 'package:code_editor/models/file_directory_history.dart';
 import 'package:code_editor/models/file_item.dart';
-import 'package:code_editor/providers/editor_provider.dart';
+import 'package:code_editor/models/project_history.dart';
+import 'package:code_editor/services/project_history_service.dart';
+import 'package:code_editor/widgets/project_history_widget.dart';
 import 'package:code_editor/providers/project_provider.dart';
 import 'package:code_editor/providers/settings_provider.dart';
 import 'package:code_editor/providers/tab_provider.dart';
+import 'package:code_editor/models/virtual_keyboard_config.dart';
+import 'package:code_editor/widgets/virtual_keyboard_widget.dart';
 import 'package:code_editor/widgets/code_editor_tab_bar.dart';
 import 'package:code_editor/widgets/code_editor_widget.dart';
 import 'package:code_editor/widgets/file_item_widget.dart';
@@ -19,6 +22,7 @@ import 'package:code_editor/main.dart';
 import 'package:code_editor/views/settings_view.dart';
 import 'package:code_editor/views/main_view.dart';
 import 'package:code_editor/widgets/code_editor_app_bar.dart';
+import 'package:code_editor/widgets/code_editor_drawer.dart';
 import 'package:code_editor/services/file_watcher_service.dart';
 import 'package:code_editor/utils/syntax_highlight_helper.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -80,7 +84,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text("当前未打开文件目录"), findsOneWidget);
+    expect(find.text("当前未打开项目"), findsOneWidget);
 
     await tester.pumpWidget(
       const MaterialApp(
@@ -91,7 +95,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text("当前未打开文件目录"), findsOneWidget);
+    expect(find.text("当前未打开项目"), findsOneWidget);
 
     await tester.pumpWidget(
       const MaterialApp(
@@ -112,8 +116,11 @@ void main() {
     final dirItem = FileItem(name: 'src', path: '/test/src', isDirectory: true);
 
     await tester.pumpWidget(
-      ChangeNotifierProvider(
-        create: (_) => EditorProvider(),
+      MultiProvider(
+        providers: [
+          ChangeNotifierProvider(create: (_) => ProjectProvider()),
+          ChangeNotifierProvider(create: (_) => TabProvider()),
+        ],
         child: MaterialApp(
           home: Scaffold(
             body: Column(
@@ -139,12 +146,16 @@ void main() {
   testWidgets('FileItemWidget enables paste when copiedItem is present', (WidgetTester tester) async {
     final dirItem = FileItem(name: 'src', path: '/test/src', isDirectory: true);
     final copiedFile = FileItem(name: 'main.dart', path: '/test/main.dart', isDirectory: false);
-    final provider = EditorProvider();
-    provider.copy(copiedFile);
+    final projectProvider = ProjectProvider();
+    final tabProvider = TabProvider();
+    projectProvider.copy(copiedFile);
 
     await tester.pumpWidget(
-      ChangeNotifierProvider.value(
-        value: provider,
+      MultiProvider(
+        providers: [
+          ChangeNotifierProvider<ProjectProvider>.value(value: projectProvider),
+          ChangeNotifierProvider<TabProvider>.value(value: tabProvider),
+        ],
         child: MaterialApp(
           home: Scaffold(
             body: FileItemWidget(
@@ -168,8 +179,8 @@ void main() {
     expect(popupItem.enabled, isTrue);
   });
 
-  test('EditorProvider manages cut, copy, and paste states correctly', () {
-    final provider = EditorProvider();
+  test('ProjectProvider manages cut, copy, and paste states correctly', () {
+    final provider = ProjectProvider();
     final file1 = FileItem(name: 'a.dart', path: '/test/a.dart', isDirectory: false);
     final file2 = FileItem(name: 'b.dart', path: '/test/b.dart', isDirectory: false);
 
@@ -258,10 +269,10 @@ void main() {
   });
 
   testWidgets('SettingsView renders word wrap switch and language options', (WidgetTester tester) async {
-    final provider = EditorProvider();
+    final provider = SettingsProvider();
 
     await tester.pumpWidget(
-      ChangeNotifierProvider.value(
+      ChangeNotifierProvider<SettingsProvider>.value(
         value: provider,
         child: MaterialApp(
           localizationsDelegates: AppLocalizations.localizationsDelegates,
@@ -275,7 +286,15 @@ void main() {
 
     // Verify word wrap switch tile exists
     expect(find.text('自动换行'), findsOneWidget);
-    final switchFinder = find.byType(Switch);
+    final wordWrapTile = find.ancestor(
+      of: find.text('自动换行'),
+      matching: find.byType(SwitchListTile),
+    );
+    expect(wordWrapTile, findsOneWidget);
+    final switchFinder = find.descendant(
+      of: wordWrapTile,
+      matching: find.byType(Switch),
+    );
     expect(switchFinder, findsOneWidget);
     expect(provider.wordWrap, isTrue);
 
@@ -285,11 +304,16 @@ void main() {
     expect(provider.wordWrap, isFalse);
 
     // Verify language section
-    expect(find.text('应用语言'), findsOneWidget);
+    final langTile = find.text('应用语言');
+    await tester.scrollUntilVisible(langTile, 300);
+    // Drag slightly up to ensure it is nicely inside viewport
+    await tester.drag(find.byType(ListView), const Offset(0, -100));
+    await tester.pumpAndSettle();
+    expect(langTile, findsOneWidget);
     expect(find.text('跟随系统'), findsWidgets);
 
     // Tap language tile to open modal
-    await tester.tap(find.text('应用语言'));
+    await tester.tap(langTile);
     await tester.pumpAndSettle();
 
     expect(find.text('选择应用语言'), findsOneWidget);
@@ -302,8 +326,8 @@ void main() {
     expect(provider.locale, equals(const Locale('en')));
   });
 
-  testWidgets('EditorProvider wordWrap and locale can be updated', (WidgetTester tester) async {
-    final provider = EditorProvider();
+  testWidgets('SettingsProvider wordWrap and locale can be updated', (WidgetTester tester) async {
+    final provider = SettingsProvider();
 
     expect(provider.wordWrap, isTrue);
     await provider.setWordWrap(false);
@@ -317,11 +341,11 @@ void main() {
   });
 
   testWidgets('SettingsView font size dialog allows maximum 30 without assertion error', (WidgetTester tester) async {
-    final provider = EditorProvider();
+    final provider = SettingsProvider();
     await provider.setFontSize(30.0);
 
     await tester.pumpWidget(
-      ChangeNotifierProvider.value(
+      ChangeNotifierProvider<SettingsProvider>.value(
         value: provider,
         child: MaterialApp(
           localizationsDelegates: AppLocalizations.localizationsDelegates,
@@ -385,10 +409,9 @@ void main() {
     expect(find.text('* main.dart'), findsOneWidget);
   });
 
-  testWidgets('EditorProvider checkUnsavedChanges saves or discards correctly', (WidgetTester tester) async {
-    final provider = EditorProvider();
-    provider.setHistoryForTesting(const FileDirectoryHistory(rootPath: '/test', lastOpenedFilePath: '/test/demo.txt'));
-    provider.setModified(true);
+  testWidgets('TabProvider checkUnsavedChanges saves or discards correctly', (WidgetTester tester) async {
+    final provider = TabProvider();
+    provider.setModifiedForTesting(true);
     expect(provider.isModified, isTrue);
 
     bool saveCalled = false;
@@ -436,13 +459,16 @@ void main() {
 
   testWidgets('FileItemWidget does not display asterisk even when isModified is true', (WidgetTester tester) async {
     final fileItem = FileItem(name: 'main.dart', path: '/test/main.dart', isDirectory: false);
-    final provider = EditorProvider();
-    provider.setHistoryForTesting(const FileDirectoryHistory(rootPath: '/test', lastOpenedFilePath: '/test/main.dart'));
-    provider.setModified(true);
+    final projectProvider = ProjectProvider();
+    final tabProvider = TabProvider();
+    tabProvider.setModifiedForTesting(true);
 
     await tester.pumpWidget(
-      ChangeNotifierProvider.value(
-        value: provider,
+      MultiProvider(
+        providers: [
+          ChangeNotifierProvider<ProjectProvider>.value(value: projectProvider),
+          ChangeNotifierProvider<TabProvider>.value(value: tabProvider),
+        ],
         child: MaterialApp(
           home: Scaffold(
             body: FileItemWidget(fileItem: fileItem),
@@ -526,6 +552,8 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('保存所有'), findsOneWidget);
+    expect(find.text('关闭所有标签'), findsOneWidget);
+    expect(find.text('关闭当前项目'), findsOneWidget);
     expect(find.text('设置'), findsOneWidget);
 
     // Tap 保存所有
@@ -536,13 +564,13 @@ void main() {
   });
 
   testWidgets('CodeEditorTabBar renders tabs and handles dirty close dialog', (WidgetTester tester) async {
-    final provider = EditorProvider();
+    final provider = TabProvider();
     final tab1 = EditorTabItem(path: '/test/file1.dart', isModified: false);
     final tab2 = EditorTabItem(path: '/test/file2.dart', isModified: true);
     provider.setOpenTabsForTesting([tab1, tab2], activePath: '/test/file1.dart');
 
     await tester.pumpWidget(
-      ChangeNotifierProvider.value(
+      ChangeNotifierProvider<TabProvider>.value(
         value: provider,
         child: MaterialApp(
           localizationsDelegates: AppLocalizations.localizationsDelegates,
@@ -997,6 +1025,416 @@ void main() {
     expect(find.text('保存所有更改？'), findsNothing);
     expect(tabProvider.activeTab?.path, equals(p.normalize('/ws/file1.dart')));
     expect(tabProvider.activeTab?.isModified, isTrue);
+  });
+
+  testWidgets('Close all tabs from PopupMenu prompts for dirty tabs and closes tabs', (WidgetTester tester) async {
+    final tabProvider = TabProvider();
+    final projectProvider = ProjectProvider();
+    final settingsProvider = SettingsProvider();
+
+    await tabProvider.openFile(p.normalize('/ws/file1.dart'), content: 'code');
+    tabProvider.updateActiveTabContent('modified code', isModified: true);
+
+    await tester.pumpWidget(
+      MultiProvider(
+        providers: [
+          ChangeNotifierProvider<SettingsProvider>.value(value: settingsProvider),
+          ChangeNotifierProvider<ProjectProvider>.value(value: projectProvider),
+          ChangeNotifierProvider<TabProvider>.value(value: tabProvider),
+        ],
+        child: MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          locale: const Locale('zh'),
+          home: const MainView(),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(tabProvider.openTabs.length, equals(1));
+
+    // Tap more menu
+    await tester.tap(find.byType(PopupMenuButton<String>));
+    await tester.pumpAndSettle();
+
+    // Tap '关闭所有标签'
+    await tester.tap(find.text('关闭所有标签'));
+    await tester.pumpAndSettle();
+
+    // Dirty prompt dialog should appear
+    expect(find.text('保存所有更改？'), findsOneWidget);
+
+    // Choose discard (不保存)
+    await tester.tap(find.text('不保存'));
+    await tester.pumpAndSettle();
+
+    // All tabs should be closed
+    expect(tabProvider.openTabs, isEmpty);
+    expect(tabProvider.activeTab, isNull);
+  });
+
+  testWidgets('Deleting current project in ProjectHistoryWidget closes project first before confirming delete', (WidgetTester tester) async {
+    final projectPath = p.normalize('/ws/current_proj');
+    final otherPath = p.normalize('/ws/other_proj');
+
+    final tabProvider = TabProvider();
+    final projectProvider = ProjectProvider();
+    final settingsProvider = SettingsProvider();
+
+    // Set current project in ProjectProvider
+    projectProvider.setHistoryForTesting(ProjectHistory(
+      rootPath: projectPath,
+      lastOpenedFilePath: p.normalize('$projectPath/main.dart'),
+    ));
+
+    await tabProvider.openFile(p.normalize('$projectPath/main.dart'), content: 'initial');
+    tabProvider.updateActiveTabContent('dirty content', isModified: true);
+    expect(tabProvider.isModified, isTrue);
+
+    // Save history: record otherPath first, then projectPath so projectPath is at index 0
+    await ProjectHistoryService.instance.recordHistory(
+      rootPath: otherPath,
+      lastOpenedFilePath: null,
+    );
+    await ProjectHistoryService.instance.recordHistory(
+      rootPath: projectPath,
+      lastOpenedFilePath: p.normalize('$projectPath/main.dart'),
+    );
+
+    await tester.pumpWidget(
+      MultiProvider(
+        providers: [
+          ChangeNotifierProvider<SettingsProvider>.value(value: settingsProvider),
+          ChangeNotifierProvider<ProjectProvider>.value(value: projectProvider),
+          ChangeNotifierProvider<TabProvider>.value(value: tabProvider),
+        ],
+        child: MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          locale: const Locale('zh'),
+          home: const Scaffold(
+            body: ProjectHistoryWidget(),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    // Find delete buttons in the history list (there should be 2 projects)
+    final deleteButtons = find.byIcon(Icons.delete_outline);
+    expect(deleteButtons, findsNWidgets(2));
+
+    // Tap delete on current project
+    await tester.tap(deleteButtons.first);
+    await tester.pumpAndSettle();
+
+    // 1. Should first prompt to save dirty changes of current project!
+    expect(find.text('保存所有更改？'), findsOneWidget);
+
+    // Discard changes
+    await tester.tap(find.text('不保存'));
+    await tester.pumpAndSettle();
+
+    // 2. The second dialog (delete history) should appear!
+    expect(find.text('删除历史记录'), findsOneWidget);
+    expect(find.text('确定要从历史记录中移除该项目吗？'), findsOneWidget);
+
+    // Case A: User taps cancel in remove dialog -> project should NOT be closed!
+    await tester.tap(find.text('取消'));
+    await tester.pumpAndSettle();
+    expect(projectProvider.rootPath, equals(projectPath));
+
+    // Case B: User taps delete again, proceeds, and taps remove -> now project is closed!
+    await tester.tap(deleteButtons.first);
+    await tester.pumpAndSettle();
+
+    if (find.text('保存所有更改？').evaluate().isNotEmpty) {
+      await tester.tap(find.text('不保存'));
+      await tester.pumpAndSettle();
+    }
+
+    expect(find.text('删除历史记录'), findsOneWidget);
+
+    // Tap remove
+    await tester.tap(find.text('移除'));
+    await tester.pumpAndSettle();
+
+    // Both true -> Project is now closed and removed from history
+    expect(projectProvider.rootPath, isNull);
+
+    // Let toast timer finish
+    await tester.pump(const Duration(seconds: 3));
+  });
+
+  testWidgets('CodeEditorDrawer header renders new file and new folder buttons when project is open', (WidgetTester tester) async {
+    final projectProvider = ProjectProvider();
+    final tabProvider = TabProvider();
+    projectProvider.setHistoryForTesting(const ProjectHistory(
+      rootPath: '/workspace/demo_app',
+      lastOpenedFilePath: null,
+    ));
+
+    await tester.pumpWidget(
+      MultiProvider(
+        providers: [
+          ChangeNotifierProvider<ProjectProvider>.value(value: projectProvider),
+          ChangeNotifierProvider<TabProvider>.value(value: tabProvider),
+        ],
+        child: MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          locale: const Locale('zh'),
+          home: const Scaffold(
+            drawer: CodeEditorDrawer(),
+            body: Center(child: Text('Home')),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    // Open Drawer
+    final scaffoldState = tester.state<ScaffoldState>(find.byType(Scaffold));
+    scaffoldState.openDrawer();
+    await tester.pumpAndSettle();
+
+    // Verify root path text is displayed
+    expect(find.text('/workspace/demo_app'), findsOneWidget);
+
+    // Verify new file and new folder icon buttons exist
+    final newFileBtn = find.byIcon(Icons.note_add_outlined);
+    final newFolderBtn = find.byIcon(Icons.create_new_folder_outlined);
+    expect(newFileBtn, findsOneWidget);
+    expect(newFolderBtn, findsOneWidget);
+
+    // Tap new file button -> should show input dialog
+    await tester.tap(newFileBtn);
+    await tester.pumpAndSettle();
+    expect(find.text('新建文件'), findsOneWidget);
+    expect(find.text('取消'), findsOneWidget);
+
+    // Cancel input dialog
+    await tester.tap(find.text('取消'));
+    await tester.pumpAndSettle();
+    expect(find.text('新建文件'), findsNothing);
+
+    // Tap new folder button -> should show input dialog
+    await tester.tap(newFolderBtn);
+    await tester.pumpAndSettle();
+    expect(find.text('新建文件夹'), findsOneWidget);
+
+    // Cancel
+    await tester.tap(find.text('取消'));
+    await tester.pumpAndSettle();
+  });
+
+  group('Virtual Keyboard (Accessory Keyboard) Tests', () {
+    test('Pure string in JSON keys is strictly parsed as input without guessing', () {
+      final key1 = KeyboardKeyItem.fromJson(';');
+      expect(key1.label, ';');
+      expect(key1.value, ';');
+      expect(key1.action, 'input');
+      expect(key1.icon, isNull);
+
+      // Verify strings with command names like Tab or () are NOT magically guessed
+      final key2 = KeyboardKeyItem.fromJson('Tab');
+      expect(key2.label, 'Tab');
+      expect(key2.value, 'Tab');
+      expect(key2.action, 'input');
+
+      final key3 = KeyboardKeyItem.fromJson('{}');
+      expect(key3.label, '{}');
+      expect(key3.value, '{}');
+      expect(key3.action, 'input');
+      expect(key3.cursorOffset, 0);
+
+      // Verify object format is parsed correctly
+      final keyObj = KeyboardKeyItem.fromJson({
+        'label': 'Tab',
+        'icon': 'tab',
+        'action': 'command',
+        'value': 'tab',
+      });
+      expect(keyObj.label, 'Tab');
+      expect(keyObj.icon, 'tab');
+      expect(keyObj.action, 'command');
+      expect(keyObj.value, 'tab');
+    });
+
+    test('KeyboardIconHelper maps known icons and returns null for unknown/empty', () {
+      expect(KeyboardIconHelper.getIcon('tab'), isNotNull);
+      expect(KeyboardIconHelper.getIcon('undo'), isNotNull);
+      expect(KeyboardIconHelper.getIcon('arrow_left'), isNotNull);
+      expect(KeyboardIconHelper.getIcon(null), isNull);
+      expect(KeyboardIconHelper.getIcon(''), isNull);
+      expect(KeyboardIconHelper.getIcon('non_existent_xyz'), isNull);
+    });
+
+    test('VirtualKeyboardConfig validateJson strictly identifies syntax and schema errors', () {
+      // Empty check
+      expect(VirtualKeyboardConfig.validateJson(''), '配置内容不能为空');
+      expect(VirtualKeyboardConfig.validateJson('   '), '配置内容不能为空');
+
+      // Syntax check with line and column reporting
+      final syntaxErr = VirtualKeyboardConfig.validateJson('{\n  "pages": [\n    invalid\n  ]\n}');
+      expect(syntaxErr, contains('JSON 语法错误'));
+      expect(syntaxErr, contains('第 3 行'));
+
+      // Root map check
+      expect(VirtualKeyboardConfig.validateJson('[]'), contains('根节点必须是 JSON 对象'));
+
+      // Pages array check
+      expect(VirtualKeyboardConfig.validateJson('{}'), contains('缺少必需的 "pages"'));
+      expect(VirtualKeyboardConfig.validateJson('{"pages": "invalid"}'), contains('"pages" 字段必须是一个数组'));
+      expect(VirtualKeyboardConfig.validateJson('{"pages": []}'), contains('至少需要包含 1 个页面配置'));
+
+      // Page item check
+      expect(VirtualKeyboardConfig.validateJson('{"pages": ["not-a-map"]}'), contains('第 1 页必须是一个 JSON 对象'));
+      expect(VirtualKeyboardConfig.validateJson('{"pages": [{}]}'), contains('缺少必需的 "count" 字段'));
+      expect(VirtualKeyboardConfig.validateJson('{"pages": [{"count": 0, "keys": []}]}'), contains('"count" 必须为大于 0 的正整数'));
+      expect(VirtualKeyboardConfig.validateJson('{"pages": [{"count": 6}]}'), contains('缺少必需的 "keys" 字段'));
+
+      // Row check
+      expect(VirtualKeyboardConfig.validateJson('{"pages": [{"count": 6, "keys": ["not-a-list"]}]}'), contains('第 1 页第 1 行必须是一个按键数组'));
+
+      // Key check
+      expect(VirtualKeyboardConfig.validateJson('{"pages": [{"count": 6, "keys": [[123]]}]}'), contains('只能是文本字符串或对象'));
+      expect(VirtualKeyboardConfig.validateJson('{"pages": [{"count": 6, "keys": [[{}]]}]}'), contains('缺少 label、value 或 icon 属性'));
+
+      // Valid check (default config)
+      final validJson = VirtualKeyboardConfig.defaultJsonPretty();
+      expect(VirtualKeyboardConfig.validateJson(validJson), isNull);
+
+      // Valid check with shorthand pure strings
+      const shorthandJson = '''
+      {
+        "pages": [
+          {
+            "count": 6,
+            "keys": [
+              [";", "=", "+", "-", "*", "/"],
+              ["(", ")", "[", "]", "{", "}"]
+            ]
+          }
+        ]
+      }
+      ''';
+      expect(VirtualKeyboardConfig.validateJson(shorthandJson), isNull);
+    });
+
+    testWidgets('VirtualKeyboardWidget renders keys according to count and handles input/commands', (tester) async {
+      final controller = CodeLineEditingController.fromText('hello');
+      controller.selection = const CodeLineSelection.collapsed(index: 0, offset: 5);
+
+      final config = VirtualKeyboardConfig.defaultConfiguration();
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: VirtualKeyboardWidget(
+              controller: controller,
+              config: config,
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // PageView should be present
+      expect(find.byType(PageView), findsOneWidget);
+
+      // Tab icon exists
+      expect(find.byIcon(Icons.keyboard_tab), findsOneWidget);
+
+      // Tap ';' key
+      final semicolonKey = find.text(';');
+      expect(semicolonKey, findsOneWidget);
+      await tester.tap(semicolonKey);
+      await tester.pumpAndSettle();
+
+      // Controller should have received ';'
+      expect(controller.text, 'hello;');
+
+      // Tap '(' pair key -> should insert () and place cursor inside
+      final parenKey = find.text('(');
+      expect(parenKey, findsOneWidget);
+      await tester.tap(parenKey);
+      await tester.pumpAndSettle();
+
+      expect(controller.text, 'hello;()');
+      expect(controller.selection.extentOffset, 7); // between '(' and ')'
+    });
+
+    testWidgets('SettingsView displays virtual keyboard toggle and config dialog with embedded CodeEditor and line-level error report', (tester) async {
+      final settingsProvider = SettingsProvider();
+      await settingsProvider.init();
+      await settingsProvider.setEnableVirtualKeyboard(true);
+
+      await tester.pumpWidget(
+        ChangeNotifierProvider.value(
+          value: settingsProvider,
+          child: const MaterialApp(
+            localizationsDelegates: AppLocalizations.localizationsDelegates,
+            supportedLocales: AppLocalizations.supportedLocales,
+            locale: Locale('zh'),
+            home: SettingsView(),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // Scroll to virtual keyboard tiles
+      final configTile = find.text('编辑键盘配置');
+      await tester.drag(find.byType(ListView), const Offset(0, -200));
+      await tester.pumpAndSettle();
+      expect(configTile, findsOneWidget);
+
+      // Tap config tile to open dialog
+      await tester.tap(configTile);
+      await tester.pumpAndSettle();
+
+      expect(find.text('小键盘配置 (JSON)'), findsOneWidget);
+      expect(find.text('格式化'), findsOneWidget);
+      expect(find.text('恢复默认'), findsOneWidget);
+
+      // Verify embedded CodeEditor is present with line number gutter
+      expect(find.byType(CodeEditor), findsOneWidget);
+      expect(find.byType(DefaultCodeLineNumber), findsOneWidget);
+
+      final codeEditor = tester.widget<CodeEditor>(find.byType(CodeEditor));
+      final editorController = codeEditor.controller!;
+
+      // Edit controller with invalid json on line 3
+      editorController.text = '{\n  "pages": [\n    error_here\n  ]\n}';
+      await tester.pumpAndSettle();
+
+      // Tap '保存'
+      await tester.tap(find.text('保存'));
+      await tester.pumpAndSettle();
+
+      // Dialog should still be open and display error message with line number
+      expect(find.text('小键盘配置 (JSON)'), findsOneWidget);
+      expect(find.byIcon(Icons.error_outline), findsOneWidget);
+      expect(find.textContaining('第 3 行'), findsOneWidget);
+
+      // Tap '恢复默认'
+      await tester.tap(find.text('恢复默认'));
+      await tester.pumpAndSettle();
+
+      // Error message should clear
+      expect(find.byIcon(Icons.error_outline), findsNothing);
+      expect(editorController.text, contains('"pages"'));
+
+      // Tap '保存' with valid config -> dialog closes
+      await tester.tap(find.text('保存'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('小键盘配置 (JSON)'), findsNothing);
+
+      // Let success toast timer complete
+      await tester.pump(const Duration(seconds: 3));
+    });
   });
 }
 

@@ -47,7 +47,7 @@ class FileWatcherService {
   /// 判断路径是否属于应该忽略的隐藏或构建目录
   static bool shouldIgnore(String path) {
     final segments = p.split(path);
-    for (final seg in segments) {
+    for(final seg in segments) {
       if (seg == '.git' ||
           seg == '.dart_tool' ||
           seg == '.idea' ||
@@ -70,19 +70,19 @@ class FileWatcherService {
 
     final cleanRoot = p.normalize(rootPath);
     final dir = Directory(cleanRoot);
-    if (!dir.existsSync()) return;
+    if(!dir.existsSync()) return;
 
     _watchedRootPath = cleanRoot;
 
     try {
       _subscription = dir.watch(recursive: true).listen(
         (event) {
-          if (shouldIgnore(event.path)) {
+          if(shouldIgnore(event.path)) {
             return;
           }
 
           // 自身保存的文件在保护窗口内忽略内容修改事件
-          if (event is FileSystemModifyEvent && isRecentlySaved(event.path)) {
+          if(event is FileSystemModifyEvent && isRecentlySaved(event.path)) {
             return;
           }
 
@@ -100,7 +100,7 @@ class FileWatcherService {
           debugPrint('FileWatcherService 监听异常: $e');
         },
       );
-    } catch (e) {
+    }catch (e) {
       debugPrint('FileWatcherService 启动监听失败: $e');
     }
   }

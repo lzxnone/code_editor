@@ -1,12 +1,12 @@
 import 'dart:convert';
 
-class FileDirectoryHistory {
-  final String? rootPath;
-  final String? lastOpenedFilePath;
-  final List<String> openDirectoryPaths;
-  final List<String> openFilePaths;
+class ProjectHistory {
+  final String? rootPath; //项目根绝对路径
+  final String? lastOpenedFilePath; //上一次打开的文件绝对路径
+  final List<String> openDirectoryPaths; //在文件树中打开的所有文件夹的绝对路径
+  final List<String> openFilePaths; //存在于编辑区的所有文件的绝对路径
 
-  const FileDirectoryHistory({
+  const ProjectHistory({
     required this.rootPath,
     required this.lastOpenedFilePath,
     this.openDirectoryPaths = const [],
@@ -20,7 +20,7 @@ class FileDirectoryHistory {
     'openFilePaths': openFilePaths,
   };
 
-  factory FileDirectoryHistory.fromMap(Map<String, dynamic> map) {
+  factory ProjectHistory.fromMap(Map<String, dynamic> map) {
     final rawOpenFilePaths = map['openFilePaths'] as List<dynamic>?;
     final lastFile = map['lastOpenedFilePath'] as String?;
     List<String> openFiles;
@@ -32,7 +32,7 @@ class FileDirectoryHistory {
       openFiles = const [];
     }
 
-    return FileDirectoryHistory(
+    return ProjectHistory(
       rootPath: map['rootPath'] as String?,
       lastOpenedFilePath: lastFile,
       openDirectoryPaths: (map['openDirectoryPaths'] as List<dynamic>?)
@@ -44,13 +44,13 @@ class FileDirectoryHistory {
   }
 
   String toJson() => jsonEncode(toMap());
-  factory FileDirectoryHistory.fromJson(String source) {
+  factory ProjectHistory.fromJson(String source) {
     try {
       final decoded = jsonDecode(source);
       if (decoded is Map) {
-        return FileDirectoryHistory.fromMap(Map<String, dynamic>.from(decoded));
+        return ProjectHistory.fromMap(Map<String, dynamic>.from(decoded));
       }
     } catch (_) {}
-    return const FileDirectoryHistory(rootPath: null, lastOpenedFilePath: null);
+    return const ProjectHistory(rootPath: null, lastOpenedFilePath: null);
   }
 }

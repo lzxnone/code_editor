@@ -168,7 +168,7 @@ class EditorTheme {
 
   /// 根据 ID 查找主题，若不存在则回退至默认主题
   static EditorTheme fromId(String? id) {
-    if (id == null || id.isEmpty) return atomOneDark;
+    if(id == null || id.isEmpty) return atomOneDark;
     return presets.firstWhere(
       (theme) => theme.id == id,
       orElse: () => atomOneDark,

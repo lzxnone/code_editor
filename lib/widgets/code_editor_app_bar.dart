@@ -9,6 +9,8 @@ class CodeEditorAppBar extends StatelessWidget implements PreferredSizeWidget {
   final VoidCallback? onSave;
   final VoidCallback? onSaveAll;
   final VoidCallback? onRun;
+  final VoidCallback? onCloseAllTabs;
+  final VoidCallback? onCloseProject;
   final VoidCallback? onSettings;
 
   const CodeEditorAppBar({
@@ -19,6 +21,8 @@ class CodeEditorAppBar extends StatelessWidget implements PreferredSizeWidget {
     this.onSave,
     this.onSaveAll,
     this.onRun,
+    this.onCloseAllTabs,
+    this.onCloseProject,
     this.onSettings,
   });
 
@@ -103,6 +107,10 @@ class CodeEditorAppBar extends StatelessWidget implements PreferredSizeWidget {
           onSelected: (value) {
             if (value == 'save_all') {
               onSaveAll?.call();
+            } else if (value == 'close_all_tabs') {
+              onCloseAllTabs?.call();
+            } else if (value == 'close_project') {
+              onCloseProject?.call();
             } else if (value == 'settings') {
               onSettings?.call();
             }
@@ -115,6 +123,26 @@ class CodeEditorAppBar extends StatelessWidget implements PreferredSizeWidget {
                   const Icon(Icons.save_as_outlined, size: 20),
                   const SizedBox(width: 10),
                   Text(l10n.saveAll),
+                ],
+              ),
+            ),
+            PopupMenuItem<String>(
+              value: 'close_all_tabs',
+              child: Row(
+                children: [
+                  const Icon(Icons.close_fullscreen_outlined, size: 20),
+                  const SizedBox(width: 10),
+                  Text(l10n.closeAllTabs),
+                ],
+              ),
+            ),
+            PopupMenuItem<String>(
+              value: 'close_project',
+              child: Row(
+                children: [
+                  const Icon(Icons.folder_off_outlined, size: 20),
+                  const SizedBox(width: 10),
+                  Text(l10n.closeProject),
                 ],
               ),
             ),

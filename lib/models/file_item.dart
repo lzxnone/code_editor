@@ -36,15 +36,15 @@ class FileItem {
 
   /// 获取相对于指定 rootPath 的相对路径（优先使用已有相对路径，跨盘或无项目安全回退）
   String getRelativePath([String? fromRoot]) {
-    if (relativePath != null && (fromRoot == null || fromRoot.isEmpty)) {
+    if(relativePath != null && (fromRoot == null || fromRoot.isEmpty)) {
       return relativePath!;
     }
     final root = fromRoot;
-    if (root == null || root.trim().isEmpty) return name;
+    if(root == null || root.trim().isEmpty) return name;
     try {
       return p.relative(fullPath, from: root);
-    } catch (_) {
+    }catch (_) {
       return fullPath;
     }
   }
-}
+}

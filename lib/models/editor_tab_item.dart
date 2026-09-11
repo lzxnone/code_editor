@@ -29,14 +29,14 @@ class EditorTabItem {
   /// 当存在同名文件标签时显示相对项目路径，否则优先显示简短文件名
   String getDisplayName(List<EditorTabItem> allTabs, String? rootPath) {
     final hasDuplicateName = allTabs.where((tab) => tab.name == name).length > 1;
-    if (hasDuplicateName) {
-      if (rootPath != null && rootPath.isNotEmpty) {
+    if(hasDuplicateName) {
+      if(rootPath != null && rootPath.isNotEmpty) {
         try {
-          if (p.isWithin(rootPath, path)) {
+          if(p.isWithin(rootPath, path)) {
             final rel = p.relative(path, from: rootPath);
             return rel;
           }
-        } catch (_) {}
+        }catch (_) {}
       }
       return path;
     }

@@ -1,11 +1,11 @@
-import 'package:code_editor/models/file_directory_history.dart';
+import 'package:code_editor/models/project_history.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-class FileDirectoryHistoryService {
-  static final FileDirectoryHistoryService instance = FileDirectoryHistoryService._();
-  FileDirectoryHistoryService._();
+class ProjectHistoryService {
+  static final ProjectHistoryService instance = ProjectHistoryService._();
+  ProjectHistoryService._();
 
-  static const String _keyHistory = 'file_directory_history';
+  static const String _keyHistory = 'project_history';
   static const int _maxHistoryCount = 15;
 
   //记录
@@ -18,7 +18,7 @@ class FileDirectoryHistoryService {
     final cleanPath = rootPath.trim();
     if(cleanPath.isEmpty) return;
 
-    List<FileDirectoryHistory> history = await getFullHistory();
+    List<ProjectHistory> history = await getFullHistory();
 
     final existingIndex = history.indexWhere((item) => item.rootPath == cleanPath);
     String? resolvedFile = lastOpenedFilePath;
@@ -34,7 +34,7 @@ class FileDirectoryHistoryService {
 
     history.insert(
       0,
-      FileDirectoryHistory(
+      ProjectHistory(
         rootPath: cleanPath,
         lastOpenedFilePath: resolvedFile,
         openDirectoryPaths: resolvedOpenDirs ?? const [],
@@ -50,21 +50,21 @@ class FileDirectoryHistoryService {
   }
 
   //获取完整历史
-  Future<List<FileDirectoryHistory>> getFullHistory() async {
+  Future<List<ProjectHistory>> getFullHistory() async {
     final prefs = await SharedPreferences.getInstance();
     final rawList = prefs.getStringList(_keyHistory) ?? [];
-    return rawList.map((jsonStr) => FileDirectoryHistory.fromJson(jsonStr)).toList();
+    return rawList.map((jsonStr) => ProjectHistory.fromJson(jsonStr)).toList();
   }
 
   //获取最近历史
-  Future<FileDirectoryHistory?> getLastHistory() async {
+  Future<ProjectHistory?> getLastHistory() async {
     final history = await getFullHistory();
     return history.isNotEmpty ? history.first : null;
   }
 
   //删除指定的历史
   Future<void> removeHistory(String path) async {
-    List<FileDirectoryHistory> history = await getFullHistory();
+    List<ProjectHistory> history = await getFullHistory();
     history.removeWhere((item) => item.rootPath == path);
     await _saveHistoryList(history);
   }
@@ -75,7 +75,7 @@ class FileDirectoryHistoryService {
     await prefs.remove(_keyHistory);
   }
 
-  Future<void> _saveHistoryList(List<FileDirectoryHistory> list) async {
+  Future<void> _saveHistoryList(List<ProjectHistory> list) async {
     final prefs = await SharedPreferences.getInstance();
     final jsonList = list.map((item) => item.toJson()).toList();
     await prefs.setStringList(_keyHistory, jsonList);

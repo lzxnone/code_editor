@@ -1,7 +1,7 @@
 import 'dart:io';
-import 'package:code_editor/models/file_directory_history.dart';
+import 'package:code_editor/models/project_history.dart';
 import 'package:code_editor/models/file_item.dart';
-import 'package:code_editor/services/file_directory_history_service.dart';
+import 'package:code_editor/services/project_history_service.dart';
 import 'package:code_editor/services/file_service.dart';
 import 'package:code_editor/services/file_watcher_service.dart';
 import 'package:file_picker/file_picker.dart';
@@ -9,14 +9,21 @@ import 'package:flutter/material.dart';
 import 'package:path/path.dart' as p;
 
 class ProjectProvider extends ChangeNotifier {
-  FileDirectoryHistory _history = const FileDirectoryHistory(
+  //项目历史
+  ProjectHistory _history = const ProjectHistory(
     rootPath: null,
     lastOpenedFilePath: null,
   );
+
+  //根目录的一级子文件目录
   List<FileItem> _items = [];
-  bool _isLoading = false;
+  
+  //当前剪切复制的文件
   FileItem? _cutItem;
   FileItem? _copiedItem;
+
+  //是否正在加载项目
+  bool _isLoading = false;
 
   // 跨 Provider 协同回调
   void Function(String oldPath, String newPath)? onEntityRenamed;
@@ -25,7 +32,7 @@ class ProjectProvider extends ChangeNotifier {
   void Function(String modifiedPath)? onExternalFileModified;
   void Function(String deletedPath)? onExternalFileDeleted;
 
-  FileDirectoryHistory get history => _history;
+  ProjectHistory get history => _history;
   String? get rootPath => _history.rootPath;
   List<String> get openDirectoryPaths => _history.openDirectoryPaths;
   List<FileItem> get items => _items;
@@ -44,7 +51,7 @@ class ProjectProvider extends ChangeNotifier {
   }
 
   @visibleForTesting
-  void setHistoryForTesting(FileDirectoryHistory history) {
+  void setHistoryForTesting(ProjectHistory history) {
     _history = history;
     notifyListeners();
   }
@@ -55,13 +62,14 @@ class ProjectProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  //从历史加载项目
   Future<void> _loadProjectFromHistory() async {
     _isLoading = true;
     notifyListeners();
 
     try {
-      final lastHistory = await FileDirectoryHistoryService.instance.getLastHistory();
-      if (lastHistory == null) {
+      final lastHistory = await ProjectHistoryService.instance.getLastHistory();
+      if(lastHistory == null) {
         _isLoading = false;
         notifyListeners();
         return;
@@ -84,7 +92,7 @@ class ProjectProvider extends ChangeNotifier {
           : [];
 
       _items = items;
-      _history = FileDirectoryHistory(
+      _history = ProjectHistory(
         rootPath: cleanPath,
         lastOpenedFilePath: lastHistory.lastOpenedFilePath,
         openDirectoryPaths: validOpenPaths,
@@ -96,18 +104,19 @@ class ProjectProvider extends ChangeNotifier {
 
       // 通知外部（例如 TabProvider）同步标签页历史
       onProjectChanged?.call(cleanPath, lastHistory.openFilePaths, lastHistory.lastOpenedFilePath);
-    } catch (e) {
+    }catch(e) {
       debugPrint('加载项目历史失败: $e');
-    } finally {
+    }finally {
       _isLoading = false;
       notifyListeners();
     }
   }
 
+  //打开新的项目
   Future<void> openDirectory() async {
     try {
       final String? selectedPath = await FilePicker.platform.getDirectoryPath();
-      if (selectedPath == null || selectedPath.trim().isEmpty) {
+      if(selectedPath == null || selectedPath.trim().isEmpty) {
         return;
       }
 
@@ -115,7 +124,7 @@ class ProjectProvider extends ChangeNotifier {
       final currentRoot = _history.rootPath != null ? p.normalize(_history.rootPath!) : null;
       final isSameRoot = currentRoot != null && cleanPath == currentRoot;
 
-      await FileDirectoryHistoryService.instance.recordHistory(
+      await ProjectHistoryService.instance.recordHistory(
         rootPath: cleanPath,
         lastOpenedFilePath: isSameRoot ? _history.lastOpenedFilePath : null,
         openDirectoryPaths: isSameRoot ? _history.openDirectoryPaths : const [],
@@ -126,16 +135,17 @@ class ProjectProvider extends ChangeNotifier {
       _copiedItem = null;
 
       await _loadProjectFromHistory();
-    } catch (e) {
+    }catch (e) {
       debugPrint('打开文件夹失败: $e');
     }
   }
 
-  Future<void> switchProject(FileDirectoryHistory selectedHistory) async {
+  //选择项目历史
+  Future<void> switchProject(ProjectHistory selectedHistory) async {
     final selectedRoot = selectedHistory.rootPath;
-    if (selectedRoot == null || selectedRoot.trim().isEmpty) return;
+    if(selectedRoot == null || selectedRoot.trim().isEmpty) return;
 
-    await FileDirectoryHistoryService.instance.recordHistory(
+    await ProjectHistoryService.instance.recordHistory(
       rootPath: selectedRoot,
       lastOpenedFilePath: selectedHistory.lastOpenedFilePath,
       openDirectoryPaths: selectedHistory.openDirectoryPaths,
@@ -148,16 +158,31 @@ class ProjectProvider extends ChangeNotifier {
     await _loadProjectFromHistory();
   }
 
+  /// 关闭当前项目
+  Future<void> closeProject() async {
+    _startWatcher(null);
+    _cutItem = null;
+    _copiedItem = null;
+    _items = [];
+    _history = const ProjectHistory(
+      rootPath: null,
+      lastOpenedFilePath: null,
+    );
+    onProjectChanged?.call(null, const [], null);
+    notifyListeners();
+  }
+
+  //展开文件夹
   Future<void> toggleDirectory(FileItem item, bool expanded) async {
     final cleanPath = _history.rootPath;
-    if (cleanPath == null) return;
+    if(cleanPath == null) return;
 
     final updatedOpenPaths = List<String>.from(_history.openDirectoryPaths);
-    if (expanded) {
-      if (!updatedOpenPaths.contains(item.path)) {
+    if(expanded) {
+      if(!updatedOpenPaths.contains(item.path)) {
         updatedOpenPaths.add(item.path);
       }
-      if (item.children.isEmpty) {
+      if(item.children.isEmpty) {
         final children = await FileService.instance.buildTree(
           item.path,
           depth: item.depth + 1,
@@ -166,17 +191,17 @@ class ProjectProvider extends ChangeNotifier {
         item.children.clear();
         item.children.addAll(children);
       }
-    } else {
+    }else {
       updatedOpenPaths.remove(item.path);
     }
 
-    await FileDirectoryHistoryService.instance.recordHistory(
+    await ProjectHistoryService.instance.recordHistory(
       rootPath: cleanPath,
       lastOpenedFilePath: _history.lastOpenedFilePath,
       openDirectoryPaths: updatedOpenPaths,
       openFilePaths: _history.openFilePaths,
     );
-    _history = FileDirectoryHistory(
+    _history = ProjectHistory(
       rootPath: cleanPath,
       lastOpenedFilePath: _history.lastOpenedFilePath,
       openDirectoryPaths: updatedOpenPaths,
@@ -187,7 +212,7 @@ class ProjectProvider extends ChangeNotifier {
 
   Future<void> refreshTree() async {
     final currentRoot = _history.rootPath;
-    if (currentRoot == null || currentRoot.trim().isEmpty) return;
+    if(currentRoot == null || currentRoot.trim().isEmpty) return;
 
     try {
       final items = await FileService.instance.buildTree(
@@ -196,11 +221,11 @@ class ProjectProvider extends ChangeNotifier {
       );
 
       String? currentFile = _history.lastOpenedFilePath;
-      if (currentFile != null) {
+      if(currentFile != null) {
         final exists = await FileService.instance.entityExists(currentFile);
-        if (!exists) {
+        if(!exists) {
           currentFile = null;
-          await FileDirectoryHistoryService.instance.recordHistory(
+          await ProjectHistoryService.instance.recordHistory(
             rootPath: currentRoot,
             lastOpenedFilePath: null,
             openDirectoryPaths: _history.openDirectoryPaths,
@@ -210,8 +235,8 @@ class ProjectProvider extends ChangeNotifier {
       }
 
       _items = items;
-      if (currentFile != _history.lastOpenedFilePath) {
-        _history = FileDirectoryHistory(
+      if(currentFile != _history.lastOpenedFilePath) {
+        _history = ProjectHistory(
           rootPath: currentRoot,
           lastOpenedFilePath: currentFile,
           openDirectoryPaths: _history.openDirectoryPaths,
@@ -219,7 +244,7 @@ class ProjectProvider extends ChangeNotifier {
         );
       }
       notifyListeners();
-    } catch (e) {
+    }catch (e) {
       debugPrint('刷新目录树失败: $e');
     }
   }
@@ -237,14 +262,14 @@ class ProjectProvider extends ChangeNotifier {
   }
 
   Future<void> paste(FileItem targetDir) async {
-    if (!targetDir.isDirectory) return;
+    if(!targetDir.isDirectory) return;
 
-    if (_cutItem != null) {
+    if(_cutItem != null) {
       final source = _cutItem!;
       await FileService.instance.moveEntity(source.path, targetDir.path);
       _cutItem = null;
       await refreshTree();
-    } else if (_copiedItem != null) {
+    }else if (_copiedItem != null) {
       final source = _copiedItem!;
       await FileService.instance.copyEntity(source.path, targetDir.path);
       await refreshTree();
@@ -283,7 +308,7 @@ class ProjectProvider extends ChangeNotifier {
   }
 
   void _startWatcher(String? rootPath) {
-    if (rootPath == null || rootPath.isEmpty) {
+    if(rootPath == null || rootPath.isEmpty) {
       FileWatcherService.instance.stopWatching();
       return;
     }
@@ -296,15 +321,15 @@ class ProjectProvider extends ChangeNotifier {
   void _onFileSystemEvents(List<FileSystemEvent> events) {
     bool needRefreshTree = false;
 
-    for (final event in events) {
+    for(final event in events) {
       final normalizedPath = p.normalize(event.path);
 
-      if (event is FileSystemCreateEvent) {
+      if(event is FileSystemCreateEvent) {
         needRefreshTree = true;
-      } else if (event is FileSystemDeleteEvent) {
+      }else if (event is FileSystemDeleteEvent) {
         needRefreshTree = true;
         onExternalFileDeleted?.call(normalizedPath);
-      } else if (event is FileSystemMoveEvent) {
+      }else if (event is FileSystemMoveEvent) {
         needRefreshTree = true;
         final dest = event.destination;
         if (dest != null) {
@@ -312,7 +337,7 @@ class ProjectProvider extends ChangeNotifier {
         } else {
           onExternalFileDeleted?.call(normalizedPath);
         }
-      } else if (event is FileSystemModifyEvent) {
+      }else if (event is FileSystemModifyEvent) {
         if (event.isDirectory) {
           needRefreshTree = true;
         } else {
@@ -321,7 +346,7 @@ class ProjectProvider extends ChangeNotifier {
       }
     }
 
-    if (needRefreshTree) {
+    if(needRefreshTree) {
       refreshTree();
     }
   }

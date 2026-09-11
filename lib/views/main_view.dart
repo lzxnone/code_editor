@@ -1,5 +1,4 @@
 import 'package:code_editor/l10n/app_localizations.dart';
-import 'package:code_editor/providers/editor_provider.dart';
 import 'package:code_editor/providers/project_provider.dart';
 import 'package:code_editor/providers/tab_provider.dart';
 import 'package:code_editor/utils/dialog_utils.dart';
@@ -15,21 +14,11 @@ class MainView extends StatelessWidget {
   const MainView({super.key});
 
   static ProjectProvider _getProjectProvider(BuildContext context, {bool listen = false}) {
-    try {
-      return listen ? context.watch<ProjectProvider>() : context.read<ProjectProvider>();
-    } catch (_) {
-      final editor = listen ? context.watch<EditorProvider>() : context.read<EditorProvider>();
-      return editor.projectProvider;
-    }
+    return listen ? context.watch<ProjectProvider>() : context.read<ProjectProvider>();
   }
 
   static TabProvider _getTabProvider(BuildContext context, {bool listen = false}) {
-    try {
-      return listen ? context.watch<TabProvider>() : context.read<TabProvider>();
-    } catch (_) {
-      final editor = listen ? context.watch<EditorProvider>() : context.read<EditorProvider>();
-      return editor.tabProvider;
-    }
+    return listen ? context.watch<TabProvider>() : context.read<TabProvider>();
   }
 
   void _handleSave(BuildContext context) async {
@@ -50,6 +39,19 @@ class MainView extends StatelessWidget {
     if (saved && context.mounted) {
       final l10n = AppLocalizations.of(context);
       DialogUtils.showSuccessToast(context, l10n?.saveAllSuccess ?? '所有文件已保存');
+    }
+  }
+
+  void _handleCloseAllTabs(BuildContext context) async {
+    await _getTabProvider(context).closeAllTabs(context);
+  }
+
+  void _handleCloseProject(BuildContext context) async {
+    final tabProvider = _getTabProvider(context);
+    final projectProvider = _getProjectProvider(context);
+    final canProceed = await tabProvider.checkUnsavedChanges(context);
+    if (canProceed && context.mounted) {
+      await projectProvider.closeProject();
     }
   }
 
@@ -82,6 +84,8 @@ class MainView extends StatelessWidget {
           isModified: isModified,
           onSave: () => _handleSave(context),
           onSaveAll: () => _handleSaveAll(context),
+          onCloseAllTabs: () => _handleCloseAllTabs(context),
+          onCloseProject: () => _handleCloseProject(context),
           onRun: () {},
           onSettings: () {
             Navigator.of(context).push(

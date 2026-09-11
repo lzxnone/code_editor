@@ -119,7 +119,7 @@ abstract class AppLocalizations {
   /// No description provided for @fileDirectory.
   ///
   /// In zh, this message translates to:
-  /// **'文件目录'**
+  /// **'项目'**
   String get fileDirectory;
 
   /// No description provided for @undo.
@@ -143,14 +143,20 @@ abstract class AppLocalizations {
   /// No description provided for @openFileDirectory.
   ///
   /// In zh, this message translates to:
-  /// **'打开文件目录'**
+  /// **'打开项目'**
   String get openFileDirectory;
 
-  /// No description provided for @viewFileDirectoryHistory.
+  /// No description provided for @openProjectPrompt.
   ///
   /// In zh, this message translates to:
-  /// **'查看文件目录历史'**
-  String get viewFileDirectoryHistory;
+  /// **'请点击上方按钮打开项目'**
+  String get openProjectPrompt;
+
+  /// No description provided for @viewProjectHistory.
+  ///
+  /// In zh, this message translates to:
+  /// **'查看项目历史'**
+  String get viewProjectHistory;
 
   /// No description provided for @more.
   ///
@@ -161,7 +167,7 @@ abstract class AppLocalizations {
   /// No description provided for @noOpenDirectory.
   ///
   /// In zh, this message translates to:
-  /// **'当前未打开文件目录'**
+  /// **'当前未打开项目'**
   String get noOpenDirectory;
 
   /// No description provided for @noOpenFile.
@@ -182,11 +188,11 @@ abstract class AppLocalizations {
   /// **'未知目录'**
   String get unknownDirectory;
 
-  /// No description provided for @historyFileDirectories.
+  /// No description provided for @projectHistory.
   ///
   /// In zh, this message translates to:
-  /// **'历史文件目录'**
-  String get historyFileDirectories;
+  /// **'历史项目'**
+  String get projectHistory;
 
   /// No description provided for @noHistory.
   ///
@@ -247,6 +253,18 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'关闭'**
   String get close;
+
+  /// No description provided for @closeAllTabs.
+  ///
+  /// In zh, this message translates to:
+  /// **'关闭所有标签'**
+  String get closeAllTabs;
+
+  /// No description provided for @closeProject.
+  ///
+  /// In zh, this message translates to:
+  /// **'关闭当前项目'**
+  String get closeProject;
 
   /// No description provided for @gotIt.
   ///
@@ -536,6 +554,60 @@ abstract class AppLocalizations {
   /// **'长代码行超出边界时自动折行'**
   String get wordWrapSubtitle;
 
+  /// No description provided for @virtualKeyboard.
+  ///
+  /// In zh, this message translates to:
+  /// **'辅助小键盘'**
+  String get virtualKeyboard;
+
+  /// No description provided for @virtualKeyboardSubtitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'在代码编辑区底部显示辅助符号与快捷键'**
+  String get virtualKeyboardSubtitle;
+
+  /// No description provided for @editVirtualKeyboardConfig.
+  ///
+  /// In zh, this message translates to:
+  /// **'编辑键盘配置'**
+  String get editVirtualKeyboardConfig;
+
+  /// No description provided for @editVirtualKeyboardConfigSubtitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'自定义小键盘按键布局与快捷键 (JSON)'**
+  String get editVirtualKeyboardConfigSubtitle;
+
+  /// No description provided for @virtualKeyboardDialogTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'小键盘配置 (JSON)'**
+  String get virtualKeyboardDialogTitle;
+
+  /// No description provided for @resetDefault.
+  ///
+  /// In zh, this message translates to:
+  /// **'恢复默认'**
+  String get resetDefault;
+
+  /// No description provided for @configFormatError.
+  ///
+  /// In zh, this message translates to:
+  /// **'配置格式错误'**
+  String get configFormatError;
+
+  /// No description provided for @configSavedSuccess.
+  ///
+  /// In zh, this message translates to:
+  /// **'小键盘配置已保存'**
+  String get configSavedSuccess;
+
+  /// No description provided for @formatJson.
+  ///
+  /// In zh, this message translates to:
+  /// **'格式化'**
+  String get formatJson;
+
   /// No description provided for @languageSection.
   ///
   /// In zh, this message translates to:
@@ -575,7 +647,7 @@ abstract class AppLocalizations {
   /// No description provided for @refreshDirectory.
   ///
   /// In zh, this message translates to:
-  /// **'刷新目录'**
+  /// **'刷新项目'**
   String get refreshDirectory;
 
   /// No description provided for @back.

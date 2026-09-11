@@ -18,7 +18,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get settings => '设置';
 
   @override
-  String get fileDirectory => '文件目录';
+  String get fileDirectory => '项目';
 
   @override
   String get undo => '撤销';
@@ -30,16 +30,19 @@ class AppLocalizationsZh extends AppLocalizations {
   String get save => '保存';
 
   @override
-  String get openFileDirectory => '打开文件目录';
+  String get openFileDirectory => '打开项目';
 
   @override
-  String get viewFileDirectoryHistory => '查看文件目录历史';
+  String get openProjectPrompt => '请点击上方按钮打开项目';
+
+  @override
+  String get viewProjectHistory => '查看项目历史';
 
   @override
   String get more => '更多';
 
   @override
-  String get noOpenDirectory => '当前未打开文件目录';
+  String get noOpenDirectory => '当前未打开项目';
 
   @override
   String get noOpenFile => '当前未打开文件';
@@ -51,7 +54,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get unknownDirectory => '未知目录';
 
   @override
-  String get historyFileDirectories => '历史文件目录';
+  String get projectHistory => '历史项目';
 
   @override
   String get noHistory => '暂无历史记录';
@@ -82,6 +85,12 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get close => '关闭';
+
+  @override
+  String get closeAllTabs => '关闭所有标签';
+
+  @override
+  String get closeProject => '关闭当前项目';
 
   @override
   String get gotIt => '知道了';
@@ -244,6 +253,33 @@ class AppLocalizationsZh extends AppLocalizations {
   String get wordWrapSubtitle => '长代码行超出边界时自动折行';
 
   @override
+  String get virtualKeyboard => '辅助小键盘';
+
+  @override
+  String get virtualKeyboardSubtitle => '在代码编辑区底部显示辅助符号与快捷键';
+
+  @override
+  String get editVirtualKeyboardConfig => '编辑键盘配置';
+
+  @override
+  String get editVirtualKeyboardConfigSubtitle => '自定义小键盘按键布局与快捷键 (JSON)';
+
+  @override
+  String get virtualKeyboardDialogTitle => '小键盘配置 (JSON)';
+
+  @override
+  String get resetDefault => '恢复默认';
+
+  @override
+  String get configFormatError => '配置格式错误';
+
+  @override
+  String get configSavedSuccess => '小键盘配置已保存';
+
+  @override
+  String get formatJson => '格式化';
+
+  @override
   String get languageSection => '语言';
 
   @override
@@ -262,7 +298,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get languageEnglish => 'English';
 
   @override
-  String get refreshDirectory => '刷新目录';
+  String get refreshDirectory => '刷新项目';
 
   @override
   String get back => '返回';

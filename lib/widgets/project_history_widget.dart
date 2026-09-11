@@ -1,14 +1,17 @@
 import 'package:code_editor/l10n/app_localizations.dart';
-import 'package:code_editor/models/file_directory_history.dart';
-import 'package:code_editor/services/file_directory_history_service.dart';
+import 'package:code_editor/models/project_history.dart';
+import 'package:code_editor/providers/project_provider.dart';
+import 'package:code_editor/providers/tab_provider.dart';
+import 'package:code_editor/services/project_history_service.dart';
 import 'package:code_editor/utils/dialog_utils.dart';
 import 'package:flutter/material.dart';
 import 'package:path/path.dart' as p;
+import 'package:provider/provider.dart';
 
-class FileDirectoryHistoryWidget extends StatefulWidget {
-  final ValueChanged<FileDirectoryHistory>? onSelectHistory;
+class ProjectHistoryWidget extends StatefulWidget {
+  final ValueChanged<ProjectHistory>? onSelectHistory;
 
-  const FileDirectoryHistoryWidget({
+  const ProjectHistoryWidget({
     super.key,
     this.onSelectHistory,
   });
@@ -16,13 +19,13 @@ class FileDirectoryHistoryWidget extends StatefulWidget {
   /// 打开历史弹窗（不关闭后方的 Drawer）
   static Future<void> show(
     BuildContext context, {
-    ValueChanged<FileDirectoryHistory>? onSelectHistory,
+    ValueChanged<ProjectHistory>? onSelectHistory,
   }) {
     return showDialog<void>(
       context: context,
       barrierDismissible: true,
       builder: (BuildContext dialogContext) {
-        return FileDirectoryHistoryWidget(
+        return ProjectHistoryWidget(
           onSelectHistory: onSelectHistory,
         );
       },
@@ -30,13 +33,13 @@ class FileDirectoryHistoryWidget extends StatefulWidget {
   }
 
   @override
-  State<FileDirectoryHistoryWidget> createState() =>
-      _FileDirectoryHistoryWidgetState();
+  State<ProjectHistoryWidget> createState() =>
+      _ProjectHistoryWidgetState();
 }
 
-class _FileDirectoryHistoryWidgetState
-    extends State<FileDirectoryHistoryWidget> {
-  List<FileDirectoryHistory> _historyList = [];
+class _ProjectHistoryWidgetState
+    extends State<ProjectHistoryWidget> {
+  List<ProjectHistory> _historyList = [];
   bool _isLoading = true;
 
   @override
@@ -46,7 +49,7 @@ class _FileDirectoryHistoryWidgetState
   }
 
   Future<void> _loadHistory() async {
-    final list = await FileDirectoryHistoryService.instance.getFullHistory();
+    final list = await ProjectHistoryService.instance.getFullHistory();
     if (mounted) {
       setState(() {
         _historyList = list;
@@ -55,22 +58,50 @@ class _FileDirectoryHistoryWidgetState
     }
   }
 
-  Future<void> _deleteHistory(FileDirectoryHistory item) async {
+  Future<void> _deleteHistory(ProjectHistory item) async {
     final root = item.rootPath;
-    if (root != null && root.isNotEmpty) {
-      final l10n = AppLocalizations.of(context)!;
-      final confirmed = await DialogUtils.showDestructiveConfirmDialog(
-        context,
-        title: l10n.deleteHistoryTitle,
-        message: l10n.deleteHistoryMessage,
-        confirmText: l10n.remove,
-      );
-      if (confirmed && mounted) {
-        await FileDirectoryHistoryService.instance.removeHistory(root);
-        await _loadHistory();
-        if (mounted) {
-          DialogUtils.showSuccessToast(context, l10n.historyRemoved);
-        }
+    if (root == null || root.isEmpty) return;
+
+    // 1. 判断是否是当前正在打开的项目
+    ProjectProvider? projectProvider;
+    TabProvider? tabProvider;
+    try {
+      projectProvider = context.read<ProjectProvider>();
+      tabProvider = context.read<TabProvider>();
+    } catch (_) {}
+
+    final currentRoot = projectProvider?.rootPath;
+    final isCurrentProject = currentRoot != null && p.equals(p.normalize(currentRoot), p.normalize(root));
+
+    // 2. 如果删除的是当前项目，先进行保存确认检查
+    if (isCurrentProject && tabProvider != null) {
+      final canProceed = await tabProvider.checkUnsavedChanges(context);
+      if (!canProceed || !mounted) {
+        // 用户取消或未通过保存流程，中止后续操作
+        return;
+      }
+    }
+
+    // 3. 弹出是否移除历史记录确认弹窗
+    final l10n = AppLocalizations.of(context)!;
+    final confirmed = await DialogUtils.showDestructiveConfirmDialog(
+      context,
+      title: l10n.deleteHistoryTitle,
+      message: l10n.deleteHistoryMessage,
+      confirmText: l10n.remove,
+    );
+
+    // 4. 只有两者均为 true（保存检查通过 且 确认移除历史记录），才真正去关闭当前项目并删除历史
+    if (confirmed && mounted) {
+      if (isCurrentProject && projectProvider != null) {
+        await projectProvider.closeProject();
+        if (!mounted) return;
+      }
+
+      await ProjectHistoryService.instance.removeHistory(root);
+      await _loadHistory();
+      if (mounted) {
+        DialogUtils.showSuccessToast(context, l10n.historyRemoved);
       }
     }
   }
@@ -107,7 +138,7 @@ class _FileDirectoryHistoryWidgetState
                 children: [
                   Expanded(
                     child: Text(
-                      l10n.historyFileDirectories,
+                      l10n.projectHistory,
                       style: theme.textTheme.titleMedium?.copyWith(
                         fontWeight: FontWeight.bold,
                         color: theme.colorScheme.onSurface,
