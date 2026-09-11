@@ -17,13 +17,12 @@ dependencies:
   intl: any       
 
   cupertino_icons: ^1.0.8
-  flutter_code_editor: ^0.3.1
-  flutter_highlight: ^0.7.0
-  highlight: ^0.7.0
   shared_preferences: ^2.3.0
   path: ^1.9.0
   file_picker: ^8.1.7
   provider: ^6.1.2
+  re_editor: ^0.10.0
+  re_highlight: ^0.0.3
 
 dev_dependencies:
   flutter_test:

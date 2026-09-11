@@ -1,5 +1,7 @@
+import 'package:code_editor/l10n/app_localizations.dart';
 import 'package:code_editor/models/file_directory_history.dart';
 import 'package:code_editor/services/file_directory_history_service.dart';
+import 'package:code_editor/utils/dialog_utils.dart';
 import 'package:flutter/material.dart';
 import 'package:path/path.dart' as p;
 
@@ -56,14 +58,27 @@ class _FileDirectoryHistoryWidgetState
   Future<void> _deleteHistory(FileDirectoryHistory item) async {
     final root = item.rootPath;
     if (root != null && root.isNotEmpty) {
-      await FileDirectoryHistoryService.instance.removeHistory(root);
-      await _loadHistory();
+      final l10n = AppLocalizations.of(context)!;
+      final confirmed = await DialogUtils.showDestructiveConfirmDialog(
+        context,
+        title: l10n.deleteHistoryTitle,
+        message: l10n.deleteHistoryMessage,
+        confirmText: l10n.remove,
+      );
+      if (confirmed && mounted) {
+        await FileDirectoryHistoryService.instance.removeHistory(root);
+        await _loadHistory();
+        if (mounted) {
+          DialogUtils.showSuccessToast(context, l10n.historyRemoved);
+        }
+      }
     }
   }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context)!;
 
     return Dialog(
       clipBehavior: Clip.antiAlias,
@@ -92,19 +107,19 @@ class _FileDirectoryHistoryWidgetState
                 children: [
                   Expanded(
                     child: Text(
-                      '历史文件目录',
+                      l10n.historyFileDirectories,
                       style: theme.textTheme.titleMedium?.copyWith(
                         fontWeight: FontWeight.bold,
-                        color: theme.colorScheme.onPrimaryContainer,
+                        color: theme.colorScheme.onSurface,
                       ),
                     ),
                   ),
                   IconButton(
                     icon: Icon(
                       Icons.close,
-                      color: theme.colorScheme.onPrimaryContainer,
+                      color: theme.colorScheme.onSurface,
                     ),
-                    tooltip: '关闭',
+                    tooltip: l10n.close,
                     visualDensity: VisualDensity.compact,
                     onPressed: () => Navigator.of(context).pop(),
                   ),
@@ -126,7 +141,7 @@ class _FileDirectoryHistoryWidgetState
                           child: Padding(
                             padding: const EdgeInsets.all(32.0),
                             child: Text(
-                              '暂无历史记录',
+                              l10n.noHistory,
                               style: TextStyle(
                                 color: theme.colorScheme.onSurfaceVariant,
                                 fontSize: 14,
@@ -149,8 +164,8 @@ class _FileDirectoryHistoryWidgetState
                             final fileName = (lastFile != null &&
                                     lastFile.trim().isNotEmpty)
                                 ? p.basename(lastFile)
-                                : '未打开文件';
-                            final rootDir = item.rootPath ?? '未知目录';
+                                : l10n.noOpenFile;
+                            final rootDir = item.rootPath ?? l10n.unknownDirectory;
 
                             return InkWell(
                               onTap: () {
@@ -210,7 +225,7 @@ class _FileDirectoryHistoryWidgetState
                                         size: 20,
                                         color: theme.colorScheme.error,
                                       ),
-                                      tooltip: '删除此记录',
+                                      tooltip: l10n.deleteThisHistory,
                                       visualDensity: VisualDensity.compact,
                                       onPressed: () => _deleteHistory(item),
                                     ),

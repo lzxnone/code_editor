@@ -1,5 +1,8 @@
 import 'package:code_editor/l10n/app_localizations.dart';
 import 'package:code_editor/providers/editor_provider.dart';
+import 'package:code_editor/providers/project_provider.dart';
+import 'package:code_editor/providers/settings_provider.dart';
+import 'package:code_editor/providers/tab_provider.dart';
 import 'package:code_editor/views/main_view.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -13,25 +16,59 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ChangeNotifierProvider(
-      create: (_) => EditorProvider()..init(),
-      child: MaterialApp(
-        debugShowCheckedModeBanner: false, 
-        localizationsDelegates: AppLocalizations.localizationsDelegates,
-        supportedLocales: AppLocalizations.supportedLocales,
-        title: 'Flutter Demo',
-        theme: ThemeData(
-          useMaterial3: true,
-          colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
-          fontFamilyFallback: const [
+    return MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (_) => SettingsProvider()..init()),
+        ChangeNotifierProvider(create: (_) => ProjectProvider()..init()),
+        ChangeNotifierProxyProvider<ProjectProvider, TabProvider>(
+          create: (_) => TabProvider()..init(),
+          update: (_, project, tab) =>
+              (tab ?? (TabProvider()..init()))..bindProjectProvider(project),
+        ),
+        ChangeNotifierProxyProvider3<SettingsProvider, ProjectProvider, TabProvider, EditorProvider>(
+          create: (ctx) => EditorProvider(),
+          update: (_, settings, project, tab, editor) =>
+              EditorProvider(settings: settings, project: project, tab: tab),
+        ),
+      ],
+      child: Consumer<SettingsProvider>(
+        builder: (context, settings, child) {
+          const fontFallbacks = [
             'PingFang SC',       // iOS / macOS
             'Noto Sans SC',      // Android
             'Microsoft YaHei',   // Windows
             'WenQuanYi Micro Hei', // Linux
             'sans-serif',        // Web & generic fallback
-          ],
-        ),
-        home: const MainView(),
+          ];
+
+          return MaterialApp(
+            debugShowCheckedModeBanner: false, 
+            locale: settings.locale,
+            localizationsDelegates: AppLocalizations.localizationsDelegates,
+            supportedLocales: AppLocalizations.supportedLocales,
+            onGenerateTitle: (context) => AppLocalizations.of(context)!.appTitle,
+            themeMode: settings.appThemeMode,
+            theme: ThemeData(
+              useMaterial3: true,
+              brightness: Brightness.light,
+              colorScheme: ColorScheme.fromSeed(
+                seedColor: Colors.blue,
+                brightness: Brightness.light,
+              ),
+              fontFamilyFallback: fontFallbacks,
+            ),
+            darkTheme: ThemeData(
+              useMaterial3: true,
+              brightness: Brightness.dark,
+              colorScheme: ColorScheme.fromSeed(
+                seedColor: Colors.blue,
+                brightness: Brightness.dark,
+              ),
+              fontFamilyFallback: fontFallbacks,
+            ),
+            home: const MainView(),
+          );
+        },
       ),
     );
   }

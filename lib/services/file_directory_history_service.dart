@@ -13,6 +13,7 @@ class FileDirectoryHistoryService {
     required String rootPath,
     String? lastOpenedFilePath,
     List<String>? openDirectoryPaths,
+    List<String>? openFilePaths,
   }) async {
     final cleanPath = rootPath.trim();
     if(cleanPath.isEmpty) return;
@@ -22,10 +23,12 @@ class FileDirectoryHistoryService {
     final existingIndex = history.indexWhere((item) => item.rootPath == cleanPath);
     String? resolvedFile = lastOpenedFilePath;
     List<String>? resolvedOpenDirs = openDirectoryPaths;
+    List<String>? resolvedOpenFiles = openFilePaths;
 
     if(existingIndex != -1) {
       resolvedFile ??= history[existingIndex].lastOpenedFilePath;
       resolvedOpenDirs ??= history[existingIndex].openDirectoryPaths;
+      resolvedOpenFiles ??= history[existingIndex].openFilePaths;
       history.removeAt(existingIndex);
     }
 
@@ -35,6 +38,7 @@ class FileDirectoryHistoryService {
         rootPath: cleanPath,
         lastOpenedFilePath: resolvedFile,
         openDirectoryPaths: resolvedOpenDirs ?? const [],
+        openFilePaths: resolvedOpenFiles ?? const [],
       ),
     );
 
