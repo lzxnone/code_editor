@@ -23,6 +23,9 @@ dependencies:
   provider: ^6.1.2
   re_editor: ^0.10.0
   re_highlight: ^0.0.3
+  permission_handler: ^13.0.2
+  path_provider: ^2.1.5
+  archive: ^3.6.1
 
 dev_dependencies:
   flutter_test:
@@ -35,3 +38,26 @@ flutter:
   generate: true
 
   uses-material-design: true
+
+  assets:
+    - assets/distros/
+
+  fonts:
+    - family: JetBrains Mono
+      fonts:
+        - asset: assets/fonts/JetBrainsMonoNerdFontMono-Regular.ttf
+        - asset: assets/fonts/JetBrainsMonoNerdFontMono-Italic.ttf
+          style: italic
+        - asset: assets/fonts/JetBrainsMonoNerdFontMono-Bold.ttf
+          weight: 700
+        - asset: assets/fonts/JetBrainsMonoNerdFontMono-BoldItalic.ttf
+          weight: 700
+          style: italic
+
+    - family: Fira Code
+      fonts:
+        - asset: assets/fonts/FiraCodeNerdFontMono-Regular.ttf
+        - asset: assets/fonts/FiraCodeNerdFontMono-Medium.ttf
+          weight: 500
+        - asset: assets/fonts/FiraCodeNerdFontMono-Bold.ttf
+          weight: 700

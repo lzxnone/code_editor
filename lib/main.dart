@@ -1,7 +1,9 @@
 import 'package:code_editor/l10n/app_localizations.dart';
+import 'package:code_editor/providers/distro_provider.dart';
 import 'package:code_editor/providers/project_provider.dart';
 import 'package:code_editor/providers/settings_provider.dart';
 import 'package:code_editor/providers/tab_provider.dart';
+import 'package:code_editor/providers/terminal_provider.dart';
 import 'package:code_editor/views/main_view.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -24,17 +26,11 @@ class MyApp extends StatelessWidget {
           update: (_, project, tab) =>
               (tab ?? (TabProvider()..init()))..bindProjectProvider(project),
         ),
+        ChangeNotifierProvider(create: (_) => TerminalProvider()),
+        ChangeNotifierProvider(create: (_) => DistroProvider()..checkAllStatuses()),
       ],
       child: Consumer<SettingsProvider>(
         builder: (context, settings, child) {
-          const fontFallbacks = [
-            'PingFang SC',       // iOS / macOS
-            'Noto Sans SC',      // Android
-            'Microsoft YaHei',   // Windows
-            'WenQuanYi Micro Hei', // Linux
-            'sans-serif',        // Web & generic fallback
-          ];
-
           return MaterialApp(
             debugShowCheckedModeBanner: false, 
             locale: settings.locale,
@@ -49,7 +45,8 @@ class MyApp extends StatelessWidget {
                 seedColor: Colors.blue,
                 brightness: Brightness.light,
               ),
-              fontFamilyFallback: fontFallbacks,
+              fontFamily: settings.uiFont.fontFamily,
+              fontFamilyFallback: settings.uiFont.fallback,
             ),
             darkTheme: ThemeData(
               useMaterial3: true,
@@ -58,7 +55,8 @@ class MyApp extends StatelessWidget {
                 seedColor: Colors.blue,
                 brightness: Brightness.dark,
               ),
-              fontFamilyFallback: fontFallbacks,
+              fontFamily: settings.uiFont.fontFamily,
+              fontFamilyFallback: settings.uiFont.fallback,
             ),
             home: const MainView(),
           );

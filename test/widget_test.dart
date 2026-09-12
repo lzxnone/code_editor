@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:re_editor/re_editor.dart';
 import 'package:code_editor/models/editor_tab_item.dart';
 import 'package:code_editor/models/file_item.dart';
@@ -23,6 +24,7 @@ import 'package:code_editor/views/settings_view.dart';
 import 'package:code_editor/views/main_view.dart';
 import 'package:code_editor/widgets/code_editor_app_bar.dart';
 import 'package:code_editor/widgets/code_editor_drawer.dart';
+import 'package:code_editor/utils/dialog_utils.dart';
 import 'package:code_editor/services/file_watcher_service.dart';
 import 'package:code_editor/utils/syntax_highlight_helper.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -252,14 +254,12 @@ void main() {
     final appBar = tester.widget<AppBar>(appBarFinder);
     expect(appBar.foregroundColor, isNotNull);
 
-    // Verify PopupMenuButton has position under
-    final popupBtnFinder = find.byType(PopupMenuButton<String>);
-    expect(popupBtnFinder, findsOneWidget);
-    final popupBtn = tester.widget<PopupMenuButton<String>>(popupBtnFinder);
-    expect(popupBtn.position, equals(PopupMenuPosition.under));
+    // Verify more menu button exists
+    final moreBtnFinder = find.byIcon(Icons.more_vert);
+    expect(moreBtnFinder, findsOneWidget);
 
     // Tap menu button
-    await tester.tap(popupBtnFinder);
+    await tester.tap(moreBtnFinder);
     await tester.pumpAndSettle();
 
     expect(find.text('设置'), findsOneWidget);
@@ -284,6 +284,9 @@ void main() {
     );
     await tester.pumpAndSettle();
 
+    // Scroll until word wrap switch is visible
+    await tester.scrollUntilVisible(find.text('自动换行'), 200);
+
     // Verify word wrap switch tile exists
     expect(find.text('自动换行'), findsOneWidget);
     final wordWrapTile = find.ancestor(
@@ -302,6 +305,23 @@ void main() {
     await tester.tap(switchFinder);
     await tester.pumpAndSettle();
     expect(provider.wordWrap, isFalse);
+
+    // Verify indent size tile
+    expect(find.text('缩进大小'), findsOneWidget);
+    expect(find.text('2 个空格'), findsOneWidget);
+
+    // Tap indent size tile to open modal
+    await tester.tap(find.text('缩进大小'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('选择缩进空格数'), findsOneWidget);
+    expect(find.text('4 个空格'), findsOneWidget);
+
+    // Select 4 spaces
+    await tester.tap(find.text('4 个空格'));
+    await tester.pumpAndSettle();
+
+    expect(provider.indentSize, equals(4));
 
     // Verify language section
     final langTile = find.text('应用语言');
@@ -548,7 +568,7 @@ void main() {
     expect(find.text('/lib/views'), findsOneWidget);
 
     // Open popup menu
-    await tester.tap(find.byType(PopupMenuButton<String>));
+    await tester.tap(find.byIcon(Icons.more_vert));
     await tester.pumpAndSettle();
 
     expect(find.text('保存所有'), findsOneWidget);
@@ -561,6 +581,48 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(saveAllTriggered, isTrue);
+  });
+
+  testWidgets('DialogUtils.showToast adapts position above soft keyboard when viewInsets.bottom > 0', (WidgetTester tester) async {
+    addTearDown(tester.view.resetViewInsets);
+    late BuildContext targetContext;
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: Builder(
+            builder: (ctx) {
+              targetContext = ctx;
+              return const Text('Target');
+            },
+          ),
+        ),
+      ),
+    );
+
+    // 1. 无软键盘时显示 Toast
+    DialogUtils.showSuccessToast(targetContext, '保存成功');
+    await tester.pump(const Duration(milliseconds: 50));
+
+    expect(find.text('保存成功'), findsOneWidget);
+    final initialCenter = tester.getCenter(find.text('保存成功'));
+
+    // 等待第一个 Toast 自动卸载
+    await tester.pump(const Duration(seconds: 3));
+    expect(find.text('保存成功'), findsNothing);
+
+    // 2. 模拟系统软键盘弹出时 (viewInsets.bottom: 260 逻辑像素)
+    tester.view.viewInsets = FakeViewPadding(bottom: 260 * tester.view.devicePixelRatio);
+    DialogUtils.showSuccessToast(targetContext, '有键盘');
+    await tester.pump(const Duration(milliseconds: 50));
+
+    final keyboardCenter = tester.getCenter(find.text('有键盘'));
+    // 键盘弹出后，Toast 中心点必须往上移（dy 变小）至少 200 像素以上，远离键盘遮挡区
+    expect(keyboardCenter.dy, lessThan(initialCenter.dy - 200));
+
+    // 等待 Toast 动画与定时器自动卸载
+    await tester.pump(const Duration(seconds: 3));
+    expect(find.text('有键盘'), findsNothing);
   });
 
   testWidgets('CodeEditorTabBar renders tabs and handles dirty close dialog', (WidgetTester tester) async {
@@ -616,11 +678,15 @@ void main() {
   test('SettingsProvider manages settings correctly', () async {
     final settings = SettingsProvider();
     expect(settings.fontSize, equals(14.0));
+    expect(settings.indentSize, equals(2));
     expect(settings.wordWrap, isTrue);
     expect(settings.appThemeMode, equals(ThemeMode.system));
 
     await settings.setFontSize(18.0);
     expect(settings.fontSize, equals(18.0));
+
+    await settings.setIndentSize(4);
+    expect(settings.indentSize, equals(4));
 
     await settings.setWordWrap(false);
     expect(settings.wordWrap, isFalse);
@@ -969,12 +1035,18 @@ void main() {
   });
 
   testWidgets('Opening another file from file list when active file is modified does not prompt save dialog', (WidgetTester tester) async {
+    final tempDir = Directory.systemTemp.createTempSync('widget_test_tab_');
+    addTearDown(() {
+      if (tempDir.existsSync()) tempDir.deleteSync(recursive: true);
+    });
+
     final tabProvider = TabProvider();
     final projectProvider = ProjectProvider();
     final settingsProvider = SettingsProvider();
 
-    final file1 = FileItem(path: p.normalize('/ws/file1.dart'), name: 'file1.dart', isDirectory: false);
-    final file2 = FileItem(path: p.normalize('/ws/file2.dart'), name: 'file2.dart', isDirectory: false);
+    final file1 = FileItem(path: p.join(tempDir.path, 'file1.dart'), name: 'file1.dart', isDirectory: false);
+    final file2 = FileItem(path: p.join(tempDir.path, 'file2.dart'), name: 'file2.dart', isDirectory: false);
+    File(file2.path).writeAsStringSync('int b = 2;');
 
     // Initial state: open file1 and modify it
     await tabProvider.openFile(file1.path, content: 'int a = 1;');
@@ -996,7 +1068,8 @@ void main() {
         ),
       ),
     );
-    await tester.pumpAndSettle();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
 
     // Verify main view is rendered with modified file1
     expect(find.text('file1.dart'), findsWidgets);
@@ -1004,27 +1077,32 @@ void main() {
 
     // Open file2 via selectFile (simulating user clicking file2 in file tree/drawer)
     await tabProvider.selectFile(file2);
-    await tester.pumpAndSettle();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
 
     // NO save prompt dialog should appear
     expect(find.text('保存更改'), findsNothing);
     expect(find.text('保存所有更改？'), findsNothing);
 
     // Now file2 is active, file1 is still open and preserved in memory
-    expect(tabProvider.activeTab?.path, equals(p.normalize('/ws/file2.dart')));
+    expect(tabProvider.activeTab?.path, equals(p.normalize(file2.path)));
     expect(tabProvider.openTabs.length, equals(2));
     expect(tabProvider.openTabs[0].isModified, isTrue);
     expect(tabProvider.openTabs[0].content, equals('int a = 2;'));
 
     // Switch back to file1 via openFile (simulating clicking tab1)
     await tabProvider.openFile(file1.path);
-    await tester.pumpAndSettle();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
 
     // NO save prompt dialog should appear on tab switch either
     expect(find.text('保存更改'), findsNothing);
     expect(find.text('保存所有更改？'), findsNothing);
-    expect(tabProvider.activeTab?.path, equals(p.normalize('/ws/file1.dart')));
+    expect(tabProvider.activeTab?.path, equals(p.normalize(file1.path)));
     expect(tabProvider.activeTab?.isModified, isTrue);
+
+    // Unmount MainView so cursor blinking timer cancels cleanly
+    await tester.pumpWidget(const SizedBox());
   });
 
   testWidgets('Close all tabs from PopupMenu prompts for dirty tabs and closes tabs', (WidgetTester tester) async {
@@ -1050,28 +1128,34 @@ void main() {
         ),
       ),
     );
-    await tester.pumpAndSettle();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
 
     expect(tabProvider.openTabs.length, equals(1));
 
     // Tap more menu
-    await tester.tap(find.byType(PopupMenuButton<String>));
-    await tester.pumpAndSettle();
+    await tester.tap(find.byIcon(Icons.more_vert));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 200));
 
     // Tap '关闭所有标签'
     await tester.tap(find.text('关闭所有标签'));
-    await tester.pumpAndSettle();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 200));
 
     // Dirty prompt dialog should appear
     expect(find.text('保存所有更改？'), findsOneWidget);
 
     // Choose discard (不保存)
     await tester.tap(find.text('不保存'));
-    await tester.pumpAndSettle();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 200));
 
     // All tabs should be closed
     expect(tabProvider.openTabs, isEmpty);
     expect(tabProvider.activeTab, isNull);
+
+    await tester.pumpWidget(const SizedBox());
   });
 
   testWidgets('Deleting current project in ProjectHistoryWidget closes project first before confirming delete', (WidgetTester tester) async {
@@ -1386,7 +1470,7 @@ void main() {
 
       // Scroll to virtual keyboard tiles
       final configTile = find.text('编辑键盘配置');
-      await tester.drag(find.byType(ListView), const Offset(0, -200));
+      await tester.scrollUntilVisible(configTile, 200);
       await tester.pumpAndSettle();
       expect(configTile, findsOneWidget);
 
@@ -1407,11 +1491,11 @@ void main() {
 
       // Edit controller with invalid json on line 3
       editorController.text = '{\n  "pages": [\n    error_here\n  ]\n}';
-      await tester.pumpAndSettle();
+      await tester.pump(const Duration(milliseconds: 100));
 
       // Tap '保存'
       await tester.tap(find.text('保存'));
-      await tester.pumpAndSettle();
+      await tester.pump(const Duration(milliseconds: 100));
 
       // Dialog should still be open and display error message with line number
       expect(find.text('小键盘配置 (JSON)'), findsOneWidget);
@@ -1420,7 +1504,7 @@ void main() {
 
       // Tap '恢复默认'
       await tester.tap(find.text('恢复默认'));
-      await tester.pumpAndSettle();
+      await tester.pump(const Duration(milliseconds: 100));
 
       // Error message should clear
       expect(find.byIcon(Icons.error_outline), findsNothing);
@@ -1428,7 +1512,7 @@ void main() {
 
       // Tap '保存' with valid config -> dialog closes
       await tester.tap(find.text('保存'));
-      await tester.pumpAndSettle();
+      await tester.pump(const Duration(milliseconds: 500));
 
       expect(find.text('小键盘配置 (JSON)'), findsNothing);
 

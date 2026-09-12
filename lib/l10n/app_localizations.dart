@@ -542,6 +542,24 @@ abstract class AppLocalizations {
   /// **'代码字号'**
   String get fontSizeDialogTitle;
 
+  /// No description provided for @indentSize.
+  ///
+  /// In zh, this message translates to:
+  /// **'缩进大小'**
+  String get indentSize;
+
+  /// No description provided for @selectIndentSize.
+  ///
+  /// In zh, this message translates to:
+  /// **'选择缩进空格数'**
+  String get selectIndentSize;
+
+  /// 缩进空格数量展示
+  ///
+  /// In zh, this message translates to:
+  /// **'{count} 个空格'**
+  String spacesCount(int count);
+
   /// No description provided for @wordWrap.
   ///
   /// In zh, this message translates to:
@@ -745,6 +763,24 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'保留本地修改'**
   String get keepLocal;
+
+  /// No description provided for @storagePermissionRequiredTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'需要存储访问权限'**
+  String get storagePermissionRequiredTitle;
+
+  /// No description provided for @storagePermissionRequiredMessage.
+  ///
+  /// In zh, this message translates to:
+  /// **'代码编辑器需要“管理所有文件”权限，以便在您的设备上读取、新建和保存项目文件。\n\n请在接下来的系统设置页面中开启该权限。'**
+  String get storagePermissionRequiredMessage;
+
+  /// No description provided for @goToSettings.
+  ///
+  /// In zh, this message translates to:
+  /// **'去设置'**
+  String get goToSettings;
 }
 
 class _AppLocalizationsDelegate

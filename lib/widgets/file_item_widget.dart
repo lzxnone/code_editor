@@ -2,6 +2,7 @@ import 'package:code_editor/l10n/app_localizations.dart';
 import 'package:code_editor/models/file_item.dart';
 import 'package:code_editor/providers/project_provider.dart';
 import 'package:code_editor/providers/tab_provider.dart';
+import 'package:code_editor/services/permission_service.dart';
 import 'package:code_editor/utils/dialog_utils.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -302,6 +303,12 @@ class _FileItemWidgetState extends State<FileItemWidget> {
   void _handleMenuAction(FileItem item, String action) async {
     final provider = _getProjectProvider(context);
     final l10n = AppLocalizations.of(context);
+
+    // 对于文件变动类操作，先校验并确保已获取存储访问权限
+    if (['new_file', 'new_folder', 'paste', 'rename', 'delete'].contains(action)) {
+      final hasPermission = await PermissionService.instance.ensureStoragePermission(context: context);
+      if (!hasPermission || !mounted) return;
+    }
 
     switch (action) {
       case 'new_file':

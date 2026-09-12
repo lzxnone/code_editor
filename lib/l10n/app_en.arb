@@ -74,6 +74,17 @@
   "decreaseFontSize": "Decrease font size",
   "increaseFontSize": "Increase font size",
   "fontSizeDialogTitle": "Editor Font Size",
+  "indentSize": "Indent Size",
+  "selectIndentSize": "Select Indent Size",
+  "spacesCount": "{count} Spaces",
+  "@spacesCount": {
+    "description": "Indent spaces count",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "wordWrap": "Word Wrap",
   "wordWrapSubtitle": "Wrap long lines to fit the editor width",
   "virtualKeyboard": "Accessory Keyboard",
@@ -107,5 +118,8 @@
   "fileConflictTitle": "File Changed Externally",
   "fileConflictMessage": "File \"{name}\" has been changed on disk. How would you like to proceed?",
   "reloadFromDisk": "Reload from Disk",
-  "keepLocal": "Keep Local Changes"
+  "keepLocal": "Keep Local Changes",
+  "storagePermissionRequiredTitle": "Storage Access Required",
+  "storagePermissionRequiredMessage": "Code Editor requires \"All files access\" permission to read, create, and save project files on your device.\n\nPlease enable it in the system settings page.",
+  "goToSettings": "Settings"
 }

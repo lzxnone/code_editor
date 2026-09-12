@@ -6,12 +6,14 @@ import 'package:re_editor/re_editor.dart';
 /// 编辑器下方的虚拟辅助小键盘组件
 class VirtualKeyboardWidget extends StatefulWidget {
   final CodeLineEditingController? controller;
+  final FocusNode? focusNode;
   final VirtualKeyboardConfig config;
   final Color? backgroundColor;
 
   const VirtualKeyboardWidget({
     super.key,
     required this.controller,
+    this.focusNode,
     required this.config,
     this.backgroundColor,
   });
@@ -42,6 +44,11 @@ class _VirtualKeyboardWidgetState extends State<VirtualKeyboardWidget> {
 
     // 轻微触觉反馈提升敲击手感
     HapticFeedback.lightImpact();
+
+    // 如果提供了 focusNode 且当前未聚焦，或者为了确保软键盘不掉，请求聚焦
+    if (widget.focusNode != null && !widget.focusNode!.hasFocus) {
+      widget.focusNode!.requestFocus();
+    }
 
     switch (keyItem.action) {
       case 'command':
@@ -160,6 +167,11 @@ class _VirtualKeyboardWidgetState extends State<VirtualKeyboardWidget> {
       case 'select_all':
         controller.selectAll();
         break;
+      case 'keyboard_hide':
+      case 'hide_keyboard':
+        widget.focusNode?.unfocus();
+        SystemChannels.textInput.invokeMethod('TextInput.hide');
+        break;
       default:
         // 未知命令安全降级为直接输入其命令名称或原文本
         controller.replaceSelection(command);
@@ -181,35 +193,37 @@ class _VirtualKeyboardWidgetState extends State<VirtualKeyboardWidget> {
       return const SizedBox.shrink();
     }
 
-    return Container(
-      decoration: BoxDecoration(
-        color: bgColor,
-        border: Border(
-          top: BorderSide(color: borderColor, width: 0.8),
+    return CodeEditorTapRegion(
+      child: Container(
+        decoration: BoxDecoration(
+          color: bgColor,
+          border: Border(
+            top: BorderSide(color: borderColor, width: 0.8),
+          ),
         ),
-      ),
-      child: SafeArea(
-        top: false,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            SizedBox(
-              height: 84, // 两行按键的高度
-              child: PageView.builder(
-                controller: _pageController,
-                itemCount: pages.length,
-                onPageChanged: (idx) {
-                  setState(() {
-                    _currentPage = idx;
-                  });
-                },
-                itemBuilder: (context, pageIndex) {
-                  return _buildPage(pages[pageIndex], isDark);
-                },
+        child: SafeArea(
+          top: false,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              SizedBox(
+                height: 84, // 两行按键的高度
+                child: PageView.builder(
+                  controller: _pageController,
+                  itemCount: pages.length,
+                  onPageChanged: (idx) {
+                    setState(() {
+                      _currentPage = idx;
+                    });
+                  },
+                  itemBuilder: (context, pageIndex) {
+                    return _buildPage(pages[pageIndex], isDark);
+                  },
+                ),
               ),
-            ),
-            if (pages.length > 1) _buildPageIndicator(pages.length, theme),
-          ],
+              if (pages.length > 1) _buildPageIndicator(pages.length, theme),
+            ],
+          ),
         ),
       ),
     );

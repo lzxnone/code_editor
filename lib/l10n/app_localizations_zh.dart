@@ -247,6 +247,17 @@ class AppLocalizationsZh extends AppLocalizations {
   String get fontSizeDialogTitle => '代码字号';
 
   @override
+  String get indentSize => '缩进大小';
+
+  @override
+  String get selectIndentSize => '选择缩进空格数';
+
+  @override
+  String spacesCount(int count) {
+    return '$count 个空格';
+  }
+
+  @override
   String get wordWrap => '自动换行';
 
   @override
@@ -353,4 +364,14 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get keepLocal => '保留本地修改';
+
+  @override
+  String get storagePermissionRequiredTitle => '需要存储访问权限';
+
+  @override
+  String get storagePermissionRequiredMessage =>
+      '代码编辑器需要“管理所有文件”权限，以便在您的设备上读取、新建和保存项目文件。\n\n请在接下来的系统设置页面中开启该权限。';
+
+  @override
+  String get goToSettings => '去设置';
 }

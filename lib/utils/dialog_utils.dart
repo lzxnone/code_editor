@@ -26,17 +26,20 @@ enum FileConflictResult {
 class DialogUtils {
   DialogUtils._();
 
-  // ==========================================
-  // 1. Toast 轻提示
-  // ==========================================
+  static OverlayEntry? _currentToastEntry;
 
-  /// 显示浮动 Toast
+  /// 显示浮动 Toast（自动避开软键盘及底部安全区）
   static void showToast(
     BuildContext context,
     String message, {
     ToastType type = ToastType.info,
     Duration duration = const Duration(seconds: 2),
   }) {
+    if (_currentToastEntry != null && _currentToastEntry!.mounted) {
+      _currentToastEntry!.remove();
+      _currentToastEntry = null;
+    }
+
     final overlay = Overlay.maybeOf(context, rootOverlay: true);
     if (overlay == null) return;
 
@@ -73,56 +76,26 @@ class DialogUtils {
 
     late OverlayEntry entry;
     entry = OverlayEntry(
-      builder: (ctx) => Positioned(
-        bottom: 48,
-        left: 0,
-        right: 0,
-        child: Center(
-          child: Material(
-            color: Colors.transparent,
-            child: Container(
-              margin: const EdgeInsets.symmetric(horizontal: 24),
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-              decoration: BoxDecoration(
-                color: bgColor,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: borderColor, width: 1),
-                boxShadow: const [
-                  BoxShadow(
-                    color: Colors.black26,
-                    blurRadius: 10,
-                    offset: Offset(0, 4),
-                  ),
-                ],
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(iconData, size: 18, color: textColor),
-                  const SizedBox(width: 8),
-                  Flexible(
-                    child: Text(
-                      message,
-                      style: theme.textTheme.bodyMedium?.copyWith(
-                        color: textColor,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
+      builder: (ctx) => _ToastWidget(
+        message: message,
+        iconData: iconData,
+        bgColor: bgColor,
+        textColor: textColor,
+        borderColor: borderColor,
+        duration: duration,
+        onDismissed: () {
+          if (entry.mounted) {
+            entry.remove();
+          }
+          if (_currentToastEntry == entry) {
+            _currentToastEntry = null;
+          }
+        },
       ),
     );
 
+    _currentToastEntry = entry;
     overlay.insert(entry);
-    Future.delayed(duration, () {
-      if (entry.mounted) {
-        entry.remove();
-      }
-    });
   }
 
   static void showSuccessToast(BuildContext context, String message) {
@@ -566,3 +539,134 @@ class DialogUtils {
     );
   }
 }
+
+/// 视口感知与软键盘避让的动画 Toast 悬浮组件
+class _ToastWidget extends StatefulWidget {
+  final String message;
+  final IconData iconData;
+  final Color bgColor;
+  final Color textColor;
+  final Color borderColor;
+  final VoidCallback onDismissed;
+  final Duration duration;
+
+  const _ToastWidget({
+    required this.message,
+    required this.iconData,
+    required this.bgColor,
+    required this.textColor,
+    required this.borderColor,
+    required this.onDismissed,
+    required this.duration,
+  });
+
+  @override
+  State<_ToastWidget> createState() => _ToastWidgetState();
+}
+
+class _ToastWidgetState extends State<_ToastWidget> with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+  late final Animation<double> _fadeAnim;
+  late final Animation<double> _scaleAnim;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 200),
+      reverseDuration: const Duration(milliseconds: 200),
+    );
+    _fadeAnim = CurvedAnimation(parent: _controller, curve: Curves.easeOut);
+    _scaleAnim = Tween<double>(begin: 0.88, end: 1.0).animate(
+      CurvedAnimation(parent: _controller, curve: Curves.easeOutBack),
+    );
+
+    _controller.forward();
+
+    Future.delayed(widget.duration, () {
+      if (mounted) {
+        _controller.reverse().then((_) {
+          if (mounted) {
+            widget.onDismissed();
+          }
+        });
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final mediaQuery = MediaQuery.of(context);
+    final viewInsetsBottom = mediaQuery.viewInsets.bottom;
+    final paddingBottom = mediaQuery.padding.bottom;
+
+    // 动态适配视口：
+    // 若系统键盘唤起（viewInsets.bottom > 0），则浮动于键盘与辅助小键盘上方（viewInsets.bottom + 72）
+    // 若无键盘，则浮动于屏幕安全区上方（paddingBottom + 48）
+    final bottomOffset = viewInsetsBottom > 0
+        ? viewInsetsBottom + 72.0
+        : paddingBottom + 48.0;
+
+    return AnimatedPositioned(
+      duration: const Duration(milliseconds: 250),
+      curve: Curves.easeOutCubic,
+      bottom: bottomOffset,
+      left: 0,
+      right: 0,
+      child: IgnorePointer(
+        child: FadeTransition(
+          opacity: _fadeAnim,
+          child: ScaleTransition(
+            scale: _scaleAnim,
+            child: Center(
+              child: Material(
+                color: Colors.transparent,
+                child: Container(
+                  margin: const EdgeInsets.symmetric(horizontal: 24),
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                  decoration: BoxDecoration(
+                    color: widget.bgColor,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: widget.borderColor, width: 1),
+                    boxShadow: const [
+                      BoxShadow(
+                        color: Colors.black26,
+                        blurRadius: 10,
+                        offset: Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(widget.iconData, size: 18, color: widget.textColor),
+                      const SizedBox(width: 8),
+                      Flexible(
+                        child: Text(
+                          widget.message,
+                          style: TextStyle(
+                            color: widget.textColor,
+                            fontSize: 14.0,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+

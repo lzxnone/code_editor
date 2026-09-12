@@ -4,6 +4,7 @@ import 'package:code_editor/providers/project_provider.dart';
 import 'package:code_editor/providers/tab_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:re_editor/re_editor.dart';
 
 class CodeEditorTabBar extends StatelessWidget {
   const CodeEditorTabBar({super.key});
@@ -64,9 +65,10 @@ class CodeEditorTabBar extends StatelessWidget {
     final activePath = tabProvider.currentFilePath;
     final rootPath = projectProvider?.rootPath;
 
-    return Container(
-      height: 36.0,
-      width: double.infinity,
+    return CodeEditorTapRegion(
+      child: Container(
+        height: 36.0,
+        width: double.infinity,
       decoration: BoxDecoration(
         color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.2),
         border: Border(
@@ -120,7 +122,8 @@ class CodeEditorTabBar extends StatelessWidget {
           );
         },
       ),
-    );
+    ),
+  );
   }
 
   Widget _buildTabItem(

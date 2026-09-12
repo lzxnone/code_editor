@@ -74,6 +74,17 @@
   "decreaseFontSize": "减小字号",
   "increaseFontSize": "增大字号",
   "fontSizeDialogTitle": "代码字号",
+  "indentSize": "缩进大小",
+  "selectIndentSize": "选择缩进空格数",
+  "spacesCount": "{count} 个空格",
+  "@spacesCount": {
+    "description": "缩进空格数量展示",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "wordWrap": "自动换行",
   "wordWrapSubtitle": "长代码行超出边界时自动折行",
   "virtualKeyboard": "辅助小键盘",
@@ -107,5 +118,8 @@
   "fileConflictTitle": "外部文件已被更改",
   "fileConflictMessage": "文件 \"{name}\" 已在外部被更改。您希望如何处理？",
   "reloadFromDisk": "用磁盘内容覆盖",
-  "keepLocal": "保留本地修改"
+  "keepLocal": "保留本地修改",
+  "storagePermissionRequiredTitle": "需要存储访问权限",
+  "storagePermissionRequiredMessage": "代码编辑器需要“管理所有文件”权限，以便在您的设备上读取、新建和保存项目文件。\n\n请在接下来的系统设置页面中开启该权限。",
+  "goToSettings": "去设置"
 }

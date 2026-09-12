@@ -251,6 +251,17 @@ class AppLocalizationsEn extends AppLocalizations {
   String get fontSizeDialogTitle => 'Editor Font Size';
 
   @override
+  String get indentSize => 'Indent Size';
+
+  @override
+  String get selectIndentSize => 'Select Indent Size';
+
+  @override
+  String spacesCount(int count) {
+    return '$count Spaces';
+  }
+
+  @override
   String get wordWrap => 'Word Wrap';
 
   @override
@@ -360,4 +371,14 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get keepLocal => 'Keep Local Changes';
+
+  @override
+  String get storagePermissionRequiredTitle => 'Storage Access Required';
+
+  @override
+  String get storagePermissionRequiredMessage =>
+      'Code Editor requires \"All files access\" permission to read, create, and save project files on your device.\n\nPlease enable it in the system settings page.';
+
+  @override
+  String get goToSettings => 'Settings';
 }

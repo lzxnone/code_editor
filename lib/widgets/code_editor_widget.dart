@@ -1,4 +1,5 @@
 import 'package:code_editor/l10n/app_localizations.dart';
+import 'package:code_editor/models/app_font.dart';
 import 'package:code_editor/models/editor_tab_item.dart';
 import 'package:code_editor/models/editor_theme.dart';
 import 'package:code_editor/models/virtual_keyboard_config.dart';
@@ -41,10 +42,13 @@ class _CodeEditorWidgetState extends State<CodeEditorWidget> {
 
   CodeLineEditingController? _controller;
   CodeScrollController? _scrollController;
+  final FocusNode _focusNode = FocusNode();
+  late final CodeEditorToolbarController _toolbarController;
   bool _isLoading = false;
   int _currentLoadVersion = 0;
   String? _errorMessage;
   String? _currentLoadedPath;
+  int? _currentIndentSize;
   bool _isShowingConflictDialog = false;
 
   EditorTabItem? _getCurrentTab() {
@@ -121,6 +125,7 @@ class _CodeEditorWidgetState extends State<CodeEditorWidget> {
   @override
   void initState() {
     super.initState();
+    _toolbarController = CodeEditorToolbarController(focusNode: _focusNode);
     _loadFileContent();
   }
 
@@ -151,6 +156,7 @@ class _CodeEditorWidgetState extends State<CodeEditorWidget> {
     try {
       _getTabProvider(context).registerSaveHandler(null);
     } catch (_) {}
+    _toolbarController.hide(context);
     final currentTab = _getCurrentTab();
     _saveCurrentTabScrollState(currentTab);
     _scrollController?.verticalScroller.dispose();
@@ -158,6 +164,7 @@ class _CodeEditorWidgetState extends State<CodeEditorWidget> {
     _scrollController?.dispose();
     _controller?.removeListener(_onTextChanged);
     _controller?.dispose();
+    _focusNode.dispose();
     super.dispose();
   }
 
@@ -341,6 +348,7 @@ class _CodeEditorWidgetState extends State<CodeEditorWidget> {
     bool activeWordWrap = true;
     bool enableVirtualKeyboard = false;
     VirtualKeyboardConfig? keyboardConfig;
+    AppFontItem activeEditorFont = AppFonts.editorMonospace;
     try {
       final settings = _getSettingsProvider(context, listen: true);
       activeTheme = settings.editorTheme;
@@ -348,6 +356,12 @@ class _CodeEditorWidgetState extends State<CodeEditorWidget> {
       activeWordWrap = settings.wordWrap;
       enableVirtualKeyboard = settings.enableVirtualKeyboard;
       keyboardConfig = settings.virtualKeyboardConfig;
+      activeEditorFont = settings.editorFont;
+      if (_currentIndentSize != null && _currentIndentSize != settings.indentSize) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) _loadFileContent();
+        });
+      }
     } catch (_) {}
 
     return Container(
@@ -360,9 +374,10 @@ class _CodeEditorWidgetState extends State<CodeEditorWidget> {
             child: CodeEditor(
               key: ValueKey(_currentLoadedPath),
               controller: controller,
+              focusNode: _focusNode,
               scrollController: _scrollController,
               wordWrap: activeWordWrap,
-              toolbarController: const CodeEditorToolbarController(),
+              toolbarController: _toolbarController,
               style: CodeEditorStyle(
                 fontSize: activeFontSize,
                 textColor: activeTheme.textColor,
@@ -370,7 +385,8 @@ class _CodeEditorWidgetState extends State<CodeEditorWidget> {
                 cursorColor: activeTheme.cursorColor,
                 cursorLineColor: activeTheme.cursorLineColor,
                 selectionColor: activeTheme.selectionColor,
-                fontFamily: 'Consolas, Monaco, "Courier New", monospace',
+                fontFamily: activeEditorFont.fontFamily,
+                fontFamilyFallback: activeEditorFont.fallback,
                 codeTheme: CodeHighlightTheme(
                   languages: SyntaxHighlightHelper.getLanguagesForFile(_currentLoadedPath ?? widget.filePath),
                   theme: activeTheme.highlightTheme,
@@ -385,13 +401,15 @@ class _CodeEditorWidgetState extends State<CodeEditorWidget> {
                       textStyle: TextStyle(
                         color: activeTheme.gutterTextColor,
                         fontSize: (activeFontSize - 1).clamp(9.0, 30.0),
-                        fontFamily: 'Consolas, Monaco, "Courier New", monospace',
+                        fontFamily: activeEditorFont.fontFamily,
+                        fontFamilyFallback: activeEditorFont.fallback,
                       ),
                       focusedTextStyle: TextStyle(
                         color: activeTheme.focusedGutterTextColor,
                         fontSize: (activeFontSize - 1).clamp(9.0, 30.0),
                         fontWeight: FontWeight.bold,
-                        fontFamily: 'Consolas, Monaco, "Courier New", monospace',
+                        fontFamily: activeEditorFont.fontFamily,
+                        fontFamilyFallback: activeEditorFont.fallback,
                       ),
                     ),
                     DefaultCodeChunkIndicator(
@@ -410,6 +428,7 @@ class _CodeEditorWidgetState extends State<CodeEditorWidget> {
           if (enableVirtualKeyboard && keyboardConfig != null)
             VirtualKeyboardWidget(
               controller: controller,
+              focusNode: _focusNode,
               config: keyboardConfig,
             ),
         ],
@@ -449,7 +468,15 @@ class _CodeEditorWidgetState extends State<CodeEditorWidget> {
         ? filePath
         : p.join(rootPath, filePath);
 
-    if (_currentLoadedPath != null && p.equals(_currentLoadedPath!, fullFilePath) && _controller != null) {
+    int activeIndentSize = 2;
+    try {
+      activeIndentSize = _getSettingsProvider(context).indentSize;
+    } catch (_) {}
+
+    if (_currentLoadedPath != null &&
+        p.equals(_currentLoadedPath!, fullFilePath) &&
+        _controller != null &&
+        _currentIndentSize == activeIndentSize) {
       return;
     }
 
@@ -467,10 +494,14 @@ class _CodeEditorWidgetState extends State<CodeEditorWidget> {
       tab.content = normalizedContent;
       tab.originalContent = normalizedOriginal;
 
-      final newController = CodeLineEditingController.fromText(normalizedContent);
+      final newController = CodeLineEditingController.fromText(
+        normalizedContent,
+        CodeLineOptions(indentSize: activeIndentSize),
+      );
 
       _controller = newController;
       _currentLoadedPath = fullFilePath;
+      _currentIndentSize = activeIndentSize;
       _errorMessage = null;
       _isLoading = false;
 
@@ -514,10 +545,14 @@ class _CodeEditorWidgetState extends State<CodeEditorWidget> {
       final oldController = _controller;
       oldController?.removeListener(_onTextChanged);
 
-      final newController = CodeLineEditingController.fromText(diskContent);
+      final newController = CodeLineEditingController.fromText(
+        diskContent,
+        CodeLineOptions(indentSize: activeIndentSize),
+      );
 
       _controller = newController;
       _currentLoadedPath = fullFilePath;
+      _currentIndentSize = activeIndentSize;
       _errorMessage = null;
 
       if (tab != null) {

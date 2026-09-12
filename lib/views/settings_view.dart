@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:code_editor/l10n/app_localizations.dart';
+import 'package:code_editor/models/app_font.dart';
 import 'package:code_editor/models/editor_theme.dart';
 import 'package:code_editor/models/virtual_keyboard_config.dart';
 import 'package:code_editor/providers/settings_provider.dart';
@@ -40,6 +41,7 @@ class SettingsView extends StatelessWidget {
           // ==============================
           _buildSectionHeader(context, l10n.appearanceSection),
           _buildThemeModeTile(context, provider, l10n),
+          _buildUiFontTile(context, provider),
 
           const Divider(height: 32, indent: 16, endIndent: 16),
 
@@ -49,6 +51,8 @@ class SettingsView extends StatelessWidget {
           _buildSectionHeader(context, l10n.editorSection),
           _buildEditorThemeTile(context, provider, l10n),
           _buildFontSizeTile(context, provider, l10n),
+          _buildEditorFontTile(context, provider),
+          _buildIndentSizeTile(context, provider, l10n),
           _buildWordWrapTile(context, provider, l10n),
           _buildVirtualKeyboardTile(context, provider, l10n),
           _buildVirtualKeyboardConfigTile(context, provider, l10n),
@@ -56,7 +60,15 @@ class SettingsView extends StatelessWidget {
           const Divider(height: 32, indent: 16, endIndent: 16),
 
           // ==============================
-          // 3. 语言分组 (Language)
+          // 3. 终端分组 (Terminal)
+          // ==============================
+          _buildSectionHeader(context, '终端'),
+          _buildTerminalFontTile(context, provider),
+
+          const Divider(height: 32, indent: 16, endIndent: 16),
+
+          // ==============================
+          // 4. 语言分组 (Language)
           // ==============================
           _buildSectionHeader(context, l10n.languageSection),
           _buildLanguageTile(context, provider, l10n),
@@ -160,6 +172,151 @@ class SettingsView extends StatelessWidget {
               ),
               const SizedBox(height: 12),
             ],
+          ),
+        );
+      },
+    );
+  }
+
+  /// 外观：UI 界面字体条目
+  Widget _buildUiFontTile(BuildContext context, SettingsProvider provider) {
+    final theme = Theme.of(context);
+    final currentFont = provider.uiFont;
+    return ListTile(
+      leading: Icon(Icons.font_download_outlined, color: theme.colorScheme.primary),
+      title: const Text('界面字体'),
+      subtitle: Text(currentFont.name),
+      trailing: const Icon(Icons.chevron_right),
+      onTap: () {
+        _showFontSelector(
+          context,
+          title: '选择界面字体',
+          fonts: AppFonts.uiFonts,
+          currentId: provider.uiFontId,
+          previewSample: '代码编辑器界面字体预览 Code Editor 123',
+          onSelected: (id) => provider.setUiFontId(id),
+        );
+      },
+    );
+  }
+
+  /// 编辑区：代码字体条目
+  Widget _buildEditorFontTile(BuildContext context, SettingsProvider provider) {
+    final theme = Theme.of(context);
+    final currentFont = provider.editorFont;
+    return ListTile(
+      leading: Icon(Icons.text_fields, color: theme.colorScheme.primary),
+      title: const Text('代码字体'),
+      subtitle: Text(currentFont.name),
+      trailing: const Icon(Icons.chevron_right),
+      onTap: () {
+        _showFontSelector(
+          context,
+          title: '选择代码字体',
+          fonts: AppFonts.editorFonts,
+          currentId: provider.editorFontId,
+          previewSample: 'void main() { int a = 123; } // 代码预览',
+          onSelected: (id) => provider.setEditorFontId(id),
+        );
+      },
+    );
+  }
+
+  /// 终端：终端字体条目
+  Widget _buildTerminalFontTile(BuildContext context, SettingsProvider provider) {
+    final theme = Theme.of(context);
+    final currentFont = provider.terminalFont;
+    return ListTile(
+      leading: Icon(Icons.terminal, color: theme.colorScheme.primary),
+      title: const Text('终端字体'),
+      subtitle: Text(currentFont.name),
+      trailing: const Icon(Icons.chevron_right),
+      onTap: () {
+        _showFontSelector(
+          context,
+          title: '选择终端字体',
+          fonts: AppFonts.terminalFonts,
+          currentId: provider.terminalFontId,
+          previewSample: '\$ git status -s # 终端字体预览',
+          onSelected: (id) => provider.setTerminalFontId(id),
+        );
+      },
+    );
+  }
+
+  /// 字体选择底部弹窗
+  void _showFontSelector(
+    BuildContext context, {
+    required String title,
+    required List<AppFontItem> fonts,
+    required String currentId,
+    required ValueChanged<String> onSelected,
+    required String previewSample,
+  }) {
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (sheetContext) {
+        final theme = Theme.of(context);
+        return SafeArea(
+          child: ConstrainedBox(
+            constraints: BoxConstraints(
+              maxHeight: MediaQuery.of(sheetContext).size.height * 0.65,
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Text(
+                    title,
+                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                  ),
+                ),
+                const Divider(height: 1),
+                Expanded(
+                  child: ListView.builder(
+                    itemCount: fonts.length,
+                    itemBuilder: (context, index) {
+                      final item = fonts[index];
+                      final isSelected = item.id == currentId;
+                      return ListTile(
+                        leading: Icon(
+                          item.isMonospace ? Icons.code : Icons.font_download_outlined,
+                          color: isSelected ? theme.colorScheme.primary : null,
+                        ),
+                        title: Text(
+                          item.name,
+                          style: TextStyle(
+                            fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                            color: isSelected ? theme.colorScheme.primary : null,
+                          ),
+                        ),
+                        subtitle: Text(
+                          previewSample,
+                          style: TextStyle(
+                            fontFamily: item.fontFamily,
+                            fontFamilyFallback: item.fallback,
+                            fontSize: 12.0,
+                            color: theme.colorScheme.onSurfaceVariant,
+                          ),
+                        ),
+                        trailing: isSelected
+                            ? Icon(Icons.check, color: theme.colorScheme.primary)
+                            : null,
+                        onTap: () {
+                          onSelected(item.id);
+                          Navigator.of(sheetContext).pop();
+                        },
+                      );
+                    },
+                  ),
+                ),
+              ],
+            ),
           ),
         );
       },
@@ -330,6 +487,70 @@ class SettingsView extends StatelessWidget {
       ),
       onTap: () {
         _showFontSizeDialog(context, provider, l10n);
+      },
+    );
+  }
+
+  /// 编辑区：缩进大小配置条目
+  Widget _buildIndentSizeTile(
+    BuildContext context,
+    SettingsProvider provider,
+    AppLocalizations l10n,
+  ) {
+    final theme = Theme.of(context);
+
+    return ListTile(
+      leading: Icon(Icons.format_indent_increase, color: theme.colorScheme.primary),
+      title: Text(l10n.indentSize),
+      subtitle: Text(l10n.spacesCount(provider.indentSize)),
+      trailing: const Icon(Icons.chevron_right),
+      onTap: () {
+        _showIndentSizeSelector(context, provider, l10n);
+      },
+    );
+  }
+
+  void _showIndentSizeSelector(
+    BuildContext context,
+    SettingsProvider provider,
+    AppLocalizations l10n,
+  ) {
+    showModalBottomSheet<void>(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (sheetContext) {
+        const options = [2, 4, 8];
+        return SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Text(
+                  l10n.selectIndentSize,
+                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                ),
+              ),
+              ...options.map((count) {
+                final isSelected = provider.indentSize == count;
+                return ListTile(
+                  title: Text(l10n.spacesCount(count)),
+                  trailing: isSelected
+                      ? Icon(Icons.check, color: Theme.of(context).colorScheme.primary)
+                      : null,
+                  selected: isSelected,
+                  onTap: () {
+                    provider.setIndentSize(count);
+                    Navigator.of(sheetContext).pop();
+                  },
+                );
+              }),
+              const SizedBox(height: 12),
+            ],
+          ),
+        );
       },
     );
   }
@@ -595,7 +816,7 @@ class SettingsView extends StatelessWidget {
                             } else {
                               try {
                                 final decoded = jsonDecode(codeController.text);
-                                const encoder = JsonEncoder.withIndent('  ');
+                                final encoder = JsonEncoder.withIndent(' ' * provider.indentSize);
                                 setDialogState(() {
                                   codeController.text = encoder.convert(decoded);
                                   validationError = null;
