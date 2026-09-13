@@ -1,0 +1,397 @@
+warning: in the working copy of 'src/syscall/seccomp.c', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/syscall/legacy.c', LF will be replaced by CRLF the next time Git touches it
+diff --git a/src/GNUmakefile b/src/GNUmakefile
+index 5ade279..4a85331 100644
+--- a/src/GNUmakefile
++++ b/src/GNUmakefile
+@@ -46,6 +46,7 @@ OBJECTS += \
+ 	syscall/enter.o		\
+ 	syscall/exit.o		\
+ 	syscall/sysnum.o	\
++	syscall/legacy.o		\
+ 	syscall/socket.o	\
+ 	syscall/heap.o		\
+ 	syscall/rlimit.o	\
+@@ -280,4 +281,4 @@ ifdef PROOT_UNBUNDLE_LOADER
+ ifdef HAS_LOADER_32BIT
+ 	$(INSTALL) -D loader/loader-m32 $(PROOT_UNBUNDLE_LOADER)/loader32
+ endif
+-endif
++endif
+\ No newline at end of file
+diff --git a/src/syscall/enter.c b/src/syscall/enter.c
+index 93f4306..0f72da3 100644
+--- a/src/syscall/enter.c
++++ b/src/syscall/enter.c
+@@ -79,6 +79,7 @@
+ #include "path/binding.h"
+ #include "path/temp.h"
+ #include "arch.h"
++#include "syscall/legacy.h"
+ 
+ /* Older kernel headers may lack these. */
+ #ifndef CLONE_NEWTIME
+@@ -1837,6 +1838,9 @@ int translate_syscall_enter(Tracee *tracee)
+ 	if (status > 0)
+ 		return 0;
+ 
++	/* Modernize legacy syscalls that Android's app seccomp policy denies. */
++	translate_legacy_syscall(tracee);
++
+ 	/* Translate input arguments. */
+ 	syscall_number = get_sysnum(tracee, ORIGINAL);
+ 	switch (syscall_number) {
+@@ -2869,4 +2873,4 @@ end:
+ 		status = status2;
+ 
+ 	return status;
+-}
++}
+\ No newline at end of file
+diff --git a/src/syscall/legacy.c b/src/syscall/legacy.c
+new file mode 100644
+index 0000000..1e6dcf1
+--- /dev/null
++++ b/src/syscall/legacy.c
+@@ -0,0 +1,298 @@
++/* -*- c-set-style: "K&R"; c-basic-offset: 8 -*- */
++/*
++ * Legacy SysV-era syscall modernization for Android app processes.
++ *
++ * WHY THIS FILE EXISTS
++ * --------------------
++ * Android installs a seccomp filter into every application process that denies
++ * the legacy spelling of several syscalls (they are not used by bionic):
++ *
++ *     poll(2)        -> ENOSYS
++ *     select(2)      -> ENOSYS
++ *     epoll_wait(2)  -> ENOSYS
++ *     pipe(2), dup2(2)
++ *     clone(CLONE_VM|CLONE_VFORK|...)   (vfork semantics)
++ *
++ * arm64 guests never notice: the (asm-generic) syscall table has no poll/
++ * select/epoll_wait at all, so musl/glibc there issue ppoll/pselect6/
++ * epoll_pwait/pipe2/dup3 and fork() via clone(SIGCHLD).
++ *
++ * x86_64 keeps those entries in its syscall table, and libc prefers them
++ * whenever the architecture defines them - musl does so with plain
++ * "#ifdef SYS_poll" style checks - so an x86_64 guest inside an app process
++ * gets ENOSYS for calls that work perfectly on arm64.  Worst case, the stub
++ * resolver calls poll() from *inside libc*, where neither LD_PRELOAD nor any
++ * guest-side shim can reach it: DNS then fails and apk reports the famously
++ * misleading "temporary error (try again later)".
++ *
++ * Rewriting the calls here, in the tracer and before the kernel executes them,
++ * fixes all of that for *every* guest program - static or dynamic, musl or
++ * glibc, and including calls issued from inside libc - which is exactly the
++ * "make x86_64 behave like arm64" property we want.
++ *
++ * The replacements are semantically equivalent:
++ *   poll(fds,n,ms)        -> ppoll(fds,n,&ts,NULL)
++ *   select(n,r,w,e,tv)    -> pselect6(n,r,w,e,&ts,NULL)
++ *   epoll_wait(e,ev,m,ms) -> epoll_pwait(e,ev,m,ms,NULL,0)
++ *   pipe(fds)             -> pipe2(fds,0)
++ *   dup2(o,n)             -> dup3(o,n,0)   [o != n; dup2(o,o) is left alone]
++ *   fork()/vfork()        -> clone(SIGCHLD)
++ *   clone(VM|VFORK|...)   -> clone(... & ~(CLONE_VM|CLONE_VFORK))
++ *
++ * Not handled on purpose: dup2(o,o) would need a return-value fixup at syscall
++ * exit; such a call is a no-op and programs normally guard it with "o != n".
++ */
++
++#include <errno.h>
++#include <stdbool.h>
++#include <stddef.h>
++#include <stdint.h>
++
++#include "syscall/legacy.h"
++#include "syscall/sysnum.h"
++#include "tracee/mem.h"
++#include "tracee/reg.h"
++#include "tracee/tracee.h"
++
++#ifndef CLONE_VM
++#define CLONE_VM	0x00000100
++#endif
++#ifndef CLONE_VFORK
++#define CLONE_VFORK	0x00004000
++#endif
++#ifndef SIGCHLD
++#define SIGCHLD		17
++#endif
++#ifndef CLONE_PIDFD
++#define CLONE_PIDFD	0x00001000
++#endif
++
++struct legacy_timeval {
++	int64_t tv_sec;
++	int64_t tv_usec;
++};
++
++struct legacy_timespec {
++	int64_t tv_sec;
++	int64_t tv_nsec;
++};
++
++/**
++ * Write a timespec into the tracee's stack and return its address (0 on error).
++ */
++static word_t write_timespec(Tracee *tracee, int64_t sec, int64_t nsec)
++{
++	struct legacy_timespec ts;
++	word_t address;
++
++	ts.tv_sec  = sec;
++	ts.tv_nsec = nsec;
++
++	address = alloc_mem(tracee, sizeof(ts));
++	if (address == 0)
++		return 0;
++
++	if (write_data(tracee, address, &ts, sizeof(ts)) < 0)
++		return 0;
++
++	return address;
++}
++
++/**
++ * poll(fds, nfds, timeout_ms) -> ppoll(fds, nfds, &ts, NULL, 0)
++ */
++static void rewrite_poll(Tracee *tracee)
++{
++	int timeout_ms = (int) peek_reg(tracee, CURRENT, SYSARG_3);
++	word_t address = 0;
++
++	if (timeout_ms >= 0) {
++		address = write_timespec(tracee,
++					timeout_ms / 1000,
++					(int64_t)(timeout_ms % 1000) * 1000000);
++		if (address == 0)
++			return;	/* give up: let the original syscall fail */
++	}
++
++	poke_reg(tracee, SYSARG_3, address);	/* NULL == wait forever */
++	poke_reg(tracee, SYSARG_4, 0);		/* sigmask */
++	poke_reg(tracee, SYSARG_5, 0);		/* sigsetsize */
++
++	set_sysnum(tracee, PR_ppoll);
++}
++
++/**
++ * select(nfds, r, w, e, timeval) -> pselect6(nfds, r, w, e, &ts, NULL)
++ */
++static void rewrite_select(Tracee *tracee)
++{
++	word_t timeval_ptr = peek_reg(tracee, CURRENT, SYSARG_5);
++	word_t address = 0;
++
++	if (timeval_ptr != 0) {
++		struct legacy_timeval tv;
++
++		if (read_data(tracee, &tv, timeval_ptr, sizeof(tv)) < 0)
++			return;
++		if (tv.tv_sec < 0 || tv.tv_usec < 0 || tv.tv_usec >= 1000000)
++			return;	/* invalid: let the kernel reject it */
++
++		address = write_timespec(tracee, tv.tv_sec, tv.tv_usec * 1000);
++		if (address == 0)
++			return;
++	}
++
++	poke_reg(tracee, SYSARG_5, address);
++	poke_reg(tracee, SYSARG_6, 0);		/* sigmask == NULL */
++
++	set_sysnum(tracee, PR_pselect6);
++}
++
++/**
++ * epoll_wait(epfd, events, maxevents, timeout_ms)
++ *   -> epoll_pwait(epfd, events, maxevents, timeout_ms, NULL, 0)
++ */
++static void rewrite_epoll_wait(Tracee *tracee)
++{
++	poke_reg(tracee, SYSARG_5, 0);		/* sigmask */
++	poke_reg(tracee, SYSARG_6, 0);		/* sigsetsize */
++
++	set_sysnum(tracee, PR_epoll_pwait);
++}
++
++/**
++ * Drop vfork shared-memory semantics (clone(CLONE_VM|CLONE_VFORK)) down to a
++ * plain clone(SIGCHLD).  POSIX allows vfork to behave like fork; the
++ * CLONE_VM|CLONE_VFORK pair is what the app filter rejects, which is how
++ * busybox ash ends up reporting "can't fork: Function not implemented" for
++ * every subshell and background job.
++ */
++static void sanitize_clone_flags(Tracee *tracee)
++{
++	word_t flags;
++
++	flags = peek_reg(tracee, CURRENT, SYSARG_1);
++	if ((flags & (CLONE_VM | CLONE_VFORK)) == (CLONE_VM | CLONE_VFORK))
++		poke_reg(tracee, SYSARG_1,
++			flags & ~(word_t)(CLONE_VM | CLONE_VFORK));
++}
++
++/**
++ * clone3() -> clone().  Android's app seccomp policy rejects clone3() outright
++ * (its flexible argument struct cannot be filtered), so sanitizing the flags is
++ * not enough: the call must become the classic clone() with the same
++ * semantics.  This is what lets fork() work for a guest whose libc prefers
++ * clone3 (musl), which otherwise gets a plain ENOSYS errno and reports
++ * "can't fork: Function not implemented".
++ */
++struct legacy_clone_args {
++	uint64_t flags;
++	uint64_t pidfd;
++	uint64_t child_tid;
++	uint64_t parent_tid;
++	uint64_t exit_signal;
++	uint64_t stack;
++	uint64_t stack_size;
++	uint64_t tls;
++};
++
++static void rewrite_clone3(Tracee *tracee)
++{
++	word_t args_ptr = peek_reg(tracee, CURRENT, SYSARG_1);
++	struct legacy_clone_args a;
++	uint64_t flags;
++	word_t parent_tid;
++
++	if (args_ptr == 0)
++		return;
++	if (read_data(tracee, &a, args_ptr, sizeof(a)) < 0)
++		return;
++
++	flags = a.flags;
++	if ((flags & (CLONE_VM | CLONE_VFORK)) == (CLONE_VM | CLONE_VFORK))
++		flags &= ~(uint64_t)(CLONE_VM | CLONE_VFORK);
++
++	/* The classic ABI carries the exit signal in the low byte of flags.  */
++	flags = (flags & ~(uint64_t)0xff) | (a.exit_signal & 0xff);
++
++	/* With CLONE_PIDFD the pidfd is written through the parent_tid slot.  */
++	parent_tid = (flags & CLONE_PIDFD) != 0 ? (word_t) a.pidfd
+warning: in the working copy of 'src/syscall/legacy.h', LF will be replaced by CRLF the next time Git touches it
++						: (word_t) a.parent_tid;
++
++	poke_reg(tracee, SYSARG_1, (word_t) flags);
++	/* classic clone() wants the *top* of the child stack */
++	poke_reg(tracee, SYSARG_2, (word_t)(a.stack + a.stack_size));
++	poke_reg(tracee, SYSARG_3, parent_tid);
++	poke_reg(tracee, SYSARG_4, (word_t) a.child_tid);
++	poke_reg(tracee, SYSARG_5, (word_t) a.tls);
++
++	set_sysnum(tracee, PR_clone);
++}
++
++/**
++ * fork()/vfork() themselves -> clone(SIGCHLD).
++ */
++static void rewrite_fork(Tracee *tracee)
++{
++	poke_reg(tracee, SYSARG_1, SIGCHLD);
++	poke_reg(tracee, SYSARG_2, 0);
++	poke_reg(tracee, SYSARG_3, 0);
++	poke_reg(tracee, SYSARG_4, 0);
++	poke_reg(tracee, SYSARG_5, 0);
++
++	set_sysnum(tracee, PR_clone);
++}
++
++/**
++ * Entry point, called from translate_syscall_enter() before the regular
++ * argument translation: only the syscall number and its raw arguments change.
++ */
++void translate_legacy_syscall(Tracee *tracee)
++{
++	switch (get_sysnum(tracee, CURRENT)) {
++	case PR_poll:
++		rewrite_poll(tracee);
++		break;
++
++	case PR_select:
++		rewrite_select(tracee);
++		break;
++
++	case PR_epoll_wait:
++		rewrite_epoll_wait(tracee);
++		break;
++
++	case PR_pipe:
++		poke_reg(tracee, SYSARG_2, 0);
++		set_sysnum(tracee, PR_pipe2);
++		break;
++
++	case PR_dup2: {
++		word_t oldfd = peek_reg(tracee, CURRENT, SYSARG_1);
++		word_t newfd = peek_reg(tracee, CURRENT, SYSARG_2);
++
++		if (oldfd == newfd)
++			break;	/* see the note at the top of this file */
++
++		poke_reg(tracee, SYSARG_3, 0);
++		set_sysnum(tracee, PR_dup3);
++		break;
++	}
++
++	case PR_fork:
++	case PR_vfork:
++		rewrite_fork(tracee);
++		break;
++
++	case PR_clone:
++		sanitize_clone_flags(tracee);
++		break;
++
++	case PR_clone3:
++		rewrite_clone3(tracee);
++		break;
++
++	default:
++		break;
++	}
++}
+diff --git a/src/syscall/legacy.h b/src/syscall/legacy.h
+new file mode 100644
+index 0000000..7da22ac
+--- /dev/null
++++ b/src/syscall/legacy.h
+@@ -0,0 +1,15 @@
++/* -*- c-set-style: "K&R"; c-basic-offset: 8 -*- */
++/*
++ * Modernize legacy syscalls that Android's app seccomp policy denies on
++ * x86_64 (poll/select/epoll_wait/pipe/dup2 and vfork-style clone).
++ * See syscall/legacy.c for the rationale.
++ */
++
++#ifndef LEGACY_H
++#define LEGACY_H
++
++#include "tracee/tracee.h"
++
++extern void translate_legacy_syscall(Tracee *tracee);
++
++#endif /* LEGACY_H */
+diff --git a/src/syscall/seccomp.c b/src/syscall/seccomp.c
+index 2f8930e..ed3f661 100644
+--- a/src/syscall/seccomp.c
++++ b/src/syscall/seccomp.c
+@@ -342,6 +342,16 @@ static FilteredSysnum proot_sysnums[] = {
+ 	{ PR_chroot,		0 },
+ 	{ PR_clone,		0 },
+ 	{ PR_clone3,		0 },
++	/* Legacy syscalls modernized in syscall/legacy.c.  They must be listed
++	 * here, otherwise the seccomp accelerator lets them run natively and
++	 * translate_legacy_syscall() never sees them.  */
++	{ PR_poll,		0 },
++	{ PR_select,		0 },
++	{ PR_epoll_wait,	0 },
++	{ PR_pipe,		0 },
++	{ PR_dup2,		0 },
++	{ PR_fork,		0 },
++	{ PR_vfork,		0 },
+ 	{ PR_close,		0 },
+ 	{ PR_connect,		0 },
+ 	{ PR_creat,		0 },

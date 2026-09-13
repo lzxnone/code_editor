@@ -45,3 +45,8 @@ app.*.map.json
 /android/app/release
 # Widget Preview related
 .widget_preview/
+
+# proot 源码/依赖/构建产物（用 tool/build-proot.ps1 重新获取与生成；成品已提交在 jniLibs 与 assets）
+proot-source/
+build_proot_deps/
+build_proot_out/

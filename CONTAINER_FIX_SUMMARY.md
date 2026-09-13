@@ -118,4 +118,146 @@ arm64 上的 `poll/select/pipe/dup2`（该架构无这些 syscall）。
 
 - **验收基准用 arm64 真机**；模拟器只用于 UI 迭代。
 - **MIUI 设备**（如 Redmi K60）`adb install` 会被拦（`INSTALL_FAILED_USER_RESTRICTED`），需手动安装或开启开发者选项里的「USB 安装」；OnePlus / 原生 Android 无此限制。
-- 若将来需要 `--sysvipc`/完整 uname 伪装，必须改用 Termux 的 proot fork（`github.com/termux/proot`，带 `PROOT_WITH_LIBANDROID_SHMEM`）重新编译。
+- `/data/local/tmp` 下**不能执行**二进制（SELinux `execute` denied）——测试用的 proot/shim 必须放到应用数据目录。
+
+---
+
+## 八、proot 重建（2026-09-13：App 已内置新 proot）
+
+### 为什么重建
+
+原来的 `jniLibs/*/libproot.so` 是 **termux/proot fork @ `dcc74e9b`（2018-12-05，UserLAnd 那条线）**，
+NDK clang 7.0.2 构建、loader 内嵌、未编 libandroid-shmem（无 `--sysvipc`）。
+相对当前上游 tag **`v5.1.107.92` 落后 166 个提交且已分叉**（缺 f2fs、l2s、SIGSYS、seccomp 等一批 Android 修复）。
+
+### 怎么重建（本机无 make/sh/awk ⇒ PowerShell 复刻 GNUmakefile）
+
+| 项目 | 内容 |
+|---|---|
+| 源码 | `git clone --depth 1 --branch v5.1.107.92 https://github.com/termux/proot.git proot-source` |
+| talloc | 头文件取自稀疏克隆的 samba（`build_proot_deps/samba/lib/talloc/talloc.h`）；`libtalloc.so` 沿用仓库现有（SONAME 匹配） |
+| 脚本 | `tools/build/build-proot.ps1`：架构宏探测（clang -E -dM）→ `build.h` → 66 个目标文件 → loader 编译 + `objcopy` 内嵌 → POKEDATA `loader-info.c` → 链接单个 `.so` |
+| 关键参数 | `-DARG_MAX=131072`；**不设** `PROOT_UNBUNDLE_LOADER`（loader 内嵌）；API 24（`getifaddrs`）；**关闭 `HAVE_PROCESS_VM`**（与旧二进制一致，走 POKEDATA 路径，规避 Android 策略风险） |
+| 产物 | `jniLibs/arm64-v8a/libproot.so` **257712 B**、`jniLibs/x86_64/libproot.so` **272672 B**（旧文件备份在 `build_proot_out/backup/`） |
+| 新增能力 | `--sysvipc`（需配 libandroid-shmem 才能真正使用，暂未启用）、`--change-id`、f2fs-bug 修复 |
+
+### 必须配套的 shim 改动（实测得出）
+
+新版把 `link2symlink.c` **重写（+838 行）**、`fake_id0/helper_functions.c` **删掉 84 行**，于是 apk 的
+`fchownat(dirfd, ".apk.<hash>", 0, 0, 0)` 也会解析 l2s 隐藏替身 → `Failed to set ownership`。
+⇒ shim 新增 **`fchownat` 的 `AT_SYMLINK_NOFOLLOW` 重试**（与 `utimensat` 同套路；musl 的 `chown/lchown/fchownat` 都走 `SYS_fchownat`）。
+
+对照矩阵（真机 arm64，`apk add tzdata`）：
+
+| 组合 | 结果 |
+|---|---|
+| 旧 proot + 旧 shim | ✅ rc=0（基线） |
+| 旧 proot 无 shim | ❌ `Failed to preserve modification time` |
+| 新 proot + 旧 shim | ❌ **`Failed to set ownership`** |
+| **新 proot + 新 shim（含 fchownat）** | ✅ **rc=0，无 broken 标记** |
+| 新 proot 不加 `--link2symlink` | ❌ `failed to rename .apk.<hash>`（**l2s 仍必须保留**） |
+
+shim 体积：arm64 2936 → **3088 B**；x86_64 11112 → **11168 B**。
+
+### 验证状态
+
+| 项目 | 状态 |
+|---|---|
+| 双架构编译 | ✅ |
+| arm64 真机（容器 + `apk update/add tzdata/tree` 全流程） | ✅ |
+| x86_64 运行时 | ⏳ 待模拟器在线（产物已就绪，源码/参数与 arm64 同源） |
+| 回滚方式 | 用 `build_proot_out/backup/*` 覆盖回 `jniLibs/*/libproot.so`（或 `git checkout` 对应文件） |
+
+---
+
+## 九、启用 SysV IPC（`--sysvipc`，2026-09-13）
+
+### 它是什么
+
+**System V IPC**：共享内存 `shmget/shmat`、信号量 `semget/semop`、消息队列 `msgget/msgsnd`
+（`ipcs` 命令列的就是它们）。数据库（PostgreSQL 等）、部分老工具与科学计算依赖它。
+**Android 的 app seccomp 策略把这套调用全部返回 ENOSYS**，因此 PRoot 提供 `--sysvipc`
+在容器内用用户态模拟（共享内存靠 ashmem/memfd 支撑）。
+
+### 实测（真机 arm64，probe6 裸 syscall）
+
+| 探针项 | 不开 `--sysvipc` | 开 `--sysvipc` |
+|---|---|---|
+| `shmget(IPC_PRIVATE)` / `shmat` / `shmctl` | ENOSYS | ✅ 成功 |
+| `shmget(key=0x1234)`（命名 key）/ 同 key 复用 | ENOSYS | ✅ 同一段（跨进程共享语义正确） |
+| `semget` / `msgget` | ENOSYS | ✅ 成功 |
+| 容器基本 / `apk update` / `apk add tzdata` / broken 标记 | ✅ 正常 | ✅ **依然正常（0/0/0）** |
+| `/dev/shm` 读写、`whoami/ls/pipe/apk info/ps` | ✅ | ✅ |
+
+⇒ **不开时与旧行为逐项一致（证明重编中立），开了无负面影响。**
+
+### 构建（`tools/build/build-shmem.ps1`）
+
+| 项目 | 内容 |
+|---|---|
+| 源码 | `git clone --depth 1 https://github.com/termux/libandroid-shmem.git` |
+| 本地补丁 | `tools/patches/libandroid-shmem-runtime-ashmem.patch`：把上游的**编译期**后端选择（`__ANDROID_API__ >= 26`）改成**运行时** `dlopen("libandroid.so")` + `dlsym(ASharedMemory_*)`，拿不到再回退 `/dev/ashmem` |
+| 为什么需要补丁 | 实测 Android 16 上 `open("/dev/ashmem", O_RDWR)` = **EACCES**（应用进程被拒），而 `ASharedMemory_create()` = 4 ✅（memfd 支撑）。不补丁则 `shmget` 返回 EACCES；改成 API 26 编译又会要求设备 ≥26 |
+| 其他参数 | `-D_PATH_TMP="/data/data/<applicationId>/cache/"`（上游引用了 bionic 未定义的 `_PATH_TMP`，它是命名 key 的 symlink 存放处；applicationId 由脚本从 `build.gradle.kts` 读取）；`-Wno-implicit-function-declaration`（上游漏 `<fcntl.h>`） |
+| 产物 | `jniLibs/{arm64-v8a,x86_64}/libandroid-shmem.so`（21976 / 21128 B） |
+
+### 启用后的依赖关系（重要）
+
+`jniLibs/*/libproot.so` 现在是 **shmem 版**（258432 / 273424 B），其 `NEEDED` 含
+`libandroid-shmem.so` ⇒ **必须一起打包**，否则 proot 无法启动。启动参数在
+`lib/services/distro_manager.dart` 中新增了 `--sysvipc`。
+
+回滚：`build_proot_out/backup/*preshmem-*` 是本次之前的非 shmem 版 proot；去掉
+`--sysvipc` 一行即可退回旧行为（此时 libandroid-shmem.so 仍会被打包但不被使用）。
+
+---
+
+## 十、本轮最终形态（2026-09-13 收尾总结）
+
+### 1. 仓库里现在是什么
+
+| 产物 | 说明 |
+|---|---|
+| `jniLibs/arm64-v8a/libproot.so` **259696 B** ／ `x86_64` **274800 B** | `termux/proot` **v5.1.107.92** + 本地补丁，**loader 内嵌**（单个自包含 .so） |
+| `jniLibs/*/libandroid-shmem.so` | `--sysvipc` 的共享内存后端（运行时 ashmem/ASharedMemory 双路径） |
+| `jniLibs/*/libtalloc.so` | proot 依赖（沿用原有） |
+| `assets/shims/arm64-v8a` **3088 B** ／ `x86_64` **11488 B** | freestanding shim：`utimensat`/`fchownat`（l2s 硬链接兜底）；x86_64 另含 `poll/select/pipe/dup2/fork/vfork` 与 `getaddrinfo` |
+| `tools/build/build-proot.ps1`、`tools/build/build-shmem.ps1`、`tools/patches/*` | 可复现构建链（用法见 `tools/build/README.md`） |
+| `tools/container-selfcheck/` | 探针 `probe3/4/5/6/8` + 一键验收 + adb 跑手 + README |
+| `lib/services/distro_manager.dart` | 启动参数含 `--sysvipc` |
+
+构建中间目录（`proot-source/`、`build_proot_deps/`、`build_proot_out/`）**已删除**，可按 `tools/build/README.md` 随时重建；
+旧版 proot 二进制都在 git 历史里，可回滚。
+
+### 2. proot 层"传统 syscall 现代化"（本轮核心）
+
+Android 的 app seccomp 策略在 **x86_64** 上拒绝下列调用（arm64 的系统调用表里根本没有它们，所以只有 x86_64 中招）：
+
+| 被拒调用 | proot 层改写 | 状态 |
+|---|---|---|
+| `poll` / `select` / `epoll_wait` | `ppoll` / `pselect6` / `epoll_pwait`（timespec 写进 tracee 栈） | ✅ **实测生效**（静态探针 = 0，shim 影响不到） |
+| `pipe` / `dup2` | `pipe2` / `dup3` | ✅ |
+| `vfork`（`clone` 带 `CLONE_VM\|CLONE_VFORK`） | 去掉这两位（vfork 降级为 fork，POSIX 允许） | ✅ |
+| `fork`(57) / `clone3`(435) | → `clone(SIGCHLD)` / 结构体→寄存器参数转换 | ⚠️ **改写未生效**（见下） |
+
+**已知限制（实测定位）**：`fork` 与 `clone3` 确实被平台拒（`ENOSYS`），但它们属于**创建进程**的调用，
+**PRoot 走自己的子进程跟踪路径（ptrace 的 CLONE/FORK 事件），不经过 `translate_syscall_enter`**，
+所以补丁里对这两条的改写不会被执行。
+
+- 影响面：**仅静态链接程序**（Go/Rust 静态二进制）在 x86_64 上 `fork` 会失败；
+- 动态程序不受影响：shim 替换了 libc 的 `fork`/`vfork` ⇒ guest 永远不会发出 `clone3`（这是当前可用的保证）；
+- 彻底的修法：在 PRoot 的 clone/子进程跟踪路径里挂钩（更深、更侵入的改动）。
+
+### 3. 验收记录
+
+| 平台 | 项目 | 结果 |
+|---|---|---|
+| **arm64 真机**（OnePlus PLC110 / Android 16 / 非 root） | 全新导入、`apk update`（3 s / 24059 包）、`apk add tzdata`（`Africa/Accra` nlink=14）、`apk add tree`（busybox 触发器）、broken=0、`unshare`=0、`chroot("/")`=0、SysV IPC 跨进程 `verify=OK` | ✅ 全绿 |
+| **x86_64 模拟器**（Android 14 / SDK 34） | 真实 app 过滤器（`Seccomp_filters: 2`）下：静态探针 `poll/select/epoll_wait`=0、子 shell/后台任务/管道、`apk` 0/0/0、SysV IPC 跨进程 `verify=OK`、`/dev/shm` 读写、`profile_sha` 与官方一致 | ✅ 全绿（清空 `LD_PRELOAD` 时 `fork` 受限，见 2 的已知限制） |
+
+### 4. 复现方式（三步）
+
+1. `git clone --depth 1 --branch v5.1.107.92 https://github.com/termux/proot.git proot-source`
+2. `git -C proot-source apply tools/patches/proot-legacy-syscalls.patch`（另需 talloc 头文件，见 `tools/build/README.md`）
+3. `pwsh tools/build/build-proot.ps1 -TallocInclude <talloc 目录> -ShmemLib build_proot_out/shmem -Install`
+   （shmem 库用 `pwsh tools/build/build-shmem.ps1` 生成；shim 直接用 NDK clang 编，见 README）

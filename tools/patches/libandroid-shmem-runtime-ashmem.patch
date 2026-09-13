@@ -1,0 +1,76 @@
+diff --git a/shmem.c b/shmem.c
+index f95fc07..28c8415 100644
+--- a/shmem.c
++++ b/shmem.c
+@@ -111,13 +111,45 @@ static int ancil_recv_fd(int sock)
+ 	return ((int*) CMSG_DATA(cmsg))[0];
+ }
+ 
++/* --- local patch (code_editor): choose the ashmem backend at RUNTIME ------
++ * Android 11+ denies /dev/ashmem to app processes (measured on Android 16:
++ * open("/dev/ashmem", O_RDWR) -> EACCES), while libandroid's ASharedMemory_*
++ * (memfd-backed) works.  Upstream picks the backend at compile time with
++ * __ANDROID_API__ >= 26, which would force API 26+ on every user of this
++ * library; resolving it via dlopen/dlsym keeps API 24 devices working (there
++ * the /dev/ashmem path is the permitted one).
++ */
++#include <dlfcn.h>
++
++static int (*p_ASharedMemory_create)(const char *, size_t);
++static int (*p_ASharedMemory_getSize)(int);
++static int ashmem_backend_checked;
++static int ashmem_backend_ok;
++
++static void ashmem_backend_init(void)
++{
++	void *h;
++
++	if (ashmem_backend_checked)
++		return;
++	ashmem_backend_checked = 1;
++
++	h = dlopen("libandroid.so", RTLD_NOW | RTLD_LOCAL);
++	if (h == NULL)
++		return;
++
++	p_ASharedMemory_create  = (int (*)(const char *, size_t))dlsym(h, "ASharedMemory_create");
++	p_ASharedMemory_getSize = (int (*)(int))dlsym(h, "ASharedMemory_getSize");
++	if (p_ASharedMemory_create != NULL && p_ASharedMemory_getSize != NULL)
++		ashmem_backend_ok = 1;
++}
++
+ static int ashmem_get_size_region(int fd)
+ {
+-#if __ANDROID_API__ >= 26
+-	return ASharedMemory_getSize(fd);
+-#else
++	ashmem_backend_init();
++	if (ashmem_backend_ok)
++		return p_ASharedMemory_getSize(fd);
+ 	return TEMP_FAILURE_RETRY(ioctl(fd, ASHMEM_GET_SIZE, NULL));
+-#endif
+ }
+ 
+ /*
+@@ -129,9 +161,10 @@ static int ashmem_get_size_region(int fd)
+  */
+ static int ashmem_create_region(char const* name, size_t size)
+ {
+-#if __ANDROID_API__ >= 26
+-	return ASharedMemory_create(name, size);
+-#else
++	ashmem_backend_init();
++	if (ashmem_backend_ok)
++		return p_ASharedMemory_create(name, size);
++
+ 	// From https://android.googlesource.com/platform/system/core/+/master/libcutils/ashmem-dev.c
+ 	int fd = open("/dev/ashmem", O_RDWR);
+ 	if (fd < 0) return fd;
+@@ -150,7 +183,6 @@ static int ashmem_create_region(char const* name, size_t size)
+ error:
+ 	close(fd);
+ 	return ret;
+-#endif
+ }
+ 
+ static void ashv_check_pid()

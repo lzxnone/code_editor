@@ -300,6 +300,10 @@ class DistroManager {
     final args = <String>[
       '--kill-on-exit',
       '--link2symlink',
+      // SysV IPC（共享内存/信号量/消息队列）用户态模拟：Android 的 app seccomp 策略把
+      // shmget/semget/msgget 全部返回 ENOSYS，PRoot 用 libandroid-shmem 在容器内模拟这一套。
+      // 需要 jniLibs 里同时提供 libandroid-shmem.so（proot 的 NEEDED 依赖）。
+      '--sysvipc',
       '-0', // 模拟 root 权限 (uid 0)
       '-k', '5.4.0-proot', // 伪装内核版本（解决 musl libc 调用 clone3/ppoll 时的 Function not implemented）
       '-L', // 修复 lstat 符号链接大小属性

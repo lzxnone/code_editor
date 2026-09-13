@@ -120,9 +120,12 @@ static inline long my_syscall6(long n, long a1, long a2, long a3, long a4, long 
 }
 
 #define SYS_utimensat 280
+#define SYS_fchownat 260
 #define SYS_ppoll 271
 #define SYS_pipe2 293
 #define SYS_dup3 292
+#define SYS_clone 56
+#define SIGCHLD_ 17
 
 #elif defined(__aarch64__)
 
@@ -157,6 +160,7 @@ static inline long my_syscall6(long n, long a1, long a2, long a3, long a4, long 
 }
 
 #define SYS_utimensat 88
+#define SYS_fchownat 54
 #define SYS_ppoll 73
 
 #endif
@@ -175,7 +179,13 @@ static inline int set_errno_and_return(long ret) {
 }
 
 /* -------------------------------------------------------------------------
- * utimensat(): survive PRoot's --link2symlink hardlink stand-ins.
+ * utimensat() / fchownat(): survive PRoot's --link2symlink hardlink stand-ins.
+ *
+ * apk 在装完文件后会对 <dir>/.apk.<hash> 做两件"跟随符号链接"语义的操作：
+ *   utimensat(dirfd, name, times, 0)   保 mtime  → 维护老的 proot 需要它
+ *   fchownat(dirfd, name, 0, 0, 0)     设 owner  → 新版 proot（link2symlink 重写后）需要它
+ * 二者都会解析进 l2s 的隐藏替身（guest 不可解析）→ ENOENT。
+ * 带 AT_SYMLINK_NOFOLLOW 重试即可作用于替身自身（最接近硬链接语义）。
  * ------------------------------------------------------------------------- */
 __attribute__((visibility("default")))
 int utimensat(int dirfd, const char *path, const void *times, int flags) {
@@ -186,6 +196,22 @@ int utimensat(int dirfd, const char *path, const void *times, int flags) {
         long retry = my_syscall6(SYS_utimensat, (long)dirfd, (long)path,
                                  (long)times,
                                  (long)(flags | AT_SYMLINK_NOFOLLOW), 0, 0);
+        if (retry >= 0) {
+            return 0;
+        }
+    }
+    return set_errno_and_return(ret);
+}
+
+__attribute__((visibility("default")))
+int fchownat(int dirfd, const char *path, int owner, int group, int flags) {
+    long ret = my_syscall6(SYS_fchownat, (long)dirfd, (long)path,
+                           (long)owner, (long)group, (long)flags, 0);
+    if (ret == -ENOENT && path != 0 && path[0] != '\0' &&
+        (flags & AT_SYMLINK_NOFOLLOW) == 0) {
+        long retry = my_syscall6(SYS_fchownat, (long)dirfd, (long)path,
+                                 (long)owner, (long)group,
+                                 (long)(flags | AT_SYMLINK_NOFOLLOW), 0);
         if (retry >= 0) {
             return 0;
         }
@@ -300,6 +326,27 @@ int select(int nfds, fd_mask_l *readfds, fd_mask_l *writefds,
 __attribute__((visibility("default")))
 int pipe(int pipefd[2]) {
     long ret = my_syscall2(SYS_pipe2, (long)pipefd, 0);
+    return set_errno_and_return(ret);
+}
+
+/*
+ * fork()/vfork(): Android 的 app seccomp 策略在 x86_64 上拒绝传统 fork/vfork 路径。
+ * 实测（App 会话内、无 shim）：busybox ash 报
+ *     /etc/profile.d/xxx.sh: can't fork: Function not implemented   (ENOSYS)
+ * 于是子 shell `( ... ) &`、后台任务、管道等全部失败。
+ * 二者统一改为 clone(SIGCHLD)：与 fork 语义相同；用 fork 语义实现 vfork 是允许的
+ * （POSIX 允许 vfork 退化为 fork，只是少了共享地址空间的优化）。
+ * 注意：这条覆盖在"无过滤器的 adb/run-as 环境"里看不出必要性，必须在 App 会话里验证。
+ */
+__attribute__((visibility("default")))
+pid_t fork(void) {
+    long ret = my_syscall6(SYS_clone, SIGCHLD_, 0, 0, 0, 0, 0);
+    return set_errno_and_return(ret);
+}
+
+__attribute__((visibility("default")))
+pid_t vfork(void) {
+    long ret = my_syscall6(SYS_clone, SIGCHLD_, 0, 0, 0, 0, 0);
     return set_errno_and_return(ret);
 }
 
