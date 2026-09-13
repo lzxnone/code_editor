@@ -1,5 +1,4 @@
 import 'package:code_editor/l10n/app_localizations.dart';
-import 'package:code_editor/models/terminal_session.dart';
 import 'package:code_editor/providers/distro_provider.dart';
 import 'package:code_editor/providers/settings_provider.dart';
 import 'package:code_editor/providers/terminal_provider.dart';
@@ -10,11 +9,81 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-Widget createTestTerminalApp({required TerminalProvider terminalProvider}) {
+class FakeDistroProvider extends DistroProvider {
+  final List<String> _systems;
+  String? _selected;
+
+  FakeDistroProvider({List<String>? systems, String? selected})
+      : _systems = systems ?? ['alpine'],
+        _selected = selected ?? 'alpine';
+
+  @override
+  List<String> get installedSystems => List.unmodifiable(_systems);
+
+  @override
+  String? get selectedSystem => _selected;
+
+  @override
+  bool get hasAnySystem => _systems.isNotEmpty;
+
+  @override
+  bool get isInitialized => true;
+
+  @override
+  Future<void> init() async {}
+
+  @override
+  Future<void> refreshSystems() async {}
+
+  @override
+  Future<void> selectSystem(String systemName) async {
+    _selected = systemName;
+    notifyListeners();
+  }
+
+  @override
+  Future<void> deleteSystem(String systemName) async {
+    _systems.remove(systemName);
+    if (_selected == systemName) {
+      _selected = _systems.isNotEmpty ? _systems.first : null;
+    }
+    notifyListeners();
+  }
+
+  @override
+  Future<void> importBuiltinAlpine({
+    required String systemName,
+    dynamic onProgress,
+    bool Function()? isCancelled,
+  }) async {
+    _systems.add(systemName);
+    _selected = systemName;
+    notifyListeners();
+  }
+
+  @override
+  Future<void> importFromCustomTarGz({
+    required String systemName,
+    required dynamic tarGzFile,
+    dynamic onProgress,
+    bool Function()? isCancelled,
+  }) async {
+    _systems.add(systemName);
+    _selected = systemName;
+    notifyListeners();
+  }
+}
+
+Widget createTestTerminalApp({
+  required TerminalProvider terminalProvider,
+  DistroProvider? distroProvider,
+}) {
   return MultiProvider(
     providers: [
       ChangeNotifierProvider<TerminalProvider>.value(value: terminalProvider),
-      ChangeNotifierProvider<DistroProvider>(create: (_) => DistroProvider()),
+      ChangeNotifierProvider<DistroProvider>.value(
+        value: distroProvider ?? FakeDistroProvider(),
+      ),
     ],
     child: MaterialApp(
       locale: const Locale('zh'),
@@ -46,7 +115,7 @@ void main() {
 
       // Check AppBar title and subtitle
       expect(find.text('会话'), findsWidgets);
-      expect(find.text('终端'), findsOneWidget);
+      expect(find.textContaining('终端'), findsOneWidget);
     });
 
     testWidgets('Right drawer can be opened and shows title "会话" with add button', (tester) async {
@@ -177,7 +246,7 @@ void main() {
       // Append custom text to session buffer via provider
       provider.appendOutput(provider.activeSession!, 'CUSTOM_SESSION_OUTPUT_LINE');
       await tester.pumpAndSettle();
-      expect(find.text('CUSTOM_SESSION_OUTPUT_LINE'), findsOneWidget);
+      expect(provider.activeSession!.bufferText.contains('CUSTOM_SESSION_OUTPUT_LINE'), isTrue);
 
       // Pop back to editor
       await tester.tap(find.byIcon(Icons.arrow_back));
@@ -188,15 +257,15 @@ void main() {
 
       // Provider still holds the session and buffer
       expect(provider.sessions.length, equals(1));
-      expect(provider.sessions.first.outputLines.contains('CUSTOM_SESSION_OUTPUT_LINE'), isTrue);
+      expect(provider.sessions.first.bufferText.contains('CUSTOM_SESSION_OUTPUT_LINE'), isTrue);
 
       // Re-enter terminal
       await tester.tap(find.text('进入终端'));
       await tester.pumpAndSettle();
 
-      // Verify the session output is still right there
+      // Verify the session output is still preserved in buffer
       expect(find.byType(TerminalView), findsOneWidget);
-      expect(find.text('CUSTOM_SESSION_OUTPUT_LINE'), findsOneWidget);
+      expect(provider.activeSession!.bufferText.contains('CUSTOM_SESSION_OUTPUT_LINE'), isTrue);
     });
 
     testWidgets('Deleting a session from context menu removes it and updates activeIndex', (tester) async {
@@ -262,6 +331,79 @@ void main() {
       expect(provider.sessions[1].name, equals('第一项'));
       expect(find.text('(1) 第二项'), findsOneWidget);
       expect(find.text('(2) 第一项'), findsOneWidget);
+    });
+
+    testWidgets('English locale renders "Session", "Terminal · alpine", and "Sessions" dynamically', (tester) async {
+      final provider = TerminalProvider();
+      await tester.pumpWidget(
+        MultiProvider(
+          providers: [
+            ChangeNotifierProvider<TerminalProvider>.value(value: provider),
+            ChangeNotifierProvider<DistroProvider>.value(value: FakeDistroProvider()),
+          ],
+          child: MaterialApp(
+            locale: const Locale('en'),
+            localizationsDelegates: AppLocalizations.localizationsDelegates,
+            supportedLocales: AppLocalizations.supportedLocales,
+            home: const TerminalView(),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // Check AppBar title "Session" and subtitle "Terminal · alpine"
+      expect(find.text('Session'), findsOneWidget);
+      expect(find.text('Terminal · alpine'), findsOneWidget);
+
+      // Open drawer
+      await tester.tap(find.byIcon(Icons.format_list_bulleted));
+      await tester.pumpAndSettle();
+
+      // Check drawer title "Sessions" and item "(1) Session"
+      expect(find.text('Sessions'), findsOneWidget);
+      expect(find.text('(1) Session'), findsOneWidget);
+    });
+
+    testWidgets('Session name is fixed upon creation and does not re-translate on language change', (tester) async {
+      final provider = TerminalProvider();
+      // First created in English
+      await tester.pumpWidget(
+        MultiProvider(
+          providers: [
+            ChangeNotifierProvider<TerminalProvider>.value(value: provider),
+            ChangeNotifierProvider<DistroProvider>.value(value: FakeDistroProvider()),
+          ],
+          child: MaterialApp(
+            locale: const Locale('en'),
+            localizationsDelegates: AppLocalizations.localizationsDelegates,
+            supportedLocales: AppLocalizations.supportedLocales,
+            home: const TerminalView(),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('Session'), findsOneWidget);
+
+      // Now re-render with Chinese locale
+      await tester.pumpWidget(
+        MultiProvider(
+          providers: [
+            ChangeNotifierProvider<TerminalProvider>.value(value: provider),
+            ChangeNotifierProvider<DistroProvider>.value(value: FakeDistroProvider()),
+          ],
+          child: MaterialApp(
+            locale: const Locale('zh'),
+            localizationsDelegates: AppLocalizations.localizationsDelegates,
+            supportedLocales: AppLocalizations.supportedLocales,
+            home: const TerminalView(),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // The created session's name is FIXED as "Session", while subtitle translates to Chinese
+      expect(find.text('Session'), findsOneWidget);
+      expect(find.text('终端 · alpine'), findsOneWidget);
     });
 
     test('SettingsProvider manages UI, Editor, and Terminal font choices correctly', () async {

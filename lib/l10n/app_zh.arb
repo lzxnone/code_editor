@@ -121,5 +121,123 @@
   "keepLocal": "保留本地修改",
   "storagePermissionRequiredTitle": "需要存储访问权限",
   "storagePermissionRequiredMessage": "代码编辑器需要“管理所有文件”权限，以便在您的设备上读取、新建和保存项目文件。\n\n请在接下来的系统设置页面中开启该权限。",
-  "goToSettings": "去设置"
+  "goToSettings": "去设置",
+  "terminal": "终端",
+  "terminalWithSystem": "终端 · {system}",
+  "@terminalWithSystem": {
+    "placeholders": {
+      "system": {
+        "type": "String"
+      }
+    }
+  },
+  "sessionDefaultName": "会话",
+  "systemManagement": "系统管理",
+  "systemManagementTooltip": "系统管理与选择",
+  "sessionListTooltip": "会话列表",
+  "noActiveSessions": "暂无活跃会话",
+  "terminalInputHint": "输入命令...",
+  "sendCommandTooltip": "发送命令",
+  "importNewSystem": "导入新系统",
+  "importBuiltinAlpine": "从软件中导入 (Alpine)",
+  "importExternalTarGz": "从外部导入 (.tar.gz)",
+  "selectSystemDefaultPrompt": "选择系统将设为默认系统，新建终端时从该系统中启动：",
+  "noSystemsPrompt": "暂无系统，请点击右上角 \"+\" 导入",
+  "importBuiltinAlpineTitle": "从软件导入 Alpine 系统",
+  "systemNameHintWithDefault": "系统名称（如 {name}）",
+  "@systemNameHintWithDefault": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "systemImportSuccess": "系统 \"{name}\" 导入并就绪",
+  "@systemImportSuccess": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "importExternalSystemTitle": "导入外部系统",
+  "systemNameHint": "系统名称",
+  "externalSystemImportSuccess": "外部系统 \"{name}\" 导入并就绪",
+  "@externalSystemImportSuccess": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "deleteSystemConfirmTitle": "高危操作：确认删除系统",
+  "deleteSystemConfirmMessage": "确定要彻底删除系统 \"{name}\" 吗？\n\n⚠️ 该操作将物理级清除该系统及其所有内部数据与已安装软件包，此操作不可逆！\n\n该系统关联的所有终端会话也将被同步关闭。",
+  "@deleteSystemConfirmMessage": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "permanentDelete": "彻底删除",
+  "deleteSystemSuccess": "已彻底删除系统 \"{name}\" 及关联会话",
+  "@deleteSystemSuccess": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "deleteSystemTooltip": "彻底删除该系统 (高危)",
+  "preparingInitialization": "准备初始化...",
+  "cancellingAndCleaning": "正在取消并清理残余目录...",
+  "cancelledImportSystem": "已取消导入系统 \"{name}\"",
+  "@cancelledImportSystem": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "importFailed": "导入失败: {error}",
+  "@importFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "importingSystemTitle": "正在导入: {name}",
+  "@importingSystemTitle": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "cancelImport": "取消导入",
+  "interrupting": "正在中断...",
+  "sessionDrawerTitle": "会话",
+  "addTerminalTooltip": "添加终端",
+  "noSystemSelectedWarning": "当前未选择任何系统，请先导入或选择系统",
+  "noSessionsInDrawerPrompt": "暂无会话，请点击右上角添加",
+  "confirmDeleteTerminalSession": "确定要删除终端 \"({index}) {name}\" 吗？",
+  "@confirmDeleteTerminalSession": {
+    "placeholders": {
+      "index": {
+        "type": "int"
+      },
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "deleteSystemFailed": "删除系统失败: {error}",
+  "@deleteSystemFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  }
 }

@@ -23,9 +23,12 @@ class TerminalProvider extends ChangeNotifier {
   }
 
   /// 懒加载：进入终端页面时调用，如果尚未创建会话，则自动创建并激活首个会话
-  void ensureInitialized() {
+  void ensureInitialized({
+    String defaultName = '会话',
+    String defaultDistroId = 'alpine',
+  }) {
     if (_sessions.isEmpty) {
-      createSession(name: '会话', activate: true);
+      createSession(name: defaultName, distroId: defaultDistroId, activate: true);
     }
   }
 
@@ -33,20 +36,18 @@ class TerminalProvider extends ChangeNotifier {
   /// [distroId]: 发行版标识符（如 'alpine', 'host'）
   /// [activate]: 是否自动跳转切换到该会话。抽屉右上角加号点击时为 false（直接添加但不跳转）。
   TerminalSession createSession({
-    String name = '会话',
+    String? name,
     String distroId = 'alpine',
     bool activate = false,
+    bool autoStartProcess = true,
   }) {
     final nextIndex = _sessions.length + 1;
+    final sessionName = (name != null && name.trim().isNotEmpty) ? name.trim() : '会话';
     final session = TerminalSession(
       id: 'session_${DateTime.now().microsecondsSinceEpoch}_$nextIndex',
-      name: name,
+      name: sessionName,
       distroId: distroId,
-      initialOutput: [
-        'Welcome to Terminal ($nextIndex) [$distroId]',
-        'Type "help" for a list of built-in commands or "clear" to clear.',
-        '',
-      ],
+      autoStartProcess: autoStartProcess,
     );
 
     _sessions.add(session);
@@ -100,6 +101,36 @@ class TerminalProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// 移除指定系统的所有会话（当系统被物理删除时调用）
+  void removeSessionsForDistro(String distroId) {
+    final toRemove = _sessions.where((s) => s.distroId == distroId).toList();
+    if (toRemove.isEmpty) return;
+
+    for (final session in toRemove) {
+      session.dispose();
+      _sessions.remove(session);
+    }
+
+    if (_sessions.isEmpty) {
+      _activeIndex = 0;
+    } else if (_activeIndex >= _sessions.length) {
+      _activeIndex = _sessions.length - 1;
+    }
+
+    notifyListeners();
+  }
+
+  /// 清空全部会话并释放资源
+  void clearAllSessions() {
+    if (_sessions.isEmpty) return;
+    for (final session in _sessions) {
+      session.dispose();
+    }
+    _sessions.clear();
+    _activeIndex = 0;
+    notifyListeners();
+  }
+
   /// 拖拽重新排序终端会话（接收 onReorderItem 传入的已修正目标索引）
   void reorderSessions(int oldIndex, int newIndex) {
     if (oldIndex < 0 || oldIndex >= _sessions.length) return;
@@ -121,56 +152,9 @@ class TerminalProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// 向指定终端会话追加输出并通知更新
-  void appendOutput(TerminalSession session, String line) {
-    session.appendOutput(line);
-    notifyListeners();
-  }
-
-  /// 执行简单交互命令（支持 help, clear, echo, date 等，后续可无缝接入 PTY / Shell）
-  void executeCommand(TerminalSession session, String rawInput) {
-    final input = rawInput.trim();
-    session.appendOutput('\$ $rawInput');
-
-    if (input.isEmpty) {
-      notifyListeners();
-      return;
-    }
-
-    final parts = input.split(RegExp(r'\s+'));
-    final cmd = parts.first.toLowerCase();
-
-    switch (cmd) {
-      case 'clear':
-        session.clear();
-        break;
-      case 'help':
-        session.appendOutput('Built-in terminal commands:');
-        session.appendOutput('  clear        Clear the terminal screen');
-        session.appendOutput('  date         Show current date and time');
-        session.appendOutput('  echo <msg>   Echo text back');
-        session.appendOutput('  help         Show this help information');
-        session.appendOutput('  sessions     List active sessions');
-        break;
-      case 'date':
-        session.appendOutput(DateTime.now().toString());
-        break;
-      case 'echo':
-        session.appendOutput(parts.skip(1).join(' '));
-        break;
-      case 'sessions':
-        session.appendOutput('Total sessions: ${_sessions.length}');
-        for (int i = 0; i < _sessions.length; i++) {
-          final s = _sessions[i];
-          final marker = (i == _activeIndex) ? '*' : ' ';
-          session.appendOutput(' $marker (${i + 1}) ${s.name} [${s.id}]');
-        }
-        break;
-      default:
-        session.appendOutput('command not found: $cmd');
-        break;
-    }
-
+  /// 向指定终端会话写入文本并通知更新
+  void appendOutput(TerminalSession session, String text) {
+    session.write(text);
     notifyListeners();
   }
 

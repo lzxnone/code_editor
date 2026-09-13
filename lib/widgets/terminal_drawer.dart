@@ -1,4 +1,7 @@
+import 'package:code_editor/l10n/app_localizations.dart';
+import 'package:code_editor/providers/distro_provider.dart';
 import 'package:code_editor/providers/terminal_provider.dart';
+import 'package:code_editor/utils/dialog_utils.dart';
 import 'package:code_editor/widgets/terminal_session_item_widget.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -10,6 +13,7 @@ class TerminalDrawer extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context)!;
     final provider = context.watch<TerminalProvider>();
     final sessions = provider.sessions;
     final activeIndex = provider.activeIndex;
@@ -30,7 +34,7 @@ class TerminalDrawer extends StatelessWidget {
                 child: Row(
                   children: [
                     Text(
-                      '会话',
+                      l10n.sessionDrawerTitle,
                       style: theme.textTheme.titleMedium?.copyWith(
                         fontWeight: FontWeight.bold,
                         color: theme.colorScheme.onSurface,
@@ -39,10 +43,20 @@ class TerminalDrawer extends StatelessWidget {
                     const Spacer(),
                     IconButton(
                       icon: const Icon(Icons.add),
-                      tooltip: '添加终端',
+                      tooltip: l10n.addTerminalTooltip,
                       onPressed: () {
-                        // 直接添加终端，但不跳转
-                        provider.createSession(name: '会话', distroId: 'alpine', activate: false);
+                        final distroProvider = context.read<DistroProvider?>();
+                        final currentSystem = distroProvider?.selectedSystem;
+                        if (currentSystem == null) {
+                          DialogUtils.showToast(context, l10n.noSystemSelectedWarning);
+                          return;
+                        }
+                        // 基于当前选择的系统创建新终端
+                        provider.createSession(
+                          name: l10n.sessionDefaultName,
+                          distroId: currentSystem,
+                          activate: false,
+                        );
                       },
                     ),
                   ],
@@ -56,7 +70,7 @@ class TerminalDrawer extends StatelessWidget {
               child: sessions.isEmpty
                   ? Center(
                       child: Text(
-                        '暂无会话，请点击右上角添加',
+                        l10n.noSessionsInDrawerPrompt,
                         style: TextStyle(
                           color: theme.colorScheme.onSurfaceVariant,
                           fontSize: 13.0,

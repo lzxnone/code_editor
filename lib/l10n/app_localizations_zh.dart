@@ -374,4 +374,140 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get goToSettings => '去设置';
+
+  @override
+  String get terminal => '终端';
+
+  @override
+  String terminalWithSystem(String system) {
+    return '终端 · $system';
+  }
+
+  @override
+  String get sessionDefaultName => '会话';
+
+  @override
+  String get systemManagement => '系统管理';
+
+  @override
+  String get systemManagementTooltip => '系统管理与选择';
+
+  @override
+  String get sessionListTooltip => '会话列表';
+
+  @override
+  String get noActiveSessions => '暂无活跃会话';
+
+  @override
+  String get terminalInputHint => '输入命令...';
+
+  @override
+  String get sendCommandTooltip => '发送命令';
+
+  @override
+  String get importNewSystem => '导入新系统';
+
+  @override
+  String get importBuiltinAlpine => '从软件中导入 (Alpine)';
+
+  @override
+  String get importExternalTarGz => '从外部导入 (.tar.gz)';
+
+  @override
+  String get selectSystemDefaultPrompt => '选择系统将设为默认系统，新建终端时从该系统中启动：';
+
+  @override
+  String get noSystemsPrompt => '暂无系统，请点击右上角 \"+\" 导入';
+
+  @override
+  String get importBuiltinAlpineTitle => '从软件导入 Alpine 系统';
+
+  @override
+  String systemNameHintWithDefault(String name) {
+    return '系统名称（如 $name）';
+  }
+
+  @override
+  String systemImportSuccess(String name) {
+    return '系统 \"$name\" 导入并就绪';
+  }
+
+  @override
+  String get importExternalSystemTitle => '导入外部系统';
+
+  @override
+  String get systemNameHint => '系统名称';
+
+  @override
+  String externalSystemImportSuccess(String name) {
+    return '外部系统 \"$name\" 导入并就绪';
+  }
+
+  @override
+  String get deleteSystemConfirmTitle => '高危操作：确认删除系统';
+
+  @override
+  String deleteSystemConfirmMessage(String name) {
+    return '确定要彻底删除系统 \"$name\" 吗？\n\n⚠️ 该操作将物理级清除该系统及其所有内部数据与已安装软件包，此操作不可逆！\n\n该系统关联的所有终端会话也将被同步关闭。';
+  }
+
+  @override
+  String get permanentDelete => '彻底删除';
+
+  @override
+  String deleteSystemSuccess(String name) {
+    return '已彻底删除系统 \"$name\" 及关联会话';
+  }
+
+  @override
+  String get deleteSystemTooltip => '彻底删除该系统 (高危)';
+
+  @override
+  String get preparingInitialization => '准备初始化...';
+
+  @override
+  String get cancellingAndCleaning => '正在取消并清理残余目录...';
+
+  @override
+  String cancelledImportSystem(String name) {
+    return '已取消导入系统 \"$name\"';
+  }
+
+  @override
+  String importFailed(String error) {
+    return '导入失败: $error';
+  }
+
+  @override
+  String importingSystemTitle(String name) {
+    return '正在导入: $name';
+  }
+
+  @override
+  String get cancelImport => '取消导入';
+
+  @override
+  String get interrupting => '正在中断...';
+
+  @override
+  String get sessionDrawerTitle => '会话';
+
+  @override
+  String get addTerminalTooltip => '添加终端';
+
+  @override
+  String get noSystemSelectedWarning => '当前未选择任何系统，请先导入或选择系统';
+
+  @override
+  String get noSessionsInDrawerPrompt => '暂无会话，请点击右上角添加';
+
+  @override
+  String confirmDeleteTerminalSession(int index, String name) {
+    return '确定要删除终端 \"($index) $name\" 吗？';
+  }
+
+  @override
+  String deleteSystemFailed(String error) {
+    return '删除系统失败: $error';
+  }
 }

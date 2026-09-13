@@ -6,11 +6,15 @@
     <!-- 所有文件访问权限（Android 11+ / API 30+，代码编辑器/IDE 管理工作区所必需） -->
     <uses-permission android:name="android.permission.MANAGE_EXTERNAL_STORAGE" />
 
+    <!-- 网络访问权限（Linux 容器内执行 apk update、curl、git 等网络操作所必需） -->
+    <uses-permission android:name="android.permission.INTERNET" />
+
     <application
         android:label="code_editor"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher"
-        android:requestLegacyExternalStorage="true">
+        android:requestLegacyExternalStorage="true"
+        android:extractNativeLibs="true">
         <activity
             android:name=".MainActivity"
             android:exported="true"

@@ -1,12 +1,23 @@
+import 'dart:ffi';
 import 'dart:io';
 import 'package:archive/archive.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 import 'package:path/path.dart' as p;
 
 /// 安装进度回调
 /// [progress] 0.0 ~ 1.0
 /// [message] 当前阶段说明
 typedef InstallProgressCallback = void Function(double progress, String message);
+
+/// 取消安装异常
+class DistroInstallCancelledException implements Exception {
+  final String message;
+  DistroInstallCancelledException([this.message = '用户已取消系统导入']);
+
+  @override
+  String toString() => message;
+}
 
 /// Linux 发行版 Rootfs 安装与解压服务
 class DistroInstaller {
@@ -15,67 +26,112 @@ class DistroInstaller {
   /// [tarGzBytes] .tar.gz 压缩包字节流
   /// [targetDir] 目标解压目录 (即容器的 rootfs 路径)
   /// [onProgress] 进度回调
+  /// [isCancelled] 外部取消检查函数
   static Future<void> installFromBytes({
     required Uint8List tarGzBytes,
     required Directory targetDir,
     InstallProgressCallback? onProgress,
+    bool Function()? isCancelled,
   }) async {
+    if (isCancelled?.call() == true) {
+      throw DistroInstallCancelledException();
+    }
+
     onProgress?.call(0.05, '正在校验与解析系统镜像...');
 
     if (!targetDir.existsSync()) {
       targetDir.createSync(recursive: true);
     }
 
-    // 1. 在后台解压 Gzip 与 Tar（避免 UI 线程卡顿）
-    onProgress?.call(0.15, '正在解压内核与文件系统结构...');
-    final archive = await compute(_decodeTarGz, tarGzBytes);
+    try {
+      // 1. 在后台解压 Gzip 与 Tar（避免 UI 线程卡顿）
+      onProgress?.call(0.15, '正在解压内核与文件系统结构...');
+      final archive = await compute(_decodeTarGz, tarGzBytes);
 
-    // 2. 写入文件与目录
-    final total = archive.length;
-    int processed = 0;
+      if (isCancelled?.call() == true) {
+        throw DistroInstallCancelledException();
+      }
 
-    for (final file in archive) {
-      processed++;
-      final filename = file.name;
-      // 避免路径穿越漏洞 (Directory Traversal)
-      if (filename.contains('..')) continue;
+      // 2. 写入文件与目录
+      //
+      // 权限位必须逐条按 tar 头恢复：dart:io 没有 chmod，而解压本身不会保留
+      // 可执行位，所以恢复方式是按 mode 分组批量调用 chmod（避免逐文件 fork）。
+      // 之前这里用 `chmod -R 755` 一把梭，会把 /etc 下的配置文件也变成可执行。
+      final total = archive.length;
+      int processed = 0;
+      final Map<int, List<String>> byMode = <int, List<String>>{};
 
-      final outPath = p.join(targetDir.path, filename);
-
-      if (file.isFile) {
-        final parentDir = Directory(p.dirname(outPath));
-        if (!parentDir.existsSync()) {
-          parentDir.createSync(recursive: true);
+      for (final file in archive) {
+        if (isCancelled?.call() == true) {
+          throw DistroInstallCancelledException();
         }
 
-        // 处理符号链接与常规文件
-        if (file.isSymbolicLink) {
-          try {
-            final link = Link(outPath);
-            if (link.existsSync()) link.deleteSync();
-            link.createSync(file.nameOfLinkedFile);
-          } catch (_) {
-            // Windows 或受限环境降级为写入目标路径文本或忽略
+        processed++;
+        final filename = file.name;
+        // 避免路径穿越漏洞 (Directory Traversal)
+        if (filename.contains('..')) continue;
+
+        final outPath = p.join(targetDir.path, filename);
+
+        if (file.isFile) {
+          final parentDir = Directory(p.dirname(outPath));
+          if (!parentDir.existsSync()) {
+            parentDir.createSync(recursive: true);
+          }
+
+          // 处理符号链接与常规文件
+          if (file.isSymbolicLink) {
+            try {
+              final link = Link(outPath);
+              if (link.existsSync()) link.deleteSync();
+              link.createSync(file.nameOfLinkedFile);
+            } catch (_) {
+              // Windows 或受限环境降级为写入目标路径文本或忽略
+            }
+          } else {
+            final content = file.content as List<int>;
+            File(outPath).writeAsBytesSync(content, flush: false);
           }
         } else {
-          final content = file.content as List<int>;
-          File(outPath).writeAsBytesSync(content, flush: false);
+          Directory(outPath).createSync(recursive: true);
         }
-      } else {
-        Directory(outPath).createSync(recursive: true);
+
+        // 记录 tar 头里的权限位（仅低 12 位有效位）。
+        // 符号链接必须跳过：chmod 会跟随链接，把目标文件的权限改坏
+        // （tar 里 symlink 条目的 mode 固定为 0777）。
+        final mode = file.mode & 0xFFF;
+        if (mode != 0 && !file.isSymbolicLink) {
+          byMode.putIfAbsent(mode, () => <String>[]).add(outPath);
+        }
+
+        if (processed % 50 == 0 || processed == total) {
+          final percent = 0.20 + (processed / total) * 0.70; // 20% ~ 90%
+          onProgress?.call(percent, '正在释放系统文件 ($processed/$total)...');
+        }
       }
 
-      if (processed % 100 == 0 || processed == total) {
-        final percent = 0.20 + (processed / total) * 0.70; // 20% ~ 90%
-        onProgress?.call(percent, '正在释放系统文件 ($processed/$total)...');
+      if (!Platform.isWindows) {
+        await _restoreModes(byMode);
       }
+
+      if (isCancelled?.call() == true) {
+        throw DistroInstallCancelledException();
+      }
+
+      // 3. 执行系统配置与网络补丁
+      onProgress?.call(0.92, '正在配置网络 DNS 与系统环境...');
+      await postInstallConfigure(targetDir);
+
+      onProgress?.call(1.0, '系统初始化就绪！');
+    } catch (e) {
+      // 若中途失败或取消，清理不完整的根目录
+      try {
+        if (targetDir.existsSync()) {
+          targetDir.deleteSync(recursive: true);
+        }
+      } catch (_) {}
+      rethrow;
     }
-
-    // 3. 执行系统配置与网络补丁
-    onProgress?.call(0.92, '正在配置网络 DNS 与系统环境...');
-    await postInstallConfigure(targetDir);
-
-    onProgress?.call(1.0, '系统初始化就绪！');
   }
 
   /// 后台 Isolate 解压 tar.gz
@@ -84,10 +140,37 @@ class DistroInstaller {
     return TarDecoder().decodeBytes(tarData);
   }
 
+  /// 按 tar 头恢复权限位（dart:io 无 chmod，按 mode 分组批量调用，避免逐文件 fork）
+  static Future<void> _restoreModes(Map<int, List<String>> byMode) async {
+    for (final entry in byMode.entries) {
+      final octal = entry.key.toRadixString(8).padLeft(4, '0');
+      final paths = entry.value;
+      // 单次 chmod 的参数长度有限，分批执行
+      const batch = 100;
+      for (var i = 0; i < paths.length; i += batch) {
+        final end = (i + batch < paths.length) ? i + batch : paths.length;
+        final slice = paths.sublist(i, end);
+        try {
+          await Process.run('chmod', [octal, ...slice]);
+        } catch (e) {
+          debugPrint('[DistroInstaller] 恢复权限失败 ($octal): $e');
+        }
+      }
+    }
+  }
+
+  /// 容器可用的 DNS 解析器（按"可达优先"排序：国内公共 DNS 在前）
+  static const String guestResolvConf = '# Generated by CodeEditor\n'
+      'nameserver 223.5.5.5\n'
+      'nameserver 119.29.29.29\n'
+      'nameserver 114.114.114.114\n';
+
   /// 自动化环境补丁与配置
-  /// 1. 注入 DNS (resolv.conf) 防止容器内 apk/apt 无法联网
-  /// 2. 注入 hosts
-  /// 3. 创建挂载点 /workspace 和 /tmp
+  ///
+  /// 只做"发行版自身不会做、但容器化必需"的事：DNS、hosts、镜像源、
+  /// 挂载点目录、shim 部署。**不再改写 guest 的 /etc/profile** —— 那会破坏
+  /// 非 Alpine 发行版自带的登录环境（Alpine 原版 profile 与本项目此前写入的
+  /// 模板逐行相同，所以删掉它对 Alpine 没有任何影响）。
   static Future<void> postInstallConfigure(Directory rootfsDir) async {
     final etcDir = Directory(p.join(rootfsDir.path, 'etc'));
     if (!etcDir.existsSync()) {
@@ -97,12 +180,7 @@ class DistroInstaller {
     // 1. 配置 DNS 解析器
     final resolvFile = File(p.join(etcDir.path, 'resolv.conf'));
     try {
-      resolvFile.writeAsStringSync(
-        '# Generated by CodeEditor DistroManager\n'
-        'nameserver 1.1.1.1\n'
-        'nameserver 8.8.8.8\n'
-        'nameserver 114.114.114.114\n',
-      );
+      resolvFile.writeAsStringSync(guestResolvConf);
     } catch (e) {
       debugPrint('[DistroInstaller] 写入 resolv.conf 失败: $e');
     }
@@ -118,16 +196,79 @@ class DistroInstaller {
       debugPrint('[DistroInstaller] 写入 hosts 失败: $e');
     }
 
-    // 3. 确保 /workspace 挂载点目录存在
+    // 3. 配置 Alpine apk 软件源镜像（使用阿里云高速稳定镜像）
+    final apkDir = Directory(p.join(etcDir.path, 'apk'));
+    if (apkDir.existsSync()) {
+      final repoFile = File(p.join(apkDir.path, 'repositories'));
+      try {
+        repoFile.writeAsStringSync(
+          'https://mirrors.aliyun.com/alpine/v3.20/main\n'
+          'https://mirrors.aliyun.com/alpine/v3.20/community\n',
+        );
+      } catch (e) {
+        debugPrint('[DistroInstaller] 写入 repositories 失败: $e');
+      }
+    }
+
+    // 4. 确保 /workspace 挂载点目录存在
     final workspaceDir = Directory(p.join(rootfsDir.path, 'workspace'));
     if (!workspaceDir.existsSync()) {
       workspaceDir.createSync(recursive: true);
     }
 
-    // 4. 确保 /tmp 目录存在
+    // 5. 确保 /tmp 目录存在
     final tmpDir = Directory(p.join(rootfsDir.path, 'tmp'));
     if (!tmpDir.existsSync()) {
       tmpDir.createSync(recursive: true);
+    }
+
+    // 6. 部署容器修复 Shim（libfix_seccomp.so）
+    await ensureSeccompShim(rootfsDir);
+  }
+
+  /// 部署容器修复 Shim（libfix_seccomp.so）
+  ///
+  /// 它只做两件在 Android app 进程里必需的事：
+  /// 1. `utimensat()`（两个架构）：Android 不允许应用数据区创建硬链接，PRoot
+  ///    的 `--link2symlink` 用 symlink + 隐藏记账文件模拟硬链接，导致 apk
+  ///    保 mtime 时跟随解析失败（`Failed to preserve modification time`）。
+  /// 2. `poll/select/pipe/dup2`（仅 x86_64）：Android 的 app seccomp 策略把这些
+  ///    传统 syscall 返回 ENOSYS，而 musl 在有这些调用的架构上优先用它们。
+  static Future<void> ensureSeccompShim(Directory rootfsDir) async {
+    final libDir = Directory(p.join(rootfsDir.path, 'lib'));
+    if (!libDir.existsSync()) {
+      libDir.createSync(recursive: true);
+    }
+    final targetShim = File(p.join(libDir.path, 'libfix_seccomp.so'));
+
+    String? archFolder;
+    if (Platform.isAndroid || Platform.isLinux) {
+      final currentAbi = Abi.current();
+      if (currentAbi == Abi.androidX64 || currentAbi == Abi.linuxX64) {
+        archFolder = 'x86_64';
+      } else if (currentAbi == Abi.androidArm64 || currentAbi == Abi.linuxArm64) {
+        archFolder = 'arm64-v8a';
+      }
+    }
+    if (archFolder == null) return;
+
+    try {
+      final assetPath = 'assets/shims/$archFolder/libfix_seccomp.so';
+      final byteData = await rootBundle.load(assetPath);
+      final bytes = byteData.buffer.asUint8List(byteData.offsetInBytes, byteData.lengthInBytes);
+
+      // 如果目标文件已存在且大小一致，则跳过写入
+      if (targetShim.existsSync() && targetShim.lengthSync() == bytes.length) {
+        return;
+      }
+
+      await targetShim.writeAsBytes(bytes, flush: true);
+      if (!Platform.isWindows) {
+        await Process.run('chmod', ['755', targetShim.path]);
+      }
+      debugPrint('[DistroInstaller] 成功部署 SECCOMP Shim: ${targetShim.path}');
+    } catch (e) {
+      debugPrint('[DistroInstaller] 部署 SECCOMP Shim 失败: $e');
     }
   }
 }

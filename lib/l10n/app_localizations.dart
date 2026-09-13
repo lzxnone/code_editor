@@ -781,6 +781,234 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'去设置'**
   String get goToSettings;
+
+  /// No description provided for @terminal.
+  ///
+  /// In zh, this message translates to:
+  /// **'终端'**
+  String get terminal;
+
+  /// No description provided for @terminalWithSystem.
+  ///
+  /// In zh, this message translates to:
+  /// **'终端 · {system}'**
+  String terminalWithSystem(String system);
+
+  /// No description provided for @sessionDefaultName.
+  ///
+  /// In zh, this message translates to:
+  /// **'会话'**
+  String get sessionDefaultName;
+
+  /// No description provided for @systemManagement.
+  ///
+  /// In zh, this message translates to:
+  /// **'系统管理'**
+  String get systemManagement;
+
+  /// No description provided for @systemManagementTooltip.
+  ///
+  /// In zh, this message translates to:
+  /// **'系统管理与选择'**
+  String get systemManagementTooltip;
+
+  /// No description provided for @sessionListTooltip.
+  ///
+  /// In zh, this message translates to:
+  /// **'会话列表'**
+  String get sessionListTooltip;
+
+  /// No description provided for @noActiveSessions.
+  ///
+  /// In zh, this message translates to:
+  /// **'暂无活跃会话'**
+  String get noActiveSessions;
+
+  /// No description provided for @terminalInputHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'输入命令...'**
+  String get terminalInputHint;
+
+  /// No description provided for @sendCommandTooltip.
+  ///
+  /// In zh, this message translates to:
+  /// **'发送命令'**
+  String get sendCommandTooltip;
+
+  /// No description provided for @importNewSystem.
+  ///
+  /// In zh, this message translates to:
+  /// **'导入新系统'**
+  String get importNewSystem;
+
+  /// No description provided for @importBuiltinAlpine.
+  ///
+  /// In zh, this message translates to:
+  /// **'从软件中导入 (Alpine)'**
+  String get importBuiltinAlpine;
+
+  /// No description provided for @importExternalTarGz.
+  ///
+  /// In zh, this message translates to:
+  /// **'从外部导入 (.tar.gz)'**
+  String get importExternalTarGz;
+
+  /// No description provided for @selectSystemDefaultPrompt.
+  ///
+  /// In zh, this message translates to:
+  /// **'选择系统将设为默认系统，新建终端时从该系统中启动：'**
+  String get selectSystemDefaultPrompt;
+
+  /// No description provided for @noSystemsPrompt.
+  ///
+  /// In zh, this message translates to:
+  /// **'暂无系统，请点击右上角 \"+\" 导入'**
+  String get noSystemsPrompt;
+
+  /// No description provided for @importBuiltinAlpineTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'从软件导入 Alpine 系统'**
+  String get importBuiltinAlpineTitle;
+
+  /// No description provided for @systemNameHintWithDefault.
+  ///
+  /// In zh, this message translates to:
+  /// **'系统名称（如 {name}）'**
+  String systemNameHintWithDefault(String name);
+
+  /// No description provided for @systemImportSuccess.
+  ///
+  /// In zh, this message translates to:
+  /// **'系统 \"{name}\" 导入并就绪'**
+  String systemImportSuccess(String name);
+
+  /// No description provided for @importExternalSystemTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'导入外部系统'**
+  String get importExternalSystemTitle;
+
+  /// No description provided for @systemNameHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'系统名称'**
+  String get systemNameHint;
+
+  /// No description provided for @externalSystemImportSuccess.
+  ///
+  /// In zh, this message translates to:
+  /// **'外部系统 \"{name}\" 导入并就绪'**
+  String externalSystemImportSuccess(String name);
+
+  /// No description provided for @deleteSystemConfirmTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'高危操作：确认删除系统'**
+  String get deleteSystemConfirmTitle;
+
+  /// No description provided for @deleteSystemConfirmMessage.
+  ///
+  /// In zh, this message translates to:
+  /// **'确定要彻底删除系统 \"{name}\" 吗？\n\n⚠️ 该操作将物理级清除该系统及其所有内部数据与已安装软件包，此操作不可逆！\n\n该系统关联的所有终端会话也将被同步关闭。'**
+  String deleteSystemConfirmMessage(String name);
+
+  /// No description provided for @permanentDelete.
+  ///
+  /// In zh, this message translates to:
+  /// **'彻底删除'**
+  String get permanentDelete;
+
+  /// No description provided for @deleteSystemSuccess.
+  ///
+  /// In zh, this message translates to:
+  /// **'已彻底删除系统 \"{name}\" 及关联会话'**
+  String deleteSystemSuccess(String name);
+
+  /// No description provided for @deleteSystemTooltip.
+  ///
+  /// In zh, this message translates to:
+  /// **'彻底删除该系统 (高危)'**
+  String get deleteSystemTooltip;
+
+  /// No description provided for @preparingInitialization.
+  ///
+  /// In zh, this message translates to:
+  /// **'准备初始化...'**
+  String get preparingInitialization;
+
+  /// No description provided for @cancellingAndCleaning.
+  ///
+  /// In zh, this message translates to:
+  /// **'正在取消并清理残余目录...'**
+  String get cancellingAndCleaning;
+
+  /// No description provided for @cancelledImportSystem.
+  ///
+  /// In zh, this message translates to:
+  /// **'已取消导入系统 \"{name}\"'**
+  String cancelledImportSystem(String name);
+
+  /// No description provided for @importFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'导入失败: {error}'**
+  String importFailed(String error);
+
+  /// No description provided for @importingSystemTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'正在导入: {name}'**
+  String importingSystemTitle(String name);
+
+  /// No description provided for @cancelImport.
+  ///
+  /// In zh, this message translates to:
+  /// **'取消导入'**
+  String get cancelImport;
+
+  /// No description provided for @interrupting.
+  ///
+  /// In zh, this message translates to:
+  /// **'正在中断...'**
+  String get interrupting;
+
+  /// No description provided for @sessionDrawerTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'会话'**
+  String get sessionDrawerTitle;
+
+  /// No description provided for @addTerminalTooltip.
+  ///
+  /// In zh, this message translates to:
+  /// **'添加终端'**
+  String get addTerminalTooltip;
+
+  /// No description provided for @noSystemSelectedWarning.
+  ///
+  /// In zh, this message translates to:
+  /// **'当前未选择任何系统，请先导入或选择系统'**
+  String get noSystemSelectedWarning;
+
+  /// No description provided for @noSessionsInDrawerPrompt.
+  ///
+  /// In zh, this message translates to:
+  /// **'暂无会话，请点击右上角添加'**
+  String get noSessionsInDrawerPrompt;
+
+  /// No description provided for @confirmDeleteTerminalSession.
+  ///
+  /// In zh, this message translates to:
+  /// **'确定要删除终端 \"({index}) {name}\" 吗？'**
+  String confirmDeleteTerminalSession(int index, String name);
+
+  /// No description provided for @deleteSystemFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'删除系统失败: {error}'**
+  String deleteSystemFailed(String error);
 }
 
 class _AppLocalizationsDelegate

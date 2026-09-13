@@ -21,6 +21,11 @@ subprojects {
 }
 subprojects {
     project.evaluationDependsOn(":app")
+    plugins.withId("com.android.library") {
+        configure<com.android.build.gradle.LibraryExtension> {
+            ndkVersion = "28.2.13676358"
+        }
+    }
 }
 
 tasks.register<Delete>("clean") {

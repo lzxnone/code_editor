@@ -121,5 +121,123 @@
   "keepLocal": "Keep Local Changes",
   "storagePermissionRequiredTitle": "Storage Access Required",
   "storagePermissionRequiredMessage": "Code Editor requires \"All files access\" permission to read, create, and save project files on your device.\n\nPlease enable it in the system settings page.",
-  "goToSettings": "Settings"
+  "goToSettings": "Settings",
+  "terminal": "Terminal",
+  "terminalWithSystem": "Terminal · {system}",
+  "@terminalWithSystem": {
+    "placeholders": {
+      "system": {
+        "type": "String"
+      }
+    }
+  },
+  "sessionDefaultName": "Session",
+  "systemManagement": "System Management",
+  "systemManagementTooltip": "System Management & Selection",
+  "sessionListTooltip": "Session List",
+  "noActiveSessions": "No active sessions",
+  "terminalInputHint": "Enter command...",
+  "sendCommandTooltip": "Send Command",
+  "importNewSystem": "Import New System",
+  "importBuiltinAlpine": "Import from App (Alpine)",
+  "importExternalTarGz": "Import from External (.tar.gz)",
+  "selectSystemDefaultPrompt": "Select a system as default; new terminals will start in this system:",
+  "noSystemsPrompt": "No systems available. Tap \"+\" at top right to import",
+  "importBuiltinAlpineTitle": "Import Built-in Alpine System",
+  "systemNameHintWithDefault": "System name (e.g. {name})",
+  "@systemNameHintWithDefault": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "systemImportSuccess": "System \"{name}\" imported and ready",
+  "@systemImportSuccess": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "importExternalSystemTitle": "Import External System",
+  "systemNameHint": "System Name",
+  "externalSystemImportSuccess": "External system \"{name}\" imported and ready",
+  "@externalSystemImportSuccess": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "deleteSystemConfirmTitle": "High-Risk Operation: Delete System",
+  "deleteSystemConfirmMessage": "Are you sure you want to permanently delete system \"{name}\"?\n\n⚠️ This will physically erase all internal data and installed packages. This cannot be undone!\n\nAll associated terminal sessions will also be closed.",
+  "@deleteSystemConfirmMessage": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "permanentDelete": "Permanently Delete",
+  "deleteSystemSuccess": "System \"{name}\" and associated sessions deleted",
+  "@deleteSystemSuccess": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "deleteSystemTooltip": "Permanently delete this system (High risk)",
+  "preparingInitialization": "Preparing initialization...",
+  "cancellingAndCleaning": "Cancelling and cleaning leftover directory...",
+  "cancelledImportSystem": "Cancelled importing system \"{name}\"",
+  "@cancelledImportSystem": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "importFailed": "Import failed: {error}",
+  "@importFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "importingSystemTitle": "Importing: {name}",
+  "@importingSystemTitle": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "cancelImport": "Cancel Import",
+  "interrupting": "Interrupting...",
+  "sessionDrawerTitle": "Sessions",
+  "addTerminalTooltip": "Add Terminal",
+  "noSystemSelectedWarning": "No system selected. Please import or select a system first.",
+  "noSessionsInDrawerPrompt": "No sessions. Tap top right to add",
+  "confirmDeleteTerminalSession": "Are you sure you want to delete terminal \"({index}) {name}\"?",
+  "@confirmDeleteTerminalSession": {
+    "placeholders": {
+      "index": {
+        "type": "int"
+      },
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "deleteSystemFailed": "Failed to delete system: {error}",
+  "@deleteSystemFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  }
 }

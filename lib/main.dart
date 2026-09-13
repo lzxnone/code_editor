@@ -27,7 +27,19 @@ class MyApp extends StatelessWidget {
               (tab ?? (TabProvider()..init()))..bindProjectProvider(project),
         ),
         ChangeNotifierProvider(create: (_) => TerminalProvider()),
-        ChangeNotifierProvider(create: (_) => DistroProvider()..checkAllStatuses()),
+        ChangeNotifierProxyProvider<TerminalProvider, DistroProvider>(
+          create: (_) => DistroProvider()..init(),
+          update: (_, terminal, distro) {
+            final dp = distro ?? (DistroProvider()..init());
+            dp.onSystemDeleted = (deletedSystem) {
+              terminal.removeSessionsForDistro(deletedSystem);
+              if (!dp.hasAnySystem) {
+                terminal.clearAllSessions();
+              }
+            };
+            return dp;
+          },
+        ),
       ],
       child: Consumer<SettingsProvider>(
         builder: (context, settings, child) {

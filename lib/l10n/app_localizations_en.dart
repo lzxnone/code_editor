@@ -381,4 +381,145 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get goToSettings => 'Settings';
+
+  @override
+  String get terminal => 'Terminal';
+
+  @override
+  String terminalWithSystem(String system) {
+    return 'Terminal · $system';
+  }
+
+  @override
+  String get sessionDefaultName => 'Session';
+
+  @override
+  String get systemManagement => 'System Management';
+
+  @override
+  String get systemManagementTooltip => 'System Management & Selection';
+
+  @override
+  String get sessionListTooltip => 'Session List';
+
+  @override
+  String get noActiveSessions => 'No active sessions';
+
+  @override
+  String get terminalInputHint => 'Enter command...';
+
+  @override
+  String get sendCommandTooltip => 'Send Command';
+
+  @override
+  String get importNewSystem => 'Import New System';
+
+  @override
+  String get importBuiltinAlpine => 'Import from App (Alpine)';
+
+  @override
+  String get importExternalTarGz => 'Import from External (.tar.gz)';
+
+  @override
+  String get selectSystemDefaultPrompt =>
+      'Select a system as default; new terminals will start in this system:';
+
+  @override
+  String get noSystemsPrompt =>
+      'No systems available. Tap \"+\" at top right to import';
+
+  @override
+  String get importBuiltinAlpineTitle => 'Import Built-in Alpine System';
+
+  @override
+  String systemNameHintWithDefault(String name) {
+    return 'System name (e.g. $name)';
+  }
+
+  @override
+  String systemImportSuccess(String name) {
+    return 'System \"$name\" imported and ready';
+  }
+
+  @override
+  String get importExternalSystemTitle => 'Import External System';
+
+  @override
+  String get systemNameHint => 'System Name';
+
+  @override
+  String externalSystemImportSuccess(String name) {
+    return 'External system \"$name\" imported and ready';
+  }
+
+  @override
+  String get deleteSystemConfirmTitle => 'High-Risk Operation: Delete System';
+
+  @override
+  String deleteSystemConfirmMessage(String name) {
+    return 'Are you sure you want to permanently delete system \"$name\"?\n\n⚠️ This will physically erase all internal data and installed packages. This cannot be undone!\n\nAll associated terminal sessions will also be closed.';
+  }
+
+  @override
+  String get permanentDelete => 'Permanently Delete';
+
+  @override
+  String deleteSystemSuccess(String name) {
+    return 'System \"$name\" and associated sessions deleted';
+  }
+
+  @override
+  String get deleteSystemTooltip =>
+      'Permanently delete this system (High risk)';
+
+  @override
+  String get preparingInitialization => 'Preparing initialization...';
+
+  @override
+  String get cancellingAndCleaning =>
+      'Cancelling and cleaning leftover directory...';
+
+  @override
+  String cancelledImportSystem(String name) {
+    return 'Cancelled importing system \"$name\"';
+  }
+
+  @override
+  String importFailed(String error) {
+    return 'Import failed: $error';
+  }
+
+  @override
+  String importingSystemTitle(String name) {
+    return 'Importing: $name';
+  }
+
+  @override
+  String get cancelImport => 'Cancel Import';
+
+  @override
+  String get interrupting => 'Interrupting...';
+
+  @override
+  String get sessionDrawerTitle => 'Sessions';
+
+  @override
+  String get addTerminalTooltip => 'Add Terminal';
+
+  @override
+  String get noSystemSelectedWarning =>
+      'No system selected. Please import or select a system first.';
+
+  @override
+  String get noSessionsInDrawerPrompt => 'No sessions. Tap top right to add';
+
+  @override
+  String confirmDeleteTerminalSession(int index, String name) {
+    return 'Are you sure you want to delete terminal \"($index) $name\"?';
+  }
+
+  @override
+  String deleteSystemFailed(String error) {
+    return 'Failed to delete system: $error';
+  }
 }

@@ -1075,8 +1075,8 @@ void main() {
     expect(find.text('file1.dart'), findsWidgets);
     expect(tabProvider.isModified, isTrue);
 
-    // Open file2 via selectFile (simulating user clicking file2 in file tree/drawer)
-    await tabProvider.selectFile(file2);
+    // Open file2 via openFile (with content specified, or selectFile)
+    await tabProvider.openFile(file2.path, content: 'int b = 2;');
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 100));
 
@@ -1470,7 +1470,7 @@ void main() {
 
       // Scroll to virtual keyboard tiles
       final configTile = find.text('编辑键盘配置');
-      await tester.scrollUntilVisible(configTile, 200);
+      await tester.scrollUntilVisible(configTile, 200, scrollable: find.byType(Scrollable).first);
       await tester.pumpAndSettle();
       expect(configTile, findsOneWidget);
 
@@ -1512,7 +1512,7 @@ void main() {
 
       // Tap '保存' with valid config -> dialog closes
       await tester.tap(find.text('保存'));
-      await tester.pump(const Duration(milliseconds: 500));
+      await tester.pumpAndSettle();
 
       expect(find.text('小键盘配置 (JSON)'), findsNothing);
 

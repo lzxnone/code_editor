@@ -1,3 +1,4 @@
+import 'package:code_editor/l10n/app_localizations.dart';
 import 'package:code_editor/models/terminal_session.dart';
 import 'package:code_editor/providers/terminal_provider.dart';
 import 'package:code_editor/utils/dialog_utils.dart';
@@ -22,8 +23,8 @@ class TerminalSessionItemWidget extends StatelessWidget {
     final theme = Theme.of(context);
     final displayIndex = index + 1; // 索引从 1 开始
     final titleText = '($displayIndex) ${session.name}';
+    final badgeLabel = session.distroId;
     final isHost = session.distroId == 'host';
-    final badgeLabel = isHost ? 'Host' : 'Alpine';
 
     final textStyle = theme.textTheme.bodyMedium?.copyWith(
       fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
@@ -122,6 +123,7 @@ class TerminalSessionItemWidget extends StatelessWidget {
     );
 
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context)!;
     final onSurfaceColor = theme.colorScheme.onSurface;
 
     final selectedAction = await showMenu<String>(
@@ -141,14 +143,14 @@ class TerminalSessionItemWidget extends StatelessWidget {
         _buildMenuItem(
           value: 'rename',
           icon: Icons.edit_outlined,
-          title: '重命名',
+          title: l10n.rename,
           color: onSurfaceColor,
         ),
         const PopupMenuDivider(),
         _buildMenuItem(
           value: 'delete',
           icon: Icons.delete_outline,
-          title: '删除',
+          title: l10n.delete,
           color: theme.colorScheme.error,
           isDestructive: true,
         ),
@@ -184,13 +186,14 @@ class TerminalSessionItemWidget extends StatelessWidget {
 
   void _handleMenuAction(BuildContext context, String action, int displayIndex) async {
     final provider = context.read<TerminalProvider>();
+    final l10n = AppLocalizations.of(context)!;
 
     switch (action) {
       case 'rename':
         final newName = await DialogUtils.showInputDialog(
           context,
-          title: '重命名',
-          hintText: '新名称',
+          title: l10n.rename,
+          hintText: l10n.newName,
           initialValue: session.name,
         );
         if (newName != null && newName.trim().isNotEmpty && newName.trim() != session.name) {
@@ -201,8 +204,8 @@ class TerminalSessionItemWidget extends StatelessWidget {
       case 'delete':
         final confirmed = await DialogUtils.showDestructiveConfirmDialog(
           context,
-          title: '确认删除',
-          message: '确定要删除终端 "($displayIndex) ${session.name}" 吗？',
+          title: l10n.confirmDelete,
+          message: l10n.confirmDeleteTerminalSession(displayIndex, session.name),
         );
         if (confirmed && context.mounted) {
           provider.removeSession(session.id);

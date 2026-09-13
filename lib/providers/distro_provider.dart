@@ -1,93 +1,115 @@
+import 'dart:io';
 import 'package:flutter/foundation.dart';
-import '../models/distro_info.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import '../services/distro_installer.dart';
 import '../services/distro_manager.dart';
 
-/// Linux 发行版状态提供者（供 UI 监听与绑定）
+/// 终端多系统状态与默认系统持久化管理器
 class DistroProvider with ChangeNotifier {
+  static const String _prefKeyDefaultSystem = 'terminal_default_system';
+
   final DistroManager _manager = DistroManager();
 
-  /// 各发行版状态缓存
-  final Map<String, DistroStatus> _statuses = {};
+  /// 当前已安装的系统名称列表
+  List<String> _installedSystems = [];
 
-  /// 安装进度 (0.0 ~ 1.0)
-  final Map<String, double> _progress = {};
+  /// 当前选中的默认系统（若无系统则为 null）
+  String? _selectedSystem;
 
-  /// 状态描述文字（如 "正在解压... 45%"）
-  final Map<String, String> _statusMessages = {};
+  /// 是否已完成初始状态加载
+  bool _isInitialized = false;
 
-  /// 默认创建会话使用的发行版 ID
-  String _defaultDistroId = 'alpine';
+  /// 系统被物理删除时的回调监听（如联动终端清理其下全部关联会话）
+  void Function(String deletedSystem)? onSystemDeleted;
 
-  String get defaultDistroId => _defaultDistroId;
+  bool get isInitialized => _isInitialized;
 
-  List<DistroInfo> get distros => _manager.listDistros();
+  List<String> get installedSystems => List.unmodifiable(_installedSystems);
 
-  DistroStatus getStatus(String id) => _statuses[id] ?? DistroStatus.notInstalled;
+  String? get selectedSystem => _selectedSystem;
 
-  double getProgress(String id) => _progress[id] ?? 0.0;
+  bool get hasAnySystem => _installedSystems.isNotEmpty;
 
-  String getStatusMessage(String id) => _statusMessages[id] ?? '';
-
-  /// 初始化检查所有发行版状态
-  Future<void> checkAllStatuses() async {
-    for (final distro in _manager.listDistros()) {
-      try {
-        final isInst = await _manager.isInstalled(distro.id);
-        _statuses[distro.id] = isInst ? DistroStatus.installed : DistroStatus.notInstalled;
-      } catch (_) {
-        _statuses[distro.id] = DistroStatus.error;
-      }
-    }
+  /// 初始化：扫描系统列表并读取持久化的默认系统
+  Future<void> init() async {
+    await refreshSystems();
+    _isInitialized = true;
     notifyListeners();
   }
 
-  /// 设置默认发行版
-  void setDefaultDistro(String id) {
-    if (_defaultDistroId != id) {
-      _defaultDistroId = id;
-      notifyListeners();
-    }
-  }
+  /// 重新扫描已安装的系统并校准当前默认选中项
+  Future<void> refreshSystems() async {
+    final systems = await _manager.listInstalledSystems();
+    _installedSystems = systems;
 
-  /// 安装发行版
-  Future<bool> installDistro(String distroId) async {
-    _statuses[distroId] = DistroStatus.installing;
-    _progress[distroId] = 0.0;
-    _statusMessages[distroId] = '准备开始安装...';
+    final prefs = await SharedPreferences.getInstance();
+    final savedSystem = prefs.getString(_prefKeyDefaultSystem);
+
+    if (savedSystem != null && _installedSystems.contains(savedSystem)) {
+      _selectedSystem = savedSystem;
+    } else if (_installedSystems.isNotEmpty) {
+      _selectedSystem = _installedSystems.first;
+      await prefs.setString(_prefKeyDefaultSystem, _selectedSystem!);
+    } else {
+      _selectedSystem = null;
+      await prefs.remove(_prefKeyDefaultSystem);
+    }
+
     notifyListeners();
+  }
 
-    try {
-      await _manager.installDistro(
-        distroId,
-        onProgress: (prog, msg) {
-          _progress[distroId] = prog;
-          _statusMessages[distroId] = msg;
-          notifyListeners();
-        },
-      );
-      _statuses[distroId] = DistroStatus.installed;
-      _statusMessages[distroId] = '已就绪';
+  /// 选择指定系统为当前活跃系统并持久化为默认系统
+  Future<void> selectSystem(String systemName) async {
+    if (!_installedSystems.contains(systemName)) return;
+
+    if (_selectedSystem != systemName) {
+      _selectedSystem = systemName;
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(_prefKeyDefaultSystem, systemName);
       notifyListeners();
-      return true;
-    } catch (e) {
-      _statuses[distroId] = DistroStatus.error;
-      _statusMessages[distroId] = '安装失败: $e';
-      notifyListeners();
-      return false;
     }
   }
 
-  /// 卸载发行版
-  Future<void> uninstallDistro(String distroId) async {
-    try {
-      await _manager.uninstallDistro(distroId);
-      _statuses[distroId] = DistroStatus.notInstalled;
-      _progress.remove(distroId);
-      _statusMessages.remove(distroId);
-      notifyListeners();
-    } catch (e) {
-      _statusMessages[distroId] = '卸载失败: $e';
-      notifyListeners();
-    }
+  /// 从应用内置资源导入 Alpine 系统实例
+  Future<void> importBuiltinAlpine({
+    required String systemName,
+    InstallProgressCallback? onProgress,
+    bool Function()? isCancelled,
+  }) async {
+    await _manager.importBuiltinAlpine(
+      systemName: systemName,
+      onProgress: onProgress,
+      isCancelled: isCancelled,
+    );
+
+    // 导入成功后刷新列表并自动选为当前系统
+    await refreshSystems();
+    await selectSystem(systemName);
+  }
+
+  /// 从外部 .tar.gz 压缩包导入自定义系统实例
+  Future<void> importFromCustomTarGz({
+    required String systemName,
+    required File tarGzFile,
+    InstallProgressCallback? onProgress,
+    bool Function()? isCancelled,
+  }) async {
+    await _manager.importFromCustomTarGz(
+      systemName: systemName,
+      tarGzFile: tarGzFile,
+      onProgress: onProgress,
+      isCancelled: isCancelled,
+    );
+
+    // 导入成功后刷新列表并自动选为当前系统
+    await refreshSystems();
+    await selectSystem(systemName);
+  }
+
+  /// 高危操作：删除指定系统实例
+  Future<void> deleteSystem(String systemName) async {
+    await _manager.deleteSystem(systemName);
+    onSystemDeleted?.call(systemName);
+    await refreshSystems();
   }
 }

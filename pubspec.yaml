@@ -26,6 +26,8 @@ dependencies:
   permission_handler: ^13.0.2
   path_provider: ^2.1.5
   archive: ^3.6.1
+  xterm: ^4.0.0
+  flutter_pty: ^0.4.1
 
 dev_dependencies:
   flutter_test:
@@ -41,6 +43,8 @@ flutter:
 
   assets:
     - assets/distros/
+    - assets/shims/x86_64/
+    - assets/shims/arm64-v8a/
 
   fonts:
     - family: JetBrains Mono
