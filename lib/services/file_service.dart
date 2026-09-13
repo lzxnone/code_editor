@@ -125,7 +125,7 @@ class FileService {
 
     final ext = p.extension(path).toLowerCase();
     if(_binaryExtensions.contains(ext)) {
-      throw const FileSystemException('此文件是二进制可执行文件或多媒体文件，不支持作为文本编辑');
+      throw FileSystemException('此文件是二进制可执行文件或多媒体文件，不支持作为文本编辑', path);
     }
 
     final length = await file.length();

@@ -79,7 +79,8 @@ class TabProvider extends ChangeNotifier {
 
     if (loadedTabs.isEmpty && lastOpenedFilePath != null && lastOpenedFilePath.trim().isNotEmpty) {
       final cleanLast = p.normalize(lastOpenedFilePath.trim());
-      if (await FileService.instance.entityExists(cleanLast)) {
+      final wasExplicitlyClosed = openFilePaths.isNotEmpty && !openFilePaths.any((pStr) => p.equals(p.normalize(pStr), cleanLast));
+      if (!wasExplicitlyClosed && await FileService.instance.entityExists(cleanLast)) {
         loadedTabs.add(EditorTabItem(
           path: cleanLast,
           isModified: false,
@@ -371,6 +372,14 @@ class TabProvider extends ChangeNotifier {
     await _persistTabsHistory();
     notifyListeners();
     return true;
+  }
+
+  /// 根据文件路径安全关闭指定标签页（避免由于并发动画或索引错位导致的越界异常）
+  Future<bool> closeTabByPath(BuildContext context, String path) async {
+    final cleanPath = p.normalize(path.trim());
+    final index = _openTabs.indexWhere((t) => p.equals(t.path, cleanPath));
+    if (index == -1) return false;
+    return closeTab(context, index);
   }
 
   /// 关闭所有打开的标签页

@@ -7,6 +7,8 @@ class KeyboardIconHelper {
     'undo': Icons.undo,
     'redo': Icons.redo,
     'tab': Icons.keyboard_tab,
+    'untab': Icons.format_indent_decrease,
+    'outdent': Icons.format_indent_decrease,
     'arrow_left': Icons.arrow_back,
     'arrow_right': Icons.arrow_forward,
     'arrow_up': Icons.arrow_upward,
@@ -33,6 +35,114 @@ class KeyboardIconHelper {
   static List<String> get supportedIconKeys => _icons.keys.toList();
 }
 
+/// 虚拟小键盘作用域（编辑区或终端）
+enum KeyboardScope {
+  editor,
+  terminal;
+
+  String get displayName {
+    switch (this) {
+      case KeyboardScope.editor:
+        return '编辑区';
+      case KeyboardScope.terminal:
+        return '终端';
+    }
+  }
+}
+
+/// 按键动作定义项辅助
+class KeyboardActionOption {
+  final String action;
+  final String label;
+  final String description;
+
+  const KeyboardActionOption({
+    required this.action,
+    required this.label,
+    required this.description,
+  });
+}
+
+/// 预设值选项辅助
+class KeyboardValueOption {
+  final String value;
+  final String label;
+
+  const KeyboardValueOption({
+    required this.value,
+    required this.label,
+  });
+}
+
+/// 作用域对应的动作与预设值定义
+class KeyboardScopeHelper {
+  /// 编辑区支持的动作类型
+  static const List<KeyboardActionOption> editorActions = [
+    KeyboardActionOption(action: 'input', label: '普通文本 (input)', description: '直接插入指定文本内容'),
+    KeyboardActionOption(action: 'pair', label: '成对符号 (pair)', description: '括号/引号等成对符号，支持选区包裹与光标偏移'),
+    KeyboardActionOption(action: 'command', label: '编辑器命令 (command)', description: '触发缩进、撤销、光标移动等编辑器功能'),
+  ];
+
+  /// 终端支持的动作类型
+  static const List<KeyboardActionOption> terminalActions = [
+    KeyboardActionOption(action: 'input', label: '普通文本 (input)', description: '直接向终端发送指定文本'),
+    KeyboardActionOption(action: 'modifier', label: '修饰键 (modifier)', description: 'Ctrl / Alt 等组合修饰键状态切换'),
+    KeyboardActionOption(action: 'terminal_key', label: '终端按键 (terminal_key)', description: 'Esc、Tab、Ctrl+C、方向键等终端特殊键'),
+  ];
+
+  /// 编辑区预设命令列表
+  static const List<KeyboardValueOption> editorCommands = [
+    KeyboardValueOption(value: 'tab', label: 'Tab (向右缩进)'),
+    KeyboardValueOption(value: 'untab', label: 'Untab (向左缩进)'),
+    KeyboardValueOption(value: 'undo', label: '撤销 (Undo)'),
+    KeyboardValueOption(value: 'redo', label: '重做 (Redo)'),
+    KeyboardValueOption(value: 'cursor_left', label: '光标左移'),
+    KeyboardValueOption(value: 'cursor_right', label: '光标右移'),
+    KeyboardValueOption(value: 'cursor_up', label: '光标上移'),
+    KeyboardValueOption(value: 'cursor_down', label: '光标下移'),
+    KeyboardValueOption(value: 'line_start', label: '移动至行首'),
+    KeyboardValueOption(value: 'line_end', label: '移动至行尾'),
+    KeyboardValueOption(value: 'page_start', label: '移动至文首'),
+    KeyboardValueOption(value: 'page_end', label: '移动至文末'),
+    KeyboardValueOption(value: 'copy', label: '复制 (Copy)'),
+    KeyboardValueOption(value: 'cut', label: '剪切 (Cut)'),
+    KeyboardValueOption(value: 'paste', label: '粘贴 (Paste)'),
+    KeyboardValueOption(value: 'delete', label: '删除 (Delete)'),
+    KeyboardValueOption(value: 'select_all', label: '全选 (Select All)'),
+    KeyboardValueOption(value: 'keyboard_hide', label: '收起小键盘'),
+  ];
+
+  /// 编辑区成对符号预设列表
+  static const List<KeyboardValueOption> editorPairs = [
+    KeyboardValueOption(value: '()', label: '圆括号 ()'),
+    KeyboardValueOption(value: '[]', label: '方括号 []'),
+    KeyboardValueOption(value: '{}', label: '花括号 {}'),
+    KeyboardValueOption(value: '""', label: '双引号 ""'),
+    KeyboardValueOption(value: "''", label: "单引号 ''"),
+    KeyboardValueOption(value: '<>', label: '尖括号 <>'),
+  ];
+
+  /// 终端修饰键预设列表
+  static const List<KeyboardValueOption> terminalModifiers = [
+    KeyboardValueOption(value: 'ctrl', label: 'Ctrl 键'),
+    KeyboardValueOption(value: 'alt', label: 'Alt 键'),
+  ];
+
+  /// 终端按键预设列表
+  static const List<KeyboardValueOption> terminalKeys = [
+    KeyboardValueOption(value: 'esc', label: 'Esc (退出键)'),
+    KeyboardValueOption(value: 'terminal_tab', label: 'Tab (补全键)'),
+    KeyboardValueOption(value: 'ctrl_c', label: 'Ctrl + C (中断信号)'),
+    KeyboardValueOption(value: 'ctrl_d', label: 'Ctrl + D (EOF / 退出)'),
+    KeyboardValueOption(value: 'ctrl_z', label: 'Ctrl + Z (挂起挂起)'),
+    KeyboardValueOption(value: 'ctrl_l', label: 'Ctrl + L (清屏)'),
+    KeyboardValueOption(value: 'arrow_up', label: '方向上键 (历史上一条)'),
+    KeyboardValueOption(value: 'arrow_down', label: '方向下键 (历史下一条)'),
+    KeyboardValueOption(value: 'arrow_left', label: '方向左键'),
+    KeyboardValueOption(value: 'arrow_right', label: '方向右键'),
+  ];
+}
+
 /// 小键盘单个按键数据模型
 class KeyboardKeyItem {
   /// 显示文本（当 icon 为空或不存在时渲染）
@@ -45,6 +155,8 @@ class KeyboardKeyItem {
   /// - 'input': 普通文本输入（默认）
   /// - 'pair': 括号/引号等成对符号，支持选区包裹与光标偏移
   /// - 'command': 编辑器动作命令，例如 'cursor_left', 'tab', 'undo' 等
+  /// - 'modifier': 终端修饰键，如 'ctrl', 'alt'
+  /// - 'terminal_key': 终端按键，如 'esc', 'ctrl_c'
   final String action;
 
   /// 动作附带值（输入的文本或命令名称）
@@ -60,6 +172,23 @@ class KeyboardKeyItem {
     required this.value,
     this.cursorOffset = 0,
   });
+
+  KeyboardKeyItem copyWith({
+    String? label,
+    String? icon,
+    bool clearIcon = false,
+    String? action,
+    String? value,
+    int? cursorOffset,
+  }) {
+    return KeyboardKeyItem(
+      label: label ?? this.label,
+      icon: clearIcon ? null : (icon ?? this.icon),
+      action: action ?? this.action,
+      value: value ?? this.value,
+      cursorOffset: cursorOffset ?? this.cursorOffset,
+    );
+  }
 
   /// 从 JSON 数据中解析按键：
   /// - 若为 String：严格转换为 input 动作，label 和 value 为该字符串，绝对不做额外猜测！
@@ -119,6 +248,16 @@ class KeyboardPageItem {
     required this.keys,
   });
 
+  KeyboardPageItem copyWith({
+    int? count,
+    List<List<KeyboardKeyItem>>? keys,
+  }) {
+    return KeyboardPageItem(
+      count: count ?? this.count,
+      keys: keys ?? this.keys,
+    );
+  }
+
   factory KeyboardPageItem.fromJson(Map<String, dynamic> json) {
     final count = (json['count'] as num?)?.toInt() ?? 6;
     final rawKeys = json['keys'] as List<dynamic>? ?? [];
@@ -152,7 +291,18 @@ class VirtualKeyboardConfig {
     required this.pages,
   });
 
+  VirtualKeyboardConfig copyWith({
+    List<KeyboardPageItem>? pages,
+  }) {
+    return VirtualKeyboardConfig(
+      pages: pages ?? this.pages,
+    );
+  }
+
   factory VirtualKeyboardConfig.fromJson(Map<String, dynamic> json) {
+    if (!json.containsKey('pages')) {
+      return _defaultConfig();
+    }
     final rawPages = json['pages'] as List<dynamic>? ?? [];
     final List<KeyboardPageItem> parsedPages = [];
 
@@ -163,8 +313,24 @@ class VirtualKeyboardConfig {
     }
 
     return VirtualKeyboardConfig(
-      pages: parsedPages.isNotEmpty ? parsedPages : _defaultConfig().pages,
+      pages: parsedPages,
     );
+  }
+
+  /// 判断当前配置是否包含至少一个有效按键
+  bool get hasKeys {
+    for (final page in pages) {
+      for (final row in page.keys) {
+        for (final key in row) {
+          if (key.label.trim().isNotEmpty ||
+              (key.icon != null && key.icon!.trim().isNotEmpty) ||
+              key.value.trim().isNotEmpty) {
+            return true;
+          }
+        }
+      }
+    }
+    return false;
   }
 
   Map<String, dynamic> toJson() {
@@ -285,47 +451,51 @@ class VirtualKeyboardConfig {
   static VirtualKeyboardConfig _defaultConfig() {
     return const VirtualKeyboardConfig(
       pages: [
-        // Page 1: 常用标点与成对符号 (每行 6 格)
+        // Page 1: 常用控制、括号与高频符号 (每行 7 格)
         KeyboardPageItem(
-          count: 6,
+          count: 7,
           keys: [
             [
               KeyboardKeyItem(label: 'Tab', icon: 'tab', action: 'command', value: 'tab'),
-              KeyboardKeyItem(label: '(', action: 'pair', value: '()', cursorOffset: -1),
-              KeyboardKeyItem(label: ')', action: 'input', value: ')'),
-              KeyboardKeyItem(label: '{', action: 'pair', value: '{}', cursorOffset: -1),
-              KeyboardKeyItem(label: '}', action: 'input', value: '}'),
-              KeyboardKeyItem(label: ';', action: 'input', value: ';'),
+              KeyboardKeyItem(label: 'Untab', icon: 'untab', action: 'command', value: 'untab'),
+              KeyboardKeyItem(label: '()', action: 'pair', value: '()', cursorOffset: -1),
+              KeyboardKeyItem(label: '[]', action: 'pair', value: '[]', cursorOffset: -1),
+              KeyboardKeyItem(label: '{}', action: 'pair', value: '{}', cursorOffset: -1),
+              KeyboardKeyItem(label: '撤销', icon: 'undo', action: 'command', value: 'undo'),
+              KeyboardKeyItem(label: '重做', icon: 'redo', action: 'command', value: 'redo'),
             ],
             [
               KeyboardKeyItem(label: '<-', icon: 'arrow_left', action: 'command', value: 'cursor_left'),
               KeyboardKeyItem(label: '->', icon: 'arrow_right', action: 'command', value: 'cursor_right'),
-              KeyboardKeyItem(label: '[', action: 'pair', value: '[]', cursorOffset: -1),
-              KeyboardKeyItem(label: ']', action: 'input', value: ']'),
-              KeyboardKeyItem(label: '"', action: 'pair', value: '""', cursorOffset: -1),
-              KeyboardKeyItem(label: "'", action: 'pair', value: "''", cursorOffset: -1),
+              KeyboardKeyItem(label: '""', action: 'pair', value: '""', cursorOffset: -1),
+              KeyboardKeyItem(label: "''", action: 'pair', value: "''", cursorOffset: -1),
+              KeyboardKeyItem(label: ';', action: 'input', value: ';'),
+              KeyboardKeyItem(label: '=', action: 'input', value: '='),
+              KeyboardKeyItem(label: ',', action: 'input', value: ','),
             ],
           ],
         ),
-        // Page 2: 常用操作与运算符 (每行 6 格)
+        // Page 2: 常用代码符号与运算符 (每行 7 格)
         KeyboardPageItem(
-          count: 6,
+          count: 7,
           keys: [
             [
-              KeyboardKeyItem(label: '撤销', icon: 'undo', action: 'command', value: 'undo'),
-              KeyboardKeyItem(label: '重做', icon: 'redo', action: 'command', value: 'redo'),
-              KeyboardKeyItem(label: '=', action: 'input', value: '='),
+              KeyboardKeyItem(label: '.', action: 'input', value: '.'),
+              KeyboardKeyItem(label: ':', action: 'input', value: ':'),
+              KeyboardKeyItem(label: '<', action: 'input', value: '<'),
+              KeyboardKeyItem(label: '>', action: 'input', value: '>'),
+              KeyboardKeyItem(label: '/', action: 'input', value: '/'),
+              KeyboardKeyItem(label: r'\', action: 'input', value: r'\'),
+              KeyboardKeyItem(label: '_', action: 'input', value: '_'),
+            ],
+            [
               KeyboardKeyItem(label: '+', action: 'input', value: '+'),
               KeyboardKeyItem(label: '-', action: 'input', value: '-'),
               KeyboardKeyItem(label: '*', action: 'input', value: '*'),
-            ],
-            [
-              KeyboardKeyItem(label: '/', action: 'input', value: '/'),
-              KeyboardKeyItem(label: ':', action: 'input', value: ':'),
-              KeyboardKeyItem(label: ',', action: 'input', value: ','),
-              KeyboardKeyItem(label: '.', action: 'input', value: '.'),
               KeyboardKeyItem(label: '!', action: 'input', value: '!'),
               KeyboardKeyItem(label: '?', action: 'input', value: '?'),
+              KeyboardKeyItem(label: '&', action: 'input', value: '&'),
+              KeyboardKeyItem(label: '|', action: 'input', value: '|'),
             ],
           ],
         ),

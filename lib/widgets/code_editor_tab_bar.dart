@@ -43,11 +43,11 @@ class CodeEditorTabBar extends StatelessWidget {
     )..layout();
 
     // 实际所需完整宽度（向上取整避免浮点精度缺失）：
-    // 文本宽度 + 脏标记 (12.0) + 内外间距与关闭按钮 (33.0) + 安全呼吸缓冲空间 (16.0)
+    // 文本宽度 + 脏标记 (10.0) + 内外间距与关闭按钮 (26.0) + 安全缓冲空间 (10.0)
     final textWidth = textPainter.width.ceilToDouble();
-    final dirtyWidth = isModified ? 12.0 : 0.0;
-    const fixedElementsWidth = 33.0; // 容器内边距(8) + 关闭按钮(24) + 边框(1)
-    const safetyBuffer = 16.0;       // 安全呼吸空间，杜绝亚像素及字体微偏差导致的省略号
+    final dirtyWidth = isModified ? 10.0 : 0.0;
+    const fixedElementsWidth = 26.0; // 容器内边距(8) + 关闭按钮(18)
+    const safetyBuffer = 10.0;       // 安全呼吸空间
 
     return textWidth + dirtyWidth + fixedElementsWidth + safetyBuffer;
   }
@@ -67,7 +67,7 @@ class CodeEditorTabBar extends StatelessWidget {
 
     return CodeEditorTapRegion(
       child: Container(
-        height: 36.0,
+        height: 28.0,
         width: double.infinity,
       decoration: BoxDecoration(
         color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.2),
@@ -94,9 +94,16 @@ class CodeEditorTabBar extends StatelessWidget {
               buildDefaultDragHandles: false,
               itemCount: tabs.length,
               onReorderItem: (oldIndex, newIndex) {
-                tabProvider.reorderTabs(oldIndex, newIndex);
+                int targetIndex = newIndex;
+                if (oldIndex < newIndex) {
+                  targetIndex -= 1;
+                }
+                tabProvider.reorderTabs(oldIndex, targetIndex);
               },
               itemBuilder: (context, index) {
+                if (index < 0 || index >= tabs.length) {
+                  return const SizedBox.shrink(key: ValueKey('empty_tab_placeholder'));
+                }
                 final tab = tabs[index];
                 final isSelected = activePath != null && tab.path == activePath;
                 final displayName = tab.getDisplayName(tabs, rootPath);
@@ -142,7 +149,7 @@ class CodeEditorTabBar extends StatelessWidget {
       index: index,
       child: Container(
         width: width,
-        height: 36.0,
+        height: 28.0,
       decoration: BoxDecoration(
         color: isSelected
             ? theme.colorScheme.surface
@@ -153,11 +160,11 @@ class CodeEditorTabBar extends StatelessWidget {
             width: 1.0,
           ),
           bottom: isSelected
-              ? BorderSide(
-                  color: theme.colorScheme.primary,
-                  width: 2.0,
-                )
-              : BorderSide.none,
+               ? BorderSide(
+                   color: theme.colorScheme.primary,
+                   width: 2.0,
+                 )
+               : BorderSide.none,
         ),
       ),
       child: Material(
@@ -167,7 +174,7 @@ class CodeEditorTabBar extends StatelessWidget {
             tabProvider.openFile(tab.path);
           },
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 4.0),
+            padding: const EdgeInsets.only(left: 6.0, right: 2.0),
             child: Row(
               children: [
                 Expanded(
@@ -182,7 +189,7 @@ class CodeEditorTabBar extends StatelessWidget {
                             style: TextStyle(
                               color: theme.colorScheme.error,
                               fontWeight: FontWeight.bold,
-                              fontSize: 13.0,
+                              fontSize: 12.0,
                             ),
                           ),
                         ),
@@ -204,18 +211,18 @@ class CodeEditorTabBar extends StatelessWidget {
                   ),
                 ),
                 InkResponse(
-                  radius: 12,
+                  radius: 10,
                   borderRadius: BorderRadius.circular(4.0),
                   hoverColor: theme.colorScheme.onSurface.withValues(alpha: 0.12),
                   highlightColor: theme.colorScheme.onSurface.withValues(alpha: 0.18),
                   onTap: () {
-                    tabProvider.closeTab(context, index);
+                    tabProvider.closeTabByPath(context, tab.path);
                   },
                   child: Padding(
-                    padding: const EdgeInsets.all(3.0),
+                    padding: const EdgeInsets.all(2.0),
                     child: Icon(
                       Icons.close,
-                      size: 14.0,
+                      size: 13.0,
                       color: isSelected
                           ? theme.colorScheme.onSurface
                           : theme.colorScheme.onSurfaceVariant,

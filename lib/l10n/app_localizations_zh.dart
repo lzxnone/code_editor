@@ -273,7 +273,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get editVirtualKeyboardConfig => '编辑键盘配置';
 
   @override
-  String get editVirtualKeyboardConfigSubtitle => '自定义小键盘按键布局与快捷键 (JSON)';
+  String get editVirtualKeyboardConfigSubtitle => '自定义小键盘按键布局与快捷键';
 
   @override
   String get virtualKeyboardDialogTitle => '小键盘配置 (JSON)';
@@ -510,4 +510,198 @@ class AppLocalizationsZh extends AppLocalizations {
   String deleteSystemFailed(String error) {
     return '删除系统失败: $error';
   }
+
+  @override
+  String get addSession => '新增会话';
+
+  @override
+  String get editorScope => '编辑区';
+
+  @override
+  String get terminalScope => '终端';
+
+  @override
+  String get virtualKeyboardConfigTitle => '小键盘配置';
+
+  @override
+  String virtualKeyboardPageSubtitle(String scope, int page) {
+    return '$scope:(第 $page 页)';
+  }
+
+  @override
+  String get keyboardRestoreDefaultTooltip => '恢复默认预设';
+
+  @override
+  String get keyboardPageManagementTooltip => '页面管理';
+
+  @override
+  String get keyboardDrawerTitle => '页面';
+
+  @override
+  String get keyboardNewPage => '新建页面';
+
+  @override
+  String keyboardPageItemTitle(int page) {
+    return '第 $page 页';
+  }
+
+  @override
+  String keyboardPageItemSubtitle(int count) {
+    return '$count 行';
+  }
+
+  @override
+  String get keyboardDeletePageTooltip => '删除页面';
+
+  @override
+  String get keyboardPageConfigSectionTitle => '页面配置';
+
+  @override
+  String get keyboardRowButtons => '行按钮数';
+
+  @override
+  String keyboardRowGridDescription(int count) {
+    return '页面宽度等分为 $count 格';
+  }
+
+  @override
+  String get keyboardDecreaseRowButtonsTooltip => '减少每行按键数';
+
+  @override
+  String get keyboardIncreaseRowButtonsTooltip => '增加每行按键数';
+
+  @override
+  String get keyboardPageKeysSectionTitle => '页面按键';
+
+  @override
+  String get keyboardAddNewRow => '添加新行';
+
+  @override
+  String get keyboardEmptyPageKeysHint => '当前页面暂无按键行';
+
+  @override
+  String get keyboardEmptyRowKeysHint => '行内暂无按键，点击上方“+”添加';
+
+  @override
+  String keyboardRowKeyCount(int count) {
+    return '$count 个按键';
+  }
+
+  @override
+  String get keyboardAddKeyTooltip => '添加按键';
+
+  @override
+  String get keyboardDeleteRowTooltip => '删除整行';
+
+  @override
+  String get keyboardEditKeyTooltip => '编辑按键';
+
+  @override
+  String get keyboardDeleteKeyTooltip => '删除按键';
+
+  @override
+  String get keyboardNoLabel => '(无标签)';
+
+  @override
+  String get keyboardResetDefaultTitle => '恢复默认配置';
+
+  @override
+  String get keyboardResetDefaultContent => '确定要将小键盘恢复为初始默认预设吗？当前自定义修改将被覆盖。';
+
+  @override
+  String get keyboardResetDefaultSuccess => '已恢复默认预设';
+
+  @override
+  String get keyboardDeletePageTitle => '删除页面';
+
+  @override
+  String keyboardDeletePageContent(int page) {
+    return '确定要删除“第 $page 页”吗？';
+  }
+
+  @override
+  String get keyboardDeleteRowTitle => '删除按键行';
+
+  @override
+  String keyboardDeleteRowContent(int row) {
+    return '确定要删除“第 $row 行”及其包含的所有按键吗？';
+  }
+
+  @override
+  String get keyboardDeleteKeyTitle => '删除按键';
+
+  @override
+  String keyboardDeleteKeyContent(String key) {
+    return '确定要删除按键“$key”吗？';
+  }
+
+  @override
+  String get keyboardKeepAtLeastOnePageWarning => '至少需要保留一个页面';
+
+  @override
+  String keyboardRowMaxKeysWarning(int count) {
+    return '当前存在包含 $count 个按键的行，行按钮数不能小于 $count';
+  }
+
+  @override
+  String keyboardRowReachedMaxWarning(int count) {
+    return '当前行按键数已达到上限（最多 $count 个按键）';
+  }
+
+  @override
+  String get keyboardAddKeyTitle => '添加按键';
+
+  @override
+  String get keyboardEditKeyTitle => '编辑按键';
+
+  @override
+  String get keyboardLabelFormField => '显示文本 (Label)';
+
+  @override
+  String get keyboardLabelFormFieldHint => '按键上显示的文本，如 Tab、()、A';
+
+  @override
+  String get keyboardLabelOrIconRequiredError => '请输入显示文本或选择图标';
+
+  @override
+  String get keyboardIconFormField => '图标 (Icon, 可选)';
+
+  @override
+  String get keyboardNoIconOption => '无图标 (使用文本显示)';
+
+  @override
+  String get keyboardActionFormField => '动作类型 (Action)';
+
+  @override
+  String get keyboardValueFormField => '输入文本内容 (Value)';
+
+  @override
+  String get keyboardValueFormFieldHint => '点击后直接插入的文本，如 ;、=、->';
+
+  @override
+  String get keyboardValueRequiredError => '输入文本不能为空';
+
+  @override
+  String get keyboardPairPresetFormField => '成对符号预设 (Value)';
+
+  @override
+  String get keyboardCommandPresetFormField => '预设编辑器命令 (Value)';
+
+  @override
+  String get keyboardModifierPresetFormField => '终端修饰键 (Value)';
+
+  @override
+  String get keyboardTerminalKeyPresetFormField => '终端按键 (Value)';
+
+  @override
+  String get keyboardCursorOffsetFormField => '光标相对偏移 (cursorOffset)';
+
+  @override
+  String get keyboardCursorOffsetHelper => '例如 () 插入后光标居中需向左偏移 1 位，填写 -1';
+
+  @override
+  String get keyboardCursorOffsetRequiredError => '请输入光标偏移（通常为 -1）';
+
+  @override
+  String get keyboardCursorOffsetIntegerError => '偏移量必须为整数';
 }

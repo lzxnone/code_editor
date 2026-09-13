@@ -1,6 +1,7 @@
 import 'package:code_editor/l10n/app_localizations.dart';
 import 'package:code_editor/views/terminal_view.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:path/path.dart' as p;
 import 'package:re_editor/re_editor.dart';
 
@@ -65,8 +66,15 @@ class CodeEditorAppBar extends StatelessWidget implements PreferredSizeWidget {
       subtitleText = null;
     }
 
+    final isDark = theme.brightness == Brightness.dark;
+
     return CodeEditorTapRegion(
       child: AppBar(
+        systemOverlayStyle: SystemUiOverlayStyle(
+          statusBarColor: Colors.transparent,
+          statusBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
+          statusBarBrightness: isDark ? Brightness.dark : Brightness.light,
+        ),
         backgroundColor: theme.colorScheme.primaryContainer,
         foregroundColor: theme.colorScheme.onSurface,
         title: Column(

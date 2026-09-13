@@ -237,14 +237,14 @@ class AppFonts {
   static AppFontItem getEditorFont(String? id) {
     return editorFonts.firstWhere(
       (f) => f.id == id,
-      orElse: () => editorMonospace,
+      orElse: () => editorJetBrainsMono,
     );
   }
 
   static AppFontItem getTerminalFont(String? id) {
     return terminalFonts.firstWhere(
       (f) => f.id == id,
-      orElse: () => terminalMonospace,
+      orElse: () => terminalJetBrainsMono,
     );
   }
 }

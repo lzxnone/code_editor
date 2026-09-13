@@ -409,16 +409,16 @@ void main() {
     test('SettingsProvider manages UI, Editor, and Terminal font choices correctly', () async {
       final settings = SettingsProvider();
       expect(settings.uiFont.id, equals('system_default'));
-      expect(settings.editorFont.id, equals('monospace'));
-      expect(settings.terminalFont.id, equals('monospace'));
+      expect(settings.editorFont.id, equals('jetbrains_mono'));
+      expect(settings.terminalFont.id, equals('jetbrains_mono'));
 
       await settings.setUiFontId('sans_serif');
       expect(settings.uiFont.id, equals('sans_serif'));
       expect(settings.uiFont.fontFamily, equals('sans-serif'));
 
-      await settings.setEditorFontId('jetbrains_mono');
-      expect(settings.editorFont.id, equals('jetbrains_mono'));
-      expect(settings.editorFont.fontFamily, equals('JetBrains Mono'));
+      await settings.setEditorFontId('monospace');
+      expect(settings.editorFont.id, equals('monospace'));
+      expect(settings.editorFont.fontFamily, equals('monospace'));
 
       await settings.setTerminalFontId('consolas');
       expect(settings.terminalFont.id, equals('consolas'));

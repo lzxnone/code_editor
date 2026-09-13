@@ -26,9 +26,13 @@ class ProjectHistoryService {
     List<String>? resolvedOpenFiles = openFilePaths;
 
     if(existingIndex != -1) {
-      resolvedFile ??= history[existingIndex].lastOpenedFilePath;
+      if (openFilePaths == null) {
+        resolvedFile ??= history[existingIndex].lastOpenedFilePath;
+        resolvedOpenFiles ??= history[existingIndex].openFilePaths;
+      } else if (openFilePaths.isEmpty) {
+        resolvedFile = null;
+      }
       resolvedOpenDirs ??= history[existingIndex].openDirectoryPaths;
-      resolvedOpenFiles ??= history[existingIndex].openFilePaths;
       history.removeAt(existingIndex);
     }
 

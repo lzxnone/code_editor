@@ -33,17 +33,26 @@ class TerminalDrawer extends StatelessWidget {
                 padding: const EdgeInsets.only(left: 16.0, right: 8.0, top: 4.0, bottom: 4.0),
                 child: Row(
                   children: [
-                    Text(
-                      l10n.sessionDrawerTitle,
-                      style: theme.textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.bold,
-                        color: theme.colorScheme.onSurface,
+                    Expanded(
+                      child: Text(
+                        l10n.sessionDrawerTitle,
+                        style: theme.textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.bold,
+                          color: theme.colorScheme.onSurface,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
                     ),
-                    const Spacer(),
-                    IconButton(
-                      icon: const Icon(Icons.add),
-                      tooltip: l10n.addTerminalTooltip,
+                    const SizedBox(width: 8),
+                    TextButton.icon(
+                      icon: const Icon(Icons.add, size: 18),
+                      label: Text(l10n.addSession),
+                      style: TextButton.styleFrom(
+                        visualDensity: VisualDensity.compact,
+                        padding: const EdgeInsets.symmetric(horizontal: 8),
+                        foregroundColor: theme.colorScheme.onSurface,
+                      ),
                       onPressed: () {
                         final distroProvider = context.read<DistroProvider?>();
                         final currentSystem = distroProvider?.selectedSystem;

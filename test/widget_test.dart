@@ -22,6 +22,8 @@ import 'package:code_editor/l10n/app_localizations.dart';
 import 'package:code_editor/main.dart';
 import 'package:code_editor/views/settings_view.dart';
 import 'package:code_editor/views/main_view.dart';
+import 'package:code_editor/views/virtual_keyboard_config_view.dart';
+import 'package:code_editor/widgets/virtual_keyboard_key_edit_dialog.dart';
 import 'package:code_editor/widgets/code_editor_app_bar.dart';
 import 'package:code_editor/widgets/code_editor_drawer.dart';
 import 'package:code_editor/utils/dialog_utils.dart';
@@ -299,29 +301,29 @@ void main() {
       matching: find.byType(Switch),
     );
     expect(switchFinder, findsOneWidget);
-    expect(provider.wordWrap, isTrue);
+    expect(provider.wordWrap, isFalse);
 
     // Toggle word wrap
     await tester.tap(switchFinder);
     await tester.pumpAndSettle();
-    expect(provider.wordWrap, isFalse);
+    expect(provider.wordWrap, isTrue);
 
     // Verify indent size tile
     expect(find.text('缩进大小'), findsOneWidget);
-    expect(find.text('2 个空格'), findsOneWidget);
+    expect(find.text('4 个空格'), findsOneWidget);
 
     // Tap indent size tile to open modal
     await tester.tap(find.text('缩进大小'));
     await tester.pumpAndSettle();
 
     expect(find.text('选择缩进空格数'), findsOneWidget);
-    expect(find.text('4 个空格'), findsOneWidget);
+    expect(find.text('2 个空格'), findsOneWidget);
 
-    // Select 4 spaces
-    await tester.tap(find.text('4 个空格'));
+    // Select 2 spaces
+    await tester.tap(find.text('2 个空格'));
     await tester.pumpAndSettle();
 
-    expect(provider.indentSize, equals(4));
+    expect(provider.indentSize, equals(2));
 
     // Verify language section
     final langTile = find.text('应用语言');
@@ -349,9 +351,9 @@ void main() {
   testWidgets('SettingsProvider wordWrap and locale can be updated', (WidgetTester tester) async {
     final provider = SettingsProvider();
 
-    expect(provider.wordWrap, isTrue);
-    await provider.setWordWrap(false);
     expect(provider.wordWrap, isFalse);
+    await provider.setWordWrap(true);
+    expect(provider.wordWrap, isTrue);
 
     expect(provider.locale, isNull);
     await provider.setLocale(const Locale('en'));
@@ -678,18 +680,18 @@ void main() {
   test('SettingsProvider manages settings correctly', () async {
     final settings = SettingsProvider();
     expect(settings.fontSize, equals(14.0));
-    expect(settings.indentSize, equals(2));
-    expect(settings.wordWrap, isTrue);
+    expect(settings.indentSize, equals(4));
+    expect(settings.wordWrap, isFalse);
     expect(settings.appThemeMode, equals(ThemeMode.system));
 
     await settings.setFontSize(18.0);
     expect(settings.fontSize, equals(18.0));
 
-    await settings.setIndentSize(4);
-    expect(settings.indentSize, equals(4));
+    await settings.setIndentSize(2);
+    expect(settings.indentSize, equals(2));
 
-    await settings.setWordWrap(false);
-    expect(settings.wordWrap, isFalse);
+    await settings.setWordWrap(true);
+    expect(settings.wordWrap, isTrue);
 
     await settings.setAppThemeMode(ThemeMode.dark);
     expect(settings.appThemeMode, equals(ThemeMode.dark));
@@ -1431,26 +1433,79 @@ void main() {
       // Tab icon exists
       expect(find.byIcon(Icons.keyboard_tab), findsOneWidget);
 
-      // Tap ';' key
-      final semicolonKey = find.text(';');
-      expect(semicolonKey, findsOneWidget);
-      await tester.tap(semicolonKey);
-      await tester.pumpAndSettle();
+      // Untab button icon exists in row 1
+      expect(find.byIcon(Icons.format_indent_decrease), findsOneWidget);
 
-      // Controller should have received ';'
-      expect(controller.text, 'hello;');
-
-      // Tap '(' pair key -> should insert () and place cursor inside
-      final parenKey = find.text('(');
+      // Tap '()' pair key -> should insert () and place cursor inside
+      final parenKey = find.text('()');
       expect(parenKey, findsOneWidget);
       await tester.tap(parenKey);
       await tester.pumpAndSettle();
 
-      expect(controller.text, 'hello;()');
-      expect(controller.selection.extentOffset, 7); // between '(' and ')'
+      expect(controller.text, 'hello()');
+      expect(controller.selection.extentOffset, 6); // between '(' and ')'
     });
 
-    testWidgets('SettingsView displays virtual keyboard toggle and config dialog with embedded CodeEditor and line-level error report', (tester) async {
+    testWidgets('VirtualKeyboardWidget hides completely when no keys, hides dots in single row, and expands smoothly on drag', (tester) async {
+      final controller = CodeLineEditingController.fromText('');
+
+      // 1. 无按键配置下完全不显示 (SizedBox.shrink)
+      const emptyConfig = VirtualKeyboardConfig(pages: []);
+      expect(emptyConfig.hasKeys, isFalse);
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: VirtualKeyboardWidget(
+              controller: controller,
+              config: emptyConfig,
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.byType(PageView), findsNothing);
+
+      // 2. 正常多页多行配置
+      final config = VirtualKeyboardConfig.defaultConfiguration();
+      expect(config.hasKeys, isTrue);
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: VirtualKeyboardWidget(
+              controller: controller,
+              config: config,
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // 默认只显示一行，初始高度为 30，且分页指示圆点不显示
+      final keyboardFinder = find.byType(VirtualKeyboardWidget);
+      expect(keyboardFinder, findsOneWidget);
+      final initialSize = tester.getSize(keyboardFinder);
+      expect(initialSize.height, closeTo(30.0, 1.0));
+
+      // 向上拖动上拉手势测试
+      await tester.drag(keyboardFinder, const Offset(0, -60));
+      await tester.pumpAndSettle();
+
+      // 展开后高度增加（多行 + 分页圆点）
+      final expandedSize = tester.getSize(keyboardFinder);
+      expect(expandedSize.height, greaterThan(65.0));
+
+      // 再次向下拉收起
+      await tester.drag(keyboardFinder, const Offset(0, 60));
+      await tester.pumpAndSettle();
+
+      final collapsedSize = tester.getSize(keyboardFinder);
+      expect(collapsedSize.height, closeTo(30.0, 1.0));
+    });
+
+    testWidgets('SettingsView navigates to VirtualKeyboardConfigView with full visual config controls', (tester) async {
       final settingsProvider = SettingsProvider();
       await settingsProvider.init();
       await settingsProvider.setEnableVirtualKeyboard(true);
@@ -1474,50 +1529,239 @@ void main() {
       await tester.pumpAndSettle();
       expect(configTile, findsOneWidget);
 
-      // Tap config tile to open dialog
+      // Tap config tile to navigate to VirtualKeyboardConfigView
       await tester.tap(configTile);
       await tester.pumpAndSettle();
 
-      expect(find.text('小键盘配置 (JSON)'), findsOneWidget);
-      expect(find.text('格式化'), findsOneWidget);
-      expect(find.text('恢复默认'), findsOneWidget);
+      // Verify VirtualKeyboardConfigView is rendered
+      expect(find.byType(VirtualKeyboardConfigView), findsOneWidget);
+      expect(find.text('小键盘配置'), findsOneWidget);
+      expect(find.text('编辑区:(第 1 页)'), findsOneWidget);
+      expect(find.text('页面配置'), findsOneWidget);
+      expect(find.text('页面按键'), findsOneWidget);
+      expect(find.text('行按钮数'), findsOneWidget);
 
-      // Verify embedded CodeEditor is present with line number gutter
-      expect(find.byType(CodeEditor), findsOneWidget);
-      expect(find.byType(DefaultCodeLineNumber), findsOneWidget);
+      // Test increasing/decreasing count
+      final addCountButton = find.byTooltip('增加每行按键数');
+      expect(addCountButton, findsOneWidget);
+      await tester.tap(addCountButton);
+      await tester.pumpAndSettle();
+      expect(settingsProvider.virtualKeyboardConfig.pages[0].count, equals(8));
 
-      final codeEditor = tester.widget<CodeEditor>(find.byType(CodeEditor));
-      final editorController = codeEditor.controller!;
+      // Test decreasing count below maxKeysInRows constraint (Requirement 8)
+      // Page 0 default rows have 7 keys. Trying to decrease count down to 6 should be blocked and show Toast
+      final removeCountButton = find.byTooltip('减少每行按键数');
+      await tester.tap(removeCountButton); // 8 -> 7 (allowed, max keys is 7)
+      await tester.pumpAndSettle();
+      expect(settingsProvider.virtualKeyboardConfig.pages[0].count, equals(7));
 
-      // Edit controller with invalid json on line 3
-      editorController.text = '{\n  "pages": [\n    error_here\n  ]\n}';
-      await tester.pump(const Duration(milliseconds: 100));
+      await tester.tap(removeCountButton); // 7 -> 6 (blocked! row has 7 keys)
+      await tester.pumpAndSettle();
+      expect(settingsProvider.virtualKeyboardConfig.pages[0].count, equals(7)); // Still 7!
+      expect(find.textContaining('行按钮数不能小于 7'), findsOneWidget);
 
-      // Tap '保存'
-      await tester.tap(find.text('保存'));
-      await tester.pump(const Duration(milliseconds: 100));
-
-      // Dialog should still be open and display error message with line number
-      expect(find.text('小键盘配置 (JSON)'), findsOneWidget);
-      expect(find.byIcon(Icons.error_outline), findsOneWidget);
-      expect(find.textContaining('第 3 行'), findsOneWidget);
-
-      // Tap '恢复默认'
-      await tester.tap(find.text('恢复默认'));
-      await tester.pump(const Duration(milliseconds: 100));
-
-      // Error message should clear
-      expect(find.byIcon(Icons.error_outline), findsNothing);
-      expect(editorController.text, contains('"pages"'));
-
-      // Tap '保存' with valid config -> dialog closes
-      await tester.tap(find.text('保存'));
+      // Test Drawer: Open EndDrawer
+      final drawerButton = find.byTooltip('页面管理');
+      expect(drawerButton, findsOneWidget);
+      await tester.tap(drawerButton);
       await tester.pumpAndSettle();
 
-      expect(find.text('小键盘配置 (JSON)'), findsNothing);
+      expect(find.text('页面'), findsOneWidget);
+      expect(find.text('第 1 页'), findsOneWidget);
+      expect(find.text('第 2 页'), findsOneWidget);
 
-      // Let success toast timer complete
-      await tester.pump(const Duration(seconds: 3));
+      // Add a page from drawer (Requirement 5: 新建页面 button)
+      final addPageButton = find.text('新建页面');
+      await tester.tap(addPageButton);
+      await tester.pumpAndSettle();
+
+      // Drawer closed, navigated to new page 3
+      expect(settingsProvider.virtualKeyboardConfig.pages.length, equals(3));
+      expect(find.text('编辑区:(第 3 页)'), findsOneWidget);
+      expect(find.text('页面配置'), findsOneWidget);
+
+      // Page 3 has 1 row with 1 key ("New"). Test adding keys up to count limit (Requirement 8)
+      // Add a key in row 1
+      final addKeyButton = find.byTooltip('添加按键').first;
+      await tester.tap(addKeyButton);
+      await tester.pumpAndSettle();
+
+      // KeyEditDialog is open
+      expect(find.byType(KeyEditDialog), findsOneWidget);
+      expect(find.text('添加按键'), findsOneWidget);
+
+      // Enter label & value
+      await tester.enterText(find.widgetWithText(TextFormField, '显示文本 (Label)'), 'TestKey');
+      await tester.enterText(find.widgetWithText(TextFormField, '输入文本内容 (Value)'), 'test_val');
+      await tester.pumpAndSettle();
+
+      // Tap '确定' to save key
+      await tester.tap(find.text('确定'));
+      await tester.pumpAndSettle();
+
+      // Dialog closed and key is added to page 3
+      expect(find.byType(KeyEditDialog), findsNothing);
+      expect(settingsProvider.virtualKeyboardConfig.pages[2].keys[0].any((k) => k.label == 'TestKey'), isTrue);
+
+      // Expand the row ExpansionTile and verify TestKey widget is rendered
+      await tester.tap(find.text('2 个按键'));
+      await tester.pumpAndSettle();
+      expect(find.text('TestKey'), findsWidgets);
+
+      // Tap back button to return to SettingsView
+      await tester.tap(find.byTooltip('返回'));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(VirtualKeyboardConfigView), findsNothing);
+      expect(find.byType(SettingsView), findsOneWidget);
+    });
+
+    testWidgets('VirtualKeyboardConfigView enforces row key limits and preserves expansion across page navigation', (tester) async {
+      final settingsProvider = SettingsProvider();
+      await settingsProvider.init();
+
+      await tester.pumpWidget(
+        ChangeNotifierProvider.value(
+          value: settingsProvider,
+          child: const MaterialApp(
+            localizationsDelegates: AppLocalizations.localizationsDelegates,
+            supportedLocales: AppLocalizations.supportedLocales,
+            locale: Locale('zh'),
+            home: VirtualKeyboardConfigView(scope: KeyboardScope.editor),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // Verify row 1 has 7 keys and count is 7
+      expect(settingsProvider.virtualKeyboardConfig.pages[0].count, equals(7));
+      expect(settingsProvider.virtualKeyboardConfig.pages[0].keys[0].length, equals(7));
+
+      // Attempt to add a key to row 1 (which already has 7 keys == count)
+      final addKeyButton = find.byTooltip('添加按键').first;
+      await tester.tap(addKeyButton);
+      await tester.pumpAndSettle();
+
+      // Toast shown, KeyEditDialog not opened
+      expect(find.byType(KeyEditDialog), findsNothing);
+      expect(find.textContaining('当前行按键数已达到上限'), findsOneWidget);
+
+      // Verify ExpansionTile starts collapsed
+      expect(find.text('7 个按键'), findsWidgets);
+
+      // Tap first row ExpansionTile to expand
+      await tester.tap(find.text('7 个按键').first);
+      await tester.pumpAndSettle();
+
+      // Open drawer, switch to page 2, verify expansion state isolation
+      await tester.tap(find.byTooltip('页面管理'));
+      await tester.pumpAndSettle();
+      expect(find.text('第 2 页'), findsOneWidget);
+
+      await tester.tap(find.text('第 2 页'));
+      await tester.pumpAndSettle();
+
+      // On page 2, verify subtitle updated
+      expect(find.text('编辑区:(第 2 页)'), findsOneWidget);
+
+      // Switch back to page 1 via drawer, verify row 1 state persisted
+      await tester.tap(find.byTooltip('页面管理'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('第 1 页'));
+      await tester.pumpAndSettle();
+      expect(find.text('编辑区:(第 1 页)'), findsOneWidget);
+
+      // Test row deletion confirmation dialog
+      final deleteRowButton = find.byTooltip('删除整行').first;
+      await tester.tap(deleteRowButton);
+      await tester.pumpAndSettle();
+
+      expect(find.text('删除按键行'), findsOneWidget);
+      expect(find.textContaining('确定要删除“第 1 行”'), findsOneWidget);
+      await tester.tap(find.text('取消'));
+      await tester.pumpAndSettle();
+      expect(find.text('删除按键行'), findsNothing);
+
+      // Test key deletion confirmation dialog
+      final deleteKeyButton = find.byTooltip('删除按键').first;
+      await tester.tap(deleteKeyButton);
+      await tester.pumpAndSettle();
+
+      expect(find.text('删除按键'), findsOneWidget);
+      expect(find.textContaining('确定要删除按键'), findsOneWidget);
+      await tester.tap(find.text('取消'));
+      await tester.pumpAndSettle();
+      expect(find.text('删除按键'), findsNothing);
+    });
+
+    testWidgets('CodeEditorWidget pinch-to-zoom adjusts font size dynamically and saves to settings', (tester) async {
+      final tempDir = Directory.systemTemp.createTempSync('editor_zoom_test');
+      final testFile = File('${tempDir.path}/test.dart')..writeAsStringSync('void main() {}');
+
+      final settingsProvider = SettingsProvider();
+      await settingsProvider.init();
+      await settingsProvider.setFontSize(14.0);
+
+      final tabProvider = TabProvider();
+      await tabProvider.init();
+      tabProvider.openTabs.add(
+        EditorTabItem(
+          path: testFile.path,
+          content: 'void main() {}',
+          originalContent: 'void main() {}',
+          isLoaded: true,
+          isModified: false,
+        ),
+      );
+
+      await tester.pumpWidget(
+        MultiProvider(
+          providers: [
+            ChangeNotifierProvider.value(value: settingsProvider),
+            ChangeNotifierProvider.value(value: tabProvider),
+          ],
+          child: MaterialApp(
+            home: Scaffold(
+              body: CodeEditorWidget(
+                rootPath: tempDir.path,
+                filePath: testFile.path,
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.byType(CodeEditor), findsOneWidget);
+      expect(settingsProvider.fontSize, 14.0);
+
+      // Simulate 2-pointer pinch gesture
+      final gesture1 = await tester.createGesture();
+      final gesture2 = await tester.createGesture();
+
+      await gesture1.down(const Offset(200, 300));
+      await gesture2.down(const Offset(200, 350)); // Initial distance: 50.0
+      await tester.pump();
+
+      // Move fingers apart to distance 100.0 (2x scale) -> target font size: 14 * 2 = 28.0
+      await gesture2.moveTo(const Offset(200, 400));
+      await tester.pump();
+
+      // Verify pinch HUD is visible
+      expect(find.text('28 pt'), findsOneWidget);
+
+      // Release pointers
+      await gesture1.up();
+      await gesture2.up();
+      await tester.pumpAndSettle();
+
+      // Verify HUD is removed and settingsProvider font size is updated to 28
+      expect(find.text('28 pt'), findsNothing);
+      expect(settingsProvider.fontSize, 28.0);
+
+      try {
+        tempDir.deleteSync(recursive: true);
+      } catch (_) {}
     });
   });
 }

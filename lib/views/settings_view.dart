@@ -1,14 +1,11 @@
-import 'dart:convert';
 import 'package:code_editor/l10n/app_localizations.dart';
 import 'package:code_editor/models/app_font.dart';
 import 'package:code_editor/models/editor_theme.dart';
 import 'package:code_editor/models/virtual_keyboard_config.dart';
 import 'package:code_editor/providers/settings_provider.dart';
-import 'package:code_editor/utils/dialog_utils.dart';
-import 'package:code_editor/utils/syntax_highlight_helper.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:re_editor/re_editor.dart';
+import 'virtual_keyboard_config_view.dart';
 
 /// 设置页面
 class SettingsView extends StatelessWidget {
@@ -671,196 +668,18 @@ class SettingsView extends StatelessWidget {
       subtitle: Text(l10n.editVirtualKeyboardConfigSubtitle),
       trailing: const Icon(Icons.chevron_right),
       onTap: () {
-        _showKeyboardConfigDialog(context, provider, l10n);
-      },
-    );
-  }
-
-  void _showKeyboardConfigDialog(
-    BuildContext context,
-    SettingsProvider provider,
-    AppLocalizations l10n,
-  ) {
-    final codeController = CodeLineEditingController.fromText(provider.virtualKeyboardConfigJson);
-    String? validationError;
-
-    showDialog<void>(
-      context: context,
-      barrierDismissible: false,
-      builder: (dialogContext) {
-        return StatefulBuilder(
-          builder: (context, setDialogState) {
-            final theme = Theme.of(context);
-            final activeTheme = provider.editorTheme;
-
-            return AlertDialog(
-              title: Text(l10n.virtualKeyboardDialogTitle),
-              content: SizedBox(
-                width: 680,
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    if (validationError != null)
-                      Container(
-                        width: double.infinity,
-                        margin: const EdgeInsets.only(bottom: 12),
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                        decoration: BoxDecoration(
-                          color: theme.colorScheme.errorContainer,
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(color: theme.colorScheme.error, width: 0.8),
-                        ),
-                        child: Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Icon(Icons.error_outline, size: 18, color: theme.colorScheme.error),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: Text(
-                                validationError!,
-                                style: TextStyle(
-                                  color: theme.colorScheme.onErrorContainer,
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    Flexible(
-                      child: Container(
-                        height: 360,
-                        decoration: BoxDecoration(
-                          color: activeTheme.backgroundColor,
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(
-                            color: validationError != null
-                                ? theme.colorScheme.error
-                                : theme.colorScheme.outlineVariant,
-                          ),
-                        ),
-                        clipBehavior: Clip.antiAlias,
-                        child: CodeEditor(
-                          controller: codeController,
-                          wordWrap: false,
-                          style: CodeEditorStyle(
-                            fontSize: 13,
-                            textColor: activeTheme.textColor,
-                            backgroundColor: activeTheme.backgroundColor,
-                            cursorColor: activeTheme.cursorColor,
-                            cursorLineColor: activeTheme.cursorLineColor,
-                            selectionColor: activeTheme.selectionColor,
-                            fontFamily: 'Consolas, Monaco, "Courier New", monospace',
-                            codeTheme: CodeHighlightTheme(
-                              languages: SyntaxHighlightHelper.getLanguagesForFile('config.json'),
-                              theme: activeTheme.highlightTheme,
-                            ),
-                          ),
-                          indicatorBuilder: (context, editingController, chunkController, notifier) {
-                            return Row(
-                              children: [
-                                DefaultCodeLineNumber(
-                                  controller: editingController,
-                                  notifier: notifier,
-                                  textStyle: TextStyle(
-                                    color: activeTheme.gutterTextColor,
-                                    fontSize: 12,
-                                    fontFamily: 'Consolas, Monaco, "Courier New", monospace',
-                                  ),
-                                  focusedTextStyle: TextStyle(
-                                    color: activeTheme.focusedGutterTextColor,
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.bold,
-                                    fontFamily: 'Consolas, Monaco, "Courier New", monospace',
-                                  ),
-                                ),
-                                DefaultCodeChunkIndicator(
-                                  width: 16,
-                                  controller: chunkController,
-                                  notifier: notifier,
-                                  painter: DefaultCodeChunkIndicatorPainter(
-                                    color: activeTheme.gutterTextColor,
-                                  ),
-                                ),
-                              ],
-                            );
-                          },
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        TextButton.icon(
-                          icon: const Icon(Icons.restore, size: 16),
-                          label: Text(l10n.resetDefault),
-                          onPressed: () {
-                            setDialogState(() {
-                              codeController.text = VirtualKeyboardConfig.defaultJsonPretty();
-                              validationError = null;
-                            });
-                          },
-                        ),
-                        TextButton.icon(
-                          icon: const Icon(Icons.format_align_left, size: 16),
-                          label: Text(l10n.formatJson),
-                          onPressed: () {
-                            final err = VirtualKeyboardConfig.validateJson(codeController.text);
-                            if (err != null) {
-                              setDialogState(() {
-                                validationError = err;
-                              });
-                            } else {
-                              try {
-                                final decoded = jsonDecode(codeController.text);
-                                final encoder = JsonEncoder.withIndent(' ' * provider.indentSize);
-                                setDialogState(() {
-                                  codeController.text = encoder.convert(decoded);
-                                  validationError = null;
-                                });
-                              } catch (_) {}
-                            }
-                          },
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.of(dialogContext).pop(),
-                  child: Text(l10n.cancel),
-                ),
-                FilledButton(
-                  onPressed: () async {
-                    final jsonText = codeController.text;
-                    final err = VirtualKeyboardConfig.validateJson(jsonText);
-                    if (err != null) {
-                      setDialogState(() {
-                        validationError = err;
-                      });
-                      return;
-                    }
-
-                    final success = await provider.setVirtualKeyboardConfig(jsonText);
-                    if (success && dialogContext.mounted) {
-                      Navigator.of(dialogContext).pop();
-                      DialogUtils.showSuccessToast(context, l10n.configSavedSuccess);
-                    }
-                  },
-                  child: Text(l10n.save),
-                ),
-              ],
-            );
-          },
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (_) => const VirtualKeyboardConfigView(
+              scope: KeyboardScope.editor,
+            ),
+          ),
         );
       },
     );
   }
+
+
 
   /// 语言：应用语言选择条目
   Widget _buildLanguageTile(

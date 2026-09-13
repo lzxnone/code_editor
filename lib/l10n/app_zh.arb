@@ -90,7 +90,7 @@
   "virtualKeyboard": "辅助小键盘",
   "virtualKeyboardSubtitle": "在代码编辑区底部显示辅助符号与快捷键",
   "editVirtualKeyboardConfig": "编辑键盘配置",
-  "editVirtualKeyboardConfigSubtitle": "自定义小键盘按键布局与快捷键 (JSON)",
+  "editVirtualKeyboardConfigSubtitle": "自定义小键盘按键布局与快捷键",
   "virtualKeyboardDialogTitle": "小键盘配置 (JSON)",
   "resetDefault": "恢复默认",
   "configFormatError": "配置格式错误",
@@ -239,5 +239,139 @@
         "type": "String"
       }
     }
-  }
+  },
+  "cancel": "取消",
+  "confirm": "确定",
+  "delete": "删除",
+  "addSession": "新增会话",
+  "editorScope": "编辑区",
+  "terminalScope": "终端",
+  "virtualKeyboardConfigTitle": "小键盘配置",
+  "virtualKeyboardPageSubtitle": "{scope}:(第 {page} 页)",
+  "@virtualKeyboardPageSubtitle": {
+    "placeholders": {
+      "scope": {
+        "type": "String"
+      },
+      "page": {
+        "type": "int"
+      }
+    }
+  },
+  "keyboardRestoreDefaultTooltip": "恢复默认预设",
+  "keyboardPageManagementTooltip": "页面管理",
+  "keyboardDrawerTitle": "页面",
+  "keyboardNewPage": "新建页面",
+  "keyboardPageItemTitle": "第 {page} 页",
+  "@keyboardPageItemTitle": {
+    "placeholders": {
+      "page": {
+        "type": "int"
+      }
+    }
+  },
+  "keyboardPageItemSubtitle": "{count} 行",
+  "@keyboardPageItemSubtitle": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "keyboardDeletePageTooltip": "删除页面",
+  "keyboardPageConfigSectionTitle": "页面配置",
+  "keyboardRowButtons": "行按钮数",
+  "keyboardRowGridDescription": "页面宽度等分为 {count} 格",
+  "@keyboardRowGridDescription": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "keyboardDecreaseRowButtonsTooltip": "减少每行按键数",
+  "keyboardIncreaseRowButtonsTooltip": "增加每行按键数",
+  "keyboardPageKeysSectionTitle": "页面按键",
+  "keyboardAddNewRow": "添加新行",
+  "keyboardEmptyPageKeysHint": "当前页面暂无按键行",
+  "keyboardEmptyRowKeysHint": "行内暂无按键，点击上方“+”添加",
+  "keyboardRowKeyCount": "{count} 个按键",
+  "@keyboardRowKeyCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "keyboardAddKeyTooltip": "添加按键",
+  "keyboardDeleteRowTooltip": "删除整行",
+  "keyboardEditKeyTooltip": "编辑按键",
+  "keyboardDeleteKeyTooltip": "删除按键",
+  "keyboardNoLabel": "(无标签)",
+  "keyboardResetDefaultTitle": "恢复默认配置",
+  "keyboardResetDefaultContent": "确定要将小键盘恢复为初始默认预设吗？当前自定义修改将被覆盖。",
+  "keyboardResetDefaultSuccess": "已恢复默认预设",
+  "keyboardDeletePageTitle": "删除页面",
+  "keyboardDeletePageContent": "确定要删除“第 {page} 页”吗？",
+  "@keyboardDeletePageContent": {
+    "placeholders": {
+      "page": {
+        "type": "int"
+      }
+    }
+  },
+  "keyboardDeleteRowTitle": "删除按键行",
+  "keyboardDeleteRowContent": "确定要删除“第 {row} 行”及其包含的所有按键吗？",
+  "@keyboardDeleteRowContent": {
+    "placeholders": {
+      "row": {
+        "type": "int"
+      }
+    }
+  },
+  "keyboardDeleteKeyTitle": "删除按键",
+  "keyboardDeleteKeyContent": "确定要删除按键“{key}”吗？",
+  "@keyboardDeleteKeyContent": {
+    "placeholders": {
+      "key": {
+        "type": "String"
+      }
+    }
+  },
+  "keyboardKeepAtLeastOnePageWarning": "至少需要保留一个页面",
+  "keyboardRowMaxKeysWarning": "当前存在包含 {count} 个按键的行，行按钮数不能小于 {count}",
+  "@keyboardRowMaxKeysWarning": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "keyboardRowReachedMaxWarning": "当前行按键数已达到上限（最多 {count} 个按键）",
+  "@keyboardRowReachedMaxWarning": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "keyboardAddKeyTitle": "添加按键",
+  "keyboardEditKeyTitle": "编辑按键",
+  "keyboardLabelFormField": "显示文本 (Label)",
+  "keyboardLabelFormFieldHint": "按键上显示的文本，如 Tab、()、A",
+  "keyboardLabelOrIconRequiredError": "请输入显示文本或选择图标",
+  "keyboardIconFormField": "图标 (Icon, 可选)",
+  "keyboardNoIconOption": "无图标 (使用文本显示)",
+  "keyboardActionFormField": "动作类型 (Action)",
+  "keyboardValueFormField": "输入文本内容 (Value)",
+  "keyboardValueFormFieldHint": "点击后直接插入的文本，如 ;、=、->",
+  "keyboardValueRequiredError": "输入文本不能为空",
+  "keyboardPairPresetFormField": "成对符号预设 (Value)",
+  "keyboardCommandPresetFormField": "预设编辑器命令 (Value)",
+  "keyboardModifierPresetFormField": "终端修饰键 (Value)",
+  "keyboardTerminalKeyPresetFormField": "终端按键 (Value)",
+  "keyboardCursorOffsetFormField": "光标相对偏移 (cursorOffset)",
+  "keyboardCursorOffsetHelper": "例如 () 插入后光标居中需向左偏移 1 位，填写 -1",
+  "keyboardCursorOffsetRequiredError": "请输入光标偏移（通常为 -1）",
+  "keyboardCursorOffsetIntegerError": "偏移量必须为整数"
 }

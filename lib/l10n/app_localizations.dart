@@ -593,7 +593,7 @@ abstract class AppLocalizations {
   /// No description provided for @editVirtualKeyboardConfigSubtitle.
   ///
   /// In zh, this message translates to:
-  /// **'自定义小键盘按键布局与快捷键 (JSON)'**
+  /// **'自定义小键盘按键布局与快捷键'**
   String get editVirtualKeyboardConfigSubtitle;
 
   /// No description provided for @virtualKeyboardDialogTitle.
@@ -1009,6 +1009,354 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'删除系统失败: {error}'**
   String deleteSystemFailed(String error);
+
+  /// No description provided for @addSession.
+  ///
+  /// In zh, this message translates to:
+  /// **'新增会话'**
+  String get addSession;
+
+  /// No description provided for @editorScope.
+  ///
+  /// In zh, this message translates to:
+  /// **'编辑区'**
+  String get editorScope;
+
+  /// No description provided for @terminalScope.
+  ///
+  /// In zh, this message translates to:
+  /// **'终端'**
+  String get terminalScope;
+
+  /// No description provided for @virtualKeyboardConfigTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'小键盘配置'**
+  String get virtualKeyboardConfigTitle;
+
+  /// No description provided for @virtualKeyboardPageSubtitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'{scope}:(第 {page} 页)'**
+  String virtualKeyboardPageSubtitle(String scope, int page);
+
+  /// No description provided for @keyboardRestoreDefaultTooltip.
+  ///
+  /// In zh, this message translates to:
+  /// **'恢复默认预设'**
+  String get keyboardRestoreDefaultTooltip;
+
+  /// No description provided for @keyboardPageManagementTooltip.
+  ///
+  /// In zh, this message translates to:
+  /// **'页面管理'**
+  String get keyboardPageManagementTooltip;
+
+  /// No description provided for @keyboardDrawerTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'页面'**
+  String get keyboardDrawerTitle;
+
+  /// No description provided for @keyboardNewPage.
+  ///
+  /// In zh, this message translates to:
+  /// **'新建页面'**
+  String get keyboardNewPage;
+
+  /// No description provided for @keyboardPageItemTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'第 {page} 页'**
+  String keyboardPageItemTitle(int page);
+
+  /// No description provided for @keyboardPageItemSubtitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'{count} 行'**
+  String keyboardPageItemSubtitle(int count);
+
+  /// No description provided for @keyboardDeletePageTooltip.
+  ///
+  /// In zh, this message translates to:
+  /// **'删除页面'**
+  String get keyboardDeletePageTooltip;
+
+  /// No description provided for @keyboardPageConfigSectionTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'页面配置'**
+  String get keyboardPageConfigSectionTitle;
+
+  /// No description provided for @keyboardRowButtons.
+  ///
+  /// In zh, this message translates to:
+  /// **'行按钮数'**
+  String get keyboardRowButtons;
+
+  /// No description provided for @keyboardRowGridDescription.
+  ///
+  /// In zh, this message translates to:
+  /// **'页面宽度等分为 {count} 格'**
+  String keyboardRowGridDescription(int count);
+
+  /// No description provided for @keyboardDecreaseRowButtonsTooltip.
+  ///
+  /// In zh, this message translates to:
+  /// **'减少每行按键数'**
+  String get keyboardDecreaseRowButtonsTooltip;
+
+  /// No description provided for @keyboardIncreaseRowButtonsTooltip.
+  ///
+  /// In zh, this message translates to:
+  /// **'增加每行按键数'**
+  String get keyboardIncreaseRowButtonsTooltip;
+
+  /// No description provided for @keyboardPageKeysSectionTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'页面按键'**
+  String get keyboardPageKeysSectionTitle;
+
+  /// No description provided for @keyboardAddNewRow.
+  ///
+  /// In zh, this message translates to:
+  /// **'添加新行'**
+  String get keyboardAddNewRow;
+
+  /// No description provided for @keyboardEmptyPageKeysHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'当前页面暂无按键行'**
+  String get keyboardEmptyPageKeysHint;
+
+  /// No description provided for @keyboardEmptyRowKeysHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'行内暂无按键，点击上方“+”添加'**
+  String get keyboardEmptyRowKeysHint;
+
+  /// No description provided for @keyboardRowKeyCount.
+  ///
+  /// In zh, this message translates to:
+  /// **'{count} 个按键'**
+  String keyboardRowKeyCount(int count);
+
+  /// No description provided for @keyboardAddKeyTooltip.
+  ///
+  /// In zh, this message translates to:
+  /// **'添加按键'**
+  String get keyboardAddKeyTooltip;
+
+  /// No description provided for @keyboardDeleteRowTooltip.
+  ///
+  /// In zh, this message translates to:
+  /// **'删除整行'**
+  String get keyboardDeleteRowTooltip;
+
+  /// No description provided for @keyboardEditKeyTooltip.
+  ///
+  /// In zh, this message translates to:
+  /// **'编辑按键'**
+  String get keyboardEditKeyTooltip;
+
+  /// No description provided for @keyboardDeleteKeyTooltip.
+  ///
+  /// In zh, this message translates to:
+  /// **'删除按键'**
+  String get keyboardDeleteKeyTooltip;
+
+  /// No description provided for @keyboardNoLabel.
+  ///
+  /// In zh, this message translates to:
+  /// **'(无标签)'**
+  String get keyboardNoLabel;
+
+  /// No description provided for @keyboardResetDefaultTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'恢复默认配置'**
+  String get keyboardResetDefaultTitle;
+
+  /// No description provided for @keyboardResetDefaultContent.
+  ///
+  /// In zh, this message translates to:
+  /// **'确定要将小键盘恢复为初始默认预设吗？当前自定义修改将被覆盖。'**
+  String get keyboardResetDefaultContent;
+
+  /// No description provided for @keyboardResetDefaultSuccess.
+  ///
+  /// In zh, this message translates to:
+  /// **'已恢复默认预设'**
+  String get keyboardResetDefaultSuccess;
+
+  /// No description provided for @keyboardDeletePageTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'删除页面'**
+  String get keyboardDeletePageTitle;
+
+  /// No description provided for @keyboardDeletePageContent.
+  ///
+  /// In zh, this message translates to:
+  /// **'确定要删除“第 {page} 页”吗？'**
+  String keyboardDeletePageContent(int page);
+
+  /// No description provided for @keyboardDeleteRowTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'删除按键行'**
+  String get keyboardDeleteRowTitle;
+
+  /// No description provided for @keyboardDeleteRowContent.
+  ///
+  /// In zh, this message translates to:
+  /// **'确定要删除“第 {row} 行”及其包含的所有按键吗？'**
+  String keyboardDeleteRowContent(int row);
+
+  /// No description provided for @keyboardDeleteKeyTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'删除按键'**
+  String get keyboardDeleteKeyTitle;
+
+  /// No description provided for @keyboardDeleteKeyContent.
+  ///
+  /// In zh, this message translates to:
+  /// **'确定要删除按键“{key}”吗？'**
+  String keyboardDeleteKeyContent(String key);
+
+  /// No description provided for @keyboardKeepAtLeastOnePageWarning.
+  ///
+  /// In zh, this message translates to:
+  /// **'至少需要保留一个页面'**
+  String get keyboardKeepAtLeastOnePageWarning;
+
+  /// No description provided for @keyboardRowMaxKeysWarning.
+  ///
+  /// In zh, this message translates to:
+  /// **'当前存在包含 {count} 个按键的行，行按钮数不能小于 {count}'**
+  String keyboardRowMaxKeysWarning(int count);
+
+  /// No description provided for @keyboardRowReachedMaxWarning.
+  ///
+  /// In zh, this message translates to:
+  /// **'当前行按键数已达到上限（最多 {count} 个按键）'**
+  String keyboardRowReachedMaxWarning(int count);
+
+  /// No description provided for @keyboardAddKeyTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'添加按键'**
+  String get keyboardAddKeyTitle;
+
+  /// No description provided for @keyboardEditKeyTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'编辑按键'**
+  String get keyboardEditKeyTitle;
+
+  /// No description provided for @keyboardLabelFormField.
+  ///
+  /// In zh, this message translates to:
+  /// **'显示文本 (Label)'**
+  String get keyboardLabelFormField;
+
+  /// No description provided for @keyboardLabelFormFieldHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'按键上显示的文本，如 Tab、()、A'**
+  String get keyboardLabelFormFieldHint;
+
+  /// No description provided for @keyboardLabelOrIconRequiredError.
+  ///
+  /// In zh, this message translates to:
+  /// **'请输入显示文本或选择图标'**
+  String get keyboardLabelOrIconRequiredError;
+
+  /// No description provided for @keyboardIconFormField.
+  ///
+  /// In zh, this message translates to:
+  /// **'图标 (Icon, 可选)'**
+  String get keyboardIconFormField;
+
+  /// No description provided for @keyboardNoIconOption.
+  ///
+  /// In zh, this message translates to:
+  /// **'无图标 (使用文本显示)'**
+  String get keyboardNoIconOption;
+
+  /// No description provided for @keyboardActionFormField.
+  ///
+  /// In zh, this message translates to:
+  /// **'动作类型 (Action)'**
+  String get keyboardActionFormField;
+
+  /// No description provided for @keyboardValueFormField.
+  ///
+  /// In zh, this message translates to:
+  /// **'输入文本内容 (Value)'**
+  String get keyboardValueFormField;
+
+  /// No description provided for @keyboardValueFormFieldHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'点击后直接插入的文本，如 ;、=、->'**
+  String get keyboardValueFormFieldHint;
+
+  /// No description provided for @keyboardValueRequiredError.
+  ///
+  /// In zh, this message translates to:
+  /// **'输入文本不能为空'**
+  String get keyboardValueRequiredError;
+
+  /// No description provided for @keyboardPairPresetFormField.
+  ///
+  /// In zh, this message translates to:
+  /// **'成对符号预设 (Value)'**
+  String get keyboardPairPresetFormField;
+
+  /// No description provided for @keyboardCommandPresetFormField.
+  ///
+  /// In zh, this message translates to:
+  /// **'预设编辑器命令 (Value)'**
+  String get keyboardCommandPresetFormField;
+
+  /// No description provided for @keyboardModifierPresetFormField.
+  ///
+  /// In zh, this message translates to:
+  /// **'终端修饰键 (Value)'**
+  String get keyboardModifierPresetFormField;
+
+  /// No description provided for @keyboardTerminalKeyPresetFormField.
+  ///
+  /// In zh, this message translates to:
+  /// **'终端按键 (Value)'**
+  String get keyboardTerminalKeyPresetFormField;
+
+  /// No description provided for @keyboardCursorOffsetFormField.
+  ///
+  /// In zh, this message translates to:
+  /// **'光标相对偏移 (cursorOffset)'**
+  String get keyboardCursorOffsetFormField;
+
+  /// No description provided for @keyboardCursorOffsetHelper.
+  ///
+  /// In zh, this message translates to:
+  /// **'例如 () 插入后光标居中需向左偏移 1 位，填写 -1'**
+  String get keyboardCursorOffsetHelper;
+
+  /// No description provided for @keyboardCursorOffsetRequiredError.
+  ///
+  /// In zh, this message translates to:
+  /// **'请输入光标偏移（通常为 -1）'**
+  String get keyboardCursorOffsetRequiredError;
+
+  /// No description provided for @keyboardCursorOffsetIntegerError.
+  ///
+  /// In zh, this message translates to:
+  /// **'偏移量必须为整数'**
+  String get keyboardCursorOffsetIntegerError;
 }
 
 class _AppLocalizationsDelegate

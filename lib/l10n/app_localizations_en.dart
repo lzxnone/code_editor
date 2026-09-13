@@ -279,7 +279,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get editVirtualKeyboardConfigSubtitle =>
-      'Customize keyboard layout and shortcuts (JSON)';
+      'Customize keyboard layout and shortcuts';
 
   @override
   String get virtualKeyboardDialogTitle => 'Keyboard Config (JSON)';
@@ -522,4 +522,207 @@ class AppLocalizationsEn extends AppLocalizations {
   String deleteSystemFailed(String error) {
     return 'Failed to delete system: $error';
   }
+
+  @override
+  String get addSession => 'New Session';
+
+  @override
+  String get editorScope => 'Editor';
+
+  @override
+  String get terminalScope => 'Terminal';
+
+  @override
+  String get virtualKeyboardConfigTitle => 'Accessory Keyboard Config';
+
+  @override
+  String virtualKeyboardPageSubtitle(String scope, int page) {
+    return '$scope:(Page $page)';
+  }
+
+  @override
+  String get keyboardRestoreDefaultTooltip => 'Reset to default presets';
+
+  @override
+  String get keyboardPageManagementTooltip => 'Page Management';
+
+  @override
+  String get keyboardDrawerTitle => 'Pages';
+
+  @override
+  String get keyboardNewPage => 'New Page';
+
+  @override
+  String keyboardPageItemTitle(int page) {
+    return 'Page $page';
+  }
+
+  @override
+  String keyboardPageItemSubtitle(int count) {
+    return '$count rows';
+  }
+
+  @override
+  String get keyboardDeletePageTooltip => 'Delete page';
+
+  @override
+  String get keyboardPageConfigSectionTitle => 'Page Configuration';
+
+  @override
+  String get keyboardRowButtons => 'Buttons per row';
+
+  @override
+  String keyboardRowGridDescription(int count) {
+    return 'Page width divided into $count columns';
+  }
+
+  @override
+  String get keyboardDecreaseRowButtonsTooltip => 'Decrease buttons per row';
+
+  @override
+  String get keyboardIncreaseRowButtonsTooltip => 'Increase buttons per row';
+
+  @override
+  String get keyboardPageKeysSectionTitle => 'Page Keys';
+
+  @override
+  String get keyboardAddNewRow => 'Add Row';
+
+  @override
+  String get keyboardEmptyPageKeysHint => 'No key rows in current page';
+
+  @override
+  String get keyboardEmptyRowKeysHint =>
+      'No keys in this row, tap \'+\' above to add';
+
+  @override
+  String keyboardRowKeyCount(int count) {
+    return '$count keys';
+  }
+
+  @override
+  String get keyboardAddKeyTooltip => 'Add key';
+
+  @override
+  String get keyboardDeleteRowTooltip => 'Delete row';
+
+  @override
+  String get keyboardEditKeyTooltip => 'Edit key';
+
+  @override
+  String get keyboardDeleteKeyTooltip => 'Delete key';
+
+  @override
+  String get keyboardNoLabel => '(No label)';
+
+  @override
+  String get keyboardResetDefaultTitle => 'Reset to Default';
+
+  @override
+  String get keyboardResetDefaultContent =>
+      'Are you sure you want to reset the keyboard to default presets? Your custom modifications will be overwritten.';
+
+  @override
+  String get keyboardResetDefaultSuccess =>
+      'Reset to default presets successfully';
+
+  @override
+  String get keyboardDeletePageTitle => 'Delete Page';
+
+  @override
+  String keyboardDeletePageContent(int page) {
+    return 'Are you sure you want to delete \"Page $page\"?';
+  }
+
+  @override
+  String get keyboardDeleteRowTitle => 'Delete Key Row';
+
+  @override
+  String keyboardDeleteRowContent(int row) {
+    return 'Are you sure you want to delete \"Row $row\" and all its keys?';
+  }
+
+  @override
+  String get keyboardDeleteKeyTitle => 'Delete Key';
+
+  @override
+  String keyboardDeleteKeyContent(String key) {
+    return 'Are you sure you want to delete key \"$key\"?';
+  }
+
+  @override
+  String get keyboardKeepAtLeastOnePageWarning => 'Must keep at least one page';
+
+  @override
+  String keyboardRowMaxKeysWarning(int count) {
+    return 'A row currently has $count keys, row button count cannot be less than $count';
+  }
+
+  @override
+  String keyboardRowReachedMaxWarning(int count) {
+    return 'Key count in this row has reached maximum (max $count keys)';
+  }
+
+  @override
+  String get keyboardAddKeyTitle => 'Add Key';
+
+  @override
+  String get keyboardEditKeyTitle => 'Edit Key';
+
+  @override
+  String get keyboardLabelFormField => 'Label';
+
+  @override
+  String get keyboardLabelFormFieldHint =>
+      'Text displayed on the key, e.g. Tab, (), A';
+
+  @override
+  String get keyboardLabelOrIconRequiredError =>
+      'Please enter display text or select an icon';
+
+  @override
+  String get keyboardIconFormField => 'Icon (Optional)';
+
+  @override
+  String get keyboardNoIconOption => 'No icon (Use text)';
+
+  @override
+  String get keyboardActionFormField => 'Action';
+
+  @override
+  String get keyboardValueFormField => 'Input Text (Value)';
+
+  @override
+  String get keyboardValueFormFieldHint =>
+      'Text inserted upon click, e.g. ;, =, ->';
+
+  @override
+  String get keyboardValueRequiredError => 'Input text cannot be empty';
+
+  @override
+  String get keyboardPairPresetFormField => 'Pair Symbols Preset (Value)';
+
+  @override
+  String get keyboardCommandPresetFormField => 'Editor Command Preset (Value)';
+
+  @override
+  String get keyboardModifierPresetFormField => 'Terminal Modifier (Value)';
+
+  @override
+  String get keyboardTerminalKeyPresetFormField => 'Terminal Key (Value)';
+
+  @override
+  String get keyboardCursorOffsetFormField =>
+      'Cursor Relative Offset (cursorOffset)';
+
+  @override
+  String get keyboardCursorOffsetHelper =>
+      'e.g. For () cursor in center should move left by 1, enter -1';
+
+  @override
+  String get keyboardCursorOffsetRequiredError =>
+      'Please enter cursor offset (usually -1)';
+
+  @override
+  String get keyboardCursorOffsetIntegerError => 'Offset must be an integer';
 }

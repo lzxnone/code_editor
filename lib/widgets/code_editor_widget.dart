@@ -51,6 +51,77 @@ class _CodeEditorWidgetState extends State<CodeEditorWidget> {
   int? _currentIndentSize;
   bool _isShowingConflictDialog = false;
 
+  // 双指捏合缩放字号状态
+  final Map<int, Offset> _pointerPositions = {};
+  double? _initialPinchDistance;
+  double? _initialPinchFontSize;
+  double? _activeZoomFontSize;
+  bool _isPinching = false;
+
+  void _handlePointerDown(PointerDownEvent event, double currentFontSize) {
+    _pointerPositions[event.pointer] = event.position;
+    if (_pointerPositions.length == 2) {
+      final points = _pointerPositions.values.toList();
+      _initialPinchDistance = (points[0] - points[1]).distance;
+      _initialPinchFontSize = _activeZoomFontSize ?? currentFontSize;
+      setState(() {
+        _isPinching = true;
+      });
+    }
+  }
+
+  void _handlePointerMove(PointerMoveEvent event) {
+    if (!_pointerPositions.containsKey(event.pointer)) return;
+    _pointerPositions[event.pointer] = event.position;
+
+    if (_pointerPositions.length >= 2 &&
+        _initialPinchDistance != null &&
+        _initialPinchDistance! > 10.0 &&
+        _initialPinchFontSize != null) {
+      final points = _pointerPositions.values.toList();
+      final currentDistance = (points[0] - points[1]).distance;
+      final scale = currentDistance / _initialPinchDistance!;
+      final rawFontSize = (_initialPinchFontSize! * scale).clamp(10.0, 30.0);
+      final newFontSize = (rawFontSize * 10).round() / 10.0;
+      if (_activeZoomFontSize != newFontSize) {
+        setState(() {
+          _activeZoomFontSize = newFontSize;
+        });
+      }
+    }
+  }
+
+  void _handlePointerUp(PointerUpEvent event) {
+    _pointerPositions.remove(event.pointer);
+    if (_pointerPositions.length < 2 && _isPinching) {
+      _finishPinchZoom();
+    }
+  }
+
+  void _handlePointerCancel(PointerCancelEvent event) {
+    _pointerPositions.remove(event.pointer);
+    if (_pointerPositions.length < 2 && _isPinching) {
+      _finishPinchZoom();
+    }
+  }
+
+  void _finishPinchZoom() {
+    final finalSize = _activeZoomFontSize;
+    setState(() {
+      _isPinching = false;
+      _initialPinchDistance = null;
+      _initialPinchFontSize = null;
+      _activeZoomFontSize = null;
+    });
+
+    if (finalSize != null) {
+      try {
+        final settings = _getSettingsProvider(context);
+        settings.setFontSize(finalSize.roundToDouble());
+      } catch (_) {}
+    }
+  }
+
   EditorTabItem? _getCurrentTab() {
     final filePath = widget.filePath;
     if (filePath == null || filePath.isEmpty) return null;
@@ -348,7 +419,7 @@ class _CodeEditorWidgetState extends State<CodeEditorWidget> {
     bool activeWordWrap = true;
     bool enableVirtualKeyboard = false;
     VirtualKeyboardConfig? keyboardConfig;
-    AppFontItem activeEditorFont = AppFonts.editorMonospace;
+    AppFontItem activeEditorFont = AppFonts.editorJetBrainsMono;
     try {
       final settings = _getSettingsProvider(context, listen: true);
       activeTheme = settings.editorTheme;
@@ -364,6 +435,8 @@ class _CodeEditorWidgetState extends State<CodeEditorWidget> {
       }
     } catch (_) {}
 
+    final double displayFontSize = _activeZoomFontSize ?? activeFontSize;
+
     return Container(
       color: activeTheme.backgroundColor,
       width: double.infinity,
@@ -371,61 +444,107 @@ class _CodeEditorWidgetState extends State<CodeEditorWidget> {
       child: Column(
         children: [
           Expanded(
-            child: CodeEditor(
-              key: ValueKey(_currentLoadedPath),
-              controller: controller,
-              focusNode: _focusNode,
-              scrollController: _scrollController,
-              wordWrap: activeWordWrap,
-              toolbarController: _toolbarController,
-              style: CodeEditorStyle(
-                fontSize: activeFontSize,
-                textColor: activeTheme.textColor,
-                backgroundColor: activeTheme.backgroundColor,
-                cursorColor: activeTheme.cursorColor,
-                cursorLineColor: activeTheme.cursorLineColor,
-                selectionColor: activeTheme.selectionColor,
-                fontFamily: activeEditorFont.fontFamily,
-                fontFamilyFallback: activeEditorFont.fallback,
-                codeTheme: CodeHighlightTheme(
-                  languages: SyntaxHighlightHelper.getLanguagesForFile(_currentLoadedPath ?? widget.filePath),
-                  theme: activeTheme.highlightTheme,
-                ),
+            child: Listener(
+              behavior: HitTestBehavior.translucent,
+              onPointerDown: (event) => _handlePointerDown(event, activeFontSize),
+              onPointerMove: _handlePointerMove,
+              onPointerUp: _handlePointerUp,
+              onPointerCancel: _handlePointerCancel,
+              child: Stack(
+                children: [
+                  CodeEditor(
+                    key: ValueKey(_currentLoadedPath),
+                    controller: controller,
+                    focusNode: _focusNode,
+                    scrollController: _scrollController,
+                    wordWrap: activeWordWrap,
+                    toolbarController: _toolbarController,
+                    style: CodeEditorStyle(
+                      fontSize: displayFontSize,
+                      textColor: activeTheme.textColor,
+                      backgroundColor: activeTheme.backgroundColor,
+                      cursorColor: activeTheme.cursorColor,
+                      cursorLineColor: activeTheme.cursorLineColor,
+                      selectionColor: activeTheme.selectionColor,
+                      fontFamily: activeEditorFont.fontFamily,
+                      fontFamilyFallback: activeEditorFont.fallback,
+                      codeTheme: CodeHighlightTheme(
+                        languages: SyntaxHighlightHelper.getLanguagesForFile(_currentLoadedPath ?? widget.filePath),
+                        theme: activeTheme.highlightTheme,
+                      ),
+                    ),
+                    indicatorBuilder: (context, editingController, chunkController, notifier) {
+                      return Row(
+                        children: [
+                          DefaultCodeLineNumber(
+                            controller: editingController,
+                            notifier: notifier,
+                            textStyle: TextStyle(
+                              color: activeTheme.gutterTextColor,
+                              fontSize: (displayFontSize - 1).clamp(9.0, 30.0),
+                              fontFamily: activeEditorFont.fontFamily,
+                              fontFamilyFallback: activeEditorFont.fallback,
+                            ),
+                            focusedTextStyle: TextStyle(
+                              color: activeTheme.focusedGutterTextColor,
+                              fontSize: (displayFontSize - 1).clamp(9.0, 30.0),
+                              fontWeight: FontWeight.bold,
+                              fontFamily: activeEditorFont.fontFamily,
+                              fontFamilyFallback: activeEditorFont.fallback,
+                            ),
+                          ),
+                          DefaultCodeChunkIndicator(
+                            width: 20,
+                            controller: chunkController,
+                            notifier: notifier,
+                            painter: DefaultCodeChunkIndicatorPainter(
+                              color: activeTheme.gutterTextColor,
+                            ),
+                          ),
+                        ],
+                      );
+                    },
+                  ),
+                  if (_isPinching && _activeZoomFontSize != null)
+                    Center(
+                      child: IgnorePointer(
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                          decoration: BoxDecoration(
+                            color: Colors.black.withValues(alpha: 0.75),
+                            borderRadius: BorderRadius.circular(24),
+                            boxShadow: const [
+                              BoxShadow(
+                                color: Colors.black26,
+                                blurRadius: 8,
+                                offset: Offset(0, 2),
+                              ),
+                            ],
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(Icons.format_size, color: Colors.white, size: 18),
+                              const SizedBox(width: 8),
+                              Text(
+                                '${_activeZoomFontSize!.round()} pt',
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.bold,
+                                  decoration: TextDecoration.none,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                ],
               ),
-              indicatorBuilder: (context, editingController, chunkController, notifier) {
-                return Row(
-                  children: [
-                    DefaultCodeLineNumber(
-                      controller: editingController,
-                      notifier: notifier,
-                      textStyle: TextStyle(
-                        color: activeTheme.gutterTextColor,
-                        fontSize: (activeFontSize - 1).clamp(9.0, 30.0),
-                        fontFamily: activeEditorFont.fontFamily,
-                        fontFamilyFallback: activeEditorFont.fallback,
-                      ),
-                      focusedTextStyle: TextStyle(
-                        color: activeTheme.focusedGutterTextColor,
-                        fontSize: (activeFontSize - 1).clamp(9.0, 30.0),
-                        fontWeight: FontWeight.bold,
-                        fontFamily: activeEditorFont.fontFamily,
-                        fontFamilyFallback: activeEditorFont.fallback,
-                      ),
-                    ),
-                    DefaultCodeChunkIndicator(
-                      width: 20,
-                      controller: chunkController,
-                      notifier: notifier,
-                      painter: DefaultCodeChunkIndicatorPainter(
-                        color: activeTheme.gutterTextColor,
-                      ),
-                    ),
-                  ],
-                );
-              },
             ),
           ),
-          if (enableVirtualKeyboard && keyboardConfig != null)
+          if (enableVirtualKeyboard && keyboardConfig != null && keyboardConfig.hasKeys)
             VirtualKeyboardWidget(
               controller: controller,
               focusNode: _focusNode,

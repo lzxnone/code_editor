@@ -22,19 +22,30 @@ class VirtualKeyboardWidget extends StatefulWidget {
   State<VirtualKeyboardWidget> createState() => _VirtualKeyboardWidgetState();
 }
 
-class _VirtualKeyboardWidgetState extends State<VirtualKeyboardWidget> {
+class _VirtualKeyboardWidgetState extends State<VirtualKeyboardWidget>
+    with SingleTickerProviderStateMixin {
   late PageController _pageController;
+  late AnimationController _animationController;
   int _currentPage = 0;
+
+  static const double _rowHeight = 30.0;
+  static const double _indicatorHeight = 12.0;
 
   @override
   void initState() {
     super.initState();
     _pageController = PageController(initialPage: 0);
+    _animationController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 200),
+      value: 0.0, // 默认折叠（0.0 表示仅显示第一行，1.0 表示完全展开）
+    );
   }
 
   @override
   void dispose() {
     _pageController.dispose();
+    _animationController.dispose();
     super.dispose();
   }
 
@@ -181,6 +192,10 @@ class _VirtualKeyboardWidgetState extends State<VirtualKeyboardWidget> {
 
   @override
   Widget build(BuildContext context) {
+    if (!widget.config.hasKeys) {
+      return const SizedBox.shrink();
+    }
+
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
 
@@ -189,65 +204,143 @@ class _VirtualKeyboardWidgetState extends State<VirtualKeyboardWidget> {
     final borderColor = isDark ? const Color(0xFF333333) : const Color(0xFFDCDFE6);
 
     final pages = widget.config.pages;
-    if (pages.isEmpty) {
-      return const SizedBox.shrink();
+
+    int maxRows = 1;
+    for (final p in pages) {
+      if (p.keys.length > maxRows) {
+        maxRows = p.keys.length;
+      }
     }
 
+    final hasMultiplePages = pages.length > 1;
+    final double indicatorTargetHeight = hasMultiplePages ? _indicatorHeight : 0.0;
+    // 多出的行高 + 多页指示器高度
+    final double totalExpandableHeight = (maxRows - 1) * _rowHeight + indicatorTargetHeight;
+
     return CodeEditorTapRegion(
-      child: Container(
-        decoration: BoxDecoration(
-          color: bgColor,
-          border: Border(
-            top: BorderSide(color: borderColor, width: 0.8),
-          ),
-        ),
-        child: SafeArea(
-          top: false,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              SizedBox(
-                height: 84, // 两行按键的高度
-                child: PageView.builder(
-                  controller: _pageController,
-                  itemCount: pages.length,
-                  onPageChanged: (idx) {
-                    setState(() {
-                      _currentPage = idx;
-                    });
-                  },
-                  itemBuilder: (context, pageIndex) {
-                    return _buildPage(pages[pageIndex], isDark);
-                  },
+      child: AnimatedBuilder(
+        animation: _animationController,
+        builder: (context, child) {
+          final progress = _animationController.value;
+          final currentIndicatorHeight = indicatorTargetHeight * progress;
+          final currentPageViewHeight = _rowHeight + ((maxRows - 1) * _rowHeight * progress);
+
+          return GestureDetector(
+            behavior: HitTestBehavior.translucent,
+            onVerticalDragStart: (details) {
+              _animationController.stop();
+            },
+            onVerticalDragUpdate: (details) {
+              if (totalExpandableHeight > 0) {
+                // 上拉 (delta.dy < 0) 增加展开进度，下拉 (delta.dy > 0) 减少展开进度
+                final deltaProgress = -details.delta.dy / totalExpandableHeight;
+                _animationController.value =
+                    (_animationController.value + deltaProgress).clamp(0.0, 1.0);
+              }
+            },
+            onVerticalDragEnd: (details) {
+              final velocity = details.primaryVelocity ?? 0;
+              if (velocity < -250) {
+                _animationController.forward();
+              } else if (velocity > 250) {
+                _animationController.reverse();
+              } else if (_animationController.value > 0.5) {
+                _animationController.forward();
+              } else {
+                _animationController.reverse();
+              }
+            },
+            child: Container(
+              decoration: BoxDecoration(
+                color: bgColor,
+                border: Border(
+                  top: BorderSide(color: borderColor, width: 0.8),
                 ),
               ),
-              if (pages.length > 1) _buildPageIndicator(pages.length, theme),
-            ],
-          ),
-        ),
+              child: SafeArea(
+                top: false,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (hasMultiplePages)
+                      _buildPageIndicator(
+                        pages.length,
+                        theme,
+                        progress,
+                        currentIndicatorHeight,
+                      ),
+                    SizedBox(
+                      height: currentPageViewHeight,
+                      child: PageView.builder(
+                        controller: _pageController,
+                        itemCount: pages.length,
+                        onPageChanged: (idx) {
+                          setState(() {
+                            _currentPage = idx;
+                          });
+                        },
+                        itemBuilder: (context, pageIndex) {
+                          return _buildPage(pages[pageIndex], isDark);
+                        },
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          );
+        },
       ),
     );
   }
 
-  Widget _buildPageIndicator(int pageCount, ThemeData theme) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 3),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: List.generate(pageCount, (index) {
-          final isSelected = index == _currentPage;
-          return Container(
-            margin: const EdgeInsets.symmetric(horizontal: 2.5),
-            width: isSelected ? 12 : 4,
-            height: 4,
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(2),
-              color: isSelected
-                  ? theme.colorScheme.primary
-                  : theme.colorScheme.onSurface.withValues(alpha: 0.25),
+  /// 顶部分页指示圆点：
+  /// - 只有在有多页且上拉展开时动态显示，默认单行完全不显示
+  /// - 纯圆点展示，不添加任何背景条/把手条
+  /// - 点击圆点可在展开与折叠之间快速切换
+  Widget _buildPageIndicator(
+    int pageCount,
+    ThemeData theme,
+    double progress,
+    double height,
+  ) {
+    if (pageCount <= 1 || progress <= 0.001 || height <= 0.5) {
+      return const SizedBox.shrink();
+    }
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: () {
+        if (_animationController.value > 0.5) {
+          _animationController.reverse();
+        } else {
+          _animationController.forward();
+        }
+      },
+      child: SizedBox(
+        height: height,
+        child: Opacity(
+          opacity: progress.clamp(0.0, 1.0),
+          child: Center(
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: List.generate(pageCount, (index) {
+                final isSelected = index == _currentPage;
+                return Container(
+                  margin: const EdgeInsets.symmetric(horizontal: 2.5),
+                  width: isSelected ? 12 : 4,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(2),
+                    color: isSelected
+                        ? theme.colorScheme.primary
+                        : theme.colorScheme.onSurface.withValues(alpha: 0.25),
+                  ),
+                );
+              }),
             ),
-          );
-        }),
+          ),
+        ),
       ),
     );
   }
@@ -259,30 +352,38 @@ class _VirtualKeyboardWidgetState extends State<VirtualKeyboardWidget> {
         final cellWidth = constraints.maxWidth / count;
         final rows = page.keys;
 
-        return Column(
-          children: rows.take(2).map((row) {
-            return SizedBox(
-              height: 42,
-              child: Row(
-                children: List.generate(count, (colIndex) {
-                  if (colIndex < row.length) {
-                    final keyItem = row[colIndex];
-                    return SizedBox(
-                      width: cellWidth,
-                      height: 42,
-                      child: _buildKeyButton(keyItem, isDark),
-                    );
-                  } else {
-                    // 多余未配置的格子，正常渲染背景占位
-                    return SizedBox(
-                      width: cellWidth,
-                      height: 42,
-                    );
-                  }
-                }),
-              ),
-            );
-          }).toList(),
+        return ClipRect(
+          child: OverflowBox(
+            minHeight: 0,
+            maxHeight: double.infinity,
+            alignment: Alignment.topLeft,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: rows.map((row) {
+                return SizedBox(
+                  height: _rowHeight,
+                  child: Row(
+                    children: List.generate(count, (colIndex) {
+                      if (colIndex < row.length) {
+                        final keyItem = row[colIndex];
+                        return SizedBox(
+                          width: cellWidth,
+                          height: _rowHeight,
+                          child: _buildKeyButton(keyItem, isDark),
+                        );
+                      } else {
+                        return SizedBox(
+                          width: cellWidth,
+                          height: _rowHeight,
+                        );
+                      }
+                    }),
+                  ),
+                );
+              }).toList(),
+            ),
+          ),
         );
       },
     );
@@ -299,14 +400,14 @@ class _VirtualKeyboardWidgetState extends State<VirtualKeyboardWidget> {
     if (iconData != null) {
       content = Icon(
         iconData,
-        size: 18,
+        size: 15,
         color: btnTextColor,
       );
     } else {
       content = Text(
         keyItem.label,
         style: TextStyle(
-          fontSize: keyItem.label.length > 3 ? 12 : 15,
+          fontSize: keyItem.label.length > 3 ? 11 : 13,
           fontWeight: FontWeight.w500,
           color: btnTextColor,
           fontFamily: 'Consolas, Monaco, monospace',
@@ -317,19 +418,18 @@ class _VirtualKeyboardWidgetState extends State<VirtualKeyboardWidget> {
     }
 
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 2.5, vertical: 3),
+      padding: const EdgeInsets.symmetric(horizontal: 0.75, vertical: 0.75),
       child: Material(
         color: btnBgColor,
-        borderRadius: BorderRadius.circular(6),
-        elevation: 0.5,
-        shadowColor: Colors.black26,
+        borderRadius: BorderRadius.circular(4),
+        elevation: 0,
         child: InkWell(
-          borderRadius: BorderRadius.circular(6),
+          borderRadius: BorderRadius.circular(4),
           onTap: () => _handleKeyTap(keyItem),
           child: Container(
             decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(6),
-              border: Border.all(color: borderColor, width: 0.8),
+              borderRadius: BorderRadius.circular(4),
+              border: Border.all(color: borderColor, width: 0.6),
             ),
             alignment: Alignment.center,
             child: content,

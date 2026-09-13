@@ -29,11 +29,11 @@ class SettingsProvider extends ChangeNotifier {
   ThemeMode _appThemeMode = ThemeMode.system;
   String _uiFontId = 'system_default';
   EditorTheme _editorTheme = EditorTheme.atomOneDark;
-  String _editorFontId = 'monospace';
-  String _terminalFontId = 'monospace';
+  String _editorFontId = 'jetbrains_mono';
+  String _terminalFontId = 'jetbrains_mono';
   double _fontSize = 14.0;
-  int _indentSize = 2;
-  bool _wordWrap = true;
+  int _indentSize = 4;
+  bool _wordWrap = false;
   bool _enableVirtualKeyboard = defaultTargetPlatform == TargetPlatform.android || defaultTargetPlatform == TargetPlatform.iOS;
   String _virtualKeyboardConfigJson = VirtualKeyboardConfig.defaultJsonPretty();
   VirtualKeyboardConfig _virtualKeyboardConfig = VirtualKeyboardConfig.defaultConfiguration();

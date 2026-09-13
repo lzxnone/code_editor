@@ -90,7 +90,7 @@
   "virtualKeyboard": "Accessory Keyboard",
   "virtualKeyboardSubtitle": "Show accessory symbols and shortcuts below the code editor",
   "editVirtualKeyboardConfig": "Edit Keyboard Config",
-  "editVirtualKeyboardConfigSubtitle": "Customize keyboard layout and shortcuts (JSON)",
+  "editVirtualKeyboardConfigSubtitle": "Customize keyboard layout and shortcuts",
   "virtualKeyboardDialogTitle": "Keyboard Config (JSON)",
   "resetDefault": "Reset to Default",
   "configFormatError": "Configuration format error",
@@ -239,5 +239,139 @@
         "type": "String"
       }
     }
-  }
+  },
+  "cancel": "Cancel",
+  "confirm": "Confirm",
+  "delete": "Delete",
+  "addSession": "New Session",
+  "editorScope": "Editor",
+  "terminalScope": "Terminal",
+  "virtualKeyboardConfigTitle": "Accessory Keyboard Config",
+  "virtualKeyboardPageSubtitle": "{scope}:(Page {page})",
+  "@virtualKeyboardPageSubtitle": {
+    "placeholders": {
+      "scope": {
+        "type": "String"
+      },
+      "page": {
+        "type": "int"
+      }
+    }
+  },
+  "keyboardRestoreDefaultTooltip": "Reset to default presets",
+  "keyboardPageManagementTooltip": "Page Management",
+  "keyboardDrawerTitle": "Pages",
+  "keyboardNewPage": "New Page",
+  "keyboardPageItemTitle": "Page {page}",
+  "@keyboardPageItemTitle": {
+    "placeholders": {
+      "page": {
+        "type": "int"
+      }
+    }
+  },
+  "keyboardPageItemSubtitle": "{count} rows",
+  "@keyboardPageItemSubtitle": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "keyboardDeletePageTooltip": "Delete page",
+  "keyboardPageConfigSectionTitle": "Page Configuration",
+  "keyboardRowButtons": "Buttons per row",
+  "keyboardRowGridDescription": "Page width divided into {count} columns",
+  "@keyboardRowGridDescription": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "keyboardDecreaseRowButtonsTooltip": "Decrease buttons per row",
+  "keyboardIncreaseRowButtonsTooltip": "Increase buttons per row",
+  "keyboardPageKeysSectionTitle": "Page Keys",
+  "keyboardAddNewRow": "Add Row",
+  "keyboardEmptyPageKeysHint": "No key rows in current page",
+  "keyboardEmptyRowKeysHint": "No keys in this row, tap '+' above to add",
+  "keyboardRowKeyCount": "{count} keys",
+  "@keyboardRowKeyCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "keyboardAddKeyTooltip": "Add key",
+  "keyboardDeleteRowTooltip": "Delete row",
+  "keyboardEditKeyTooltip": "Edit key",
+  "keyboardDeleteKeyTooltip": "Delete key",
+  "keyboardNoLabel": "(No label)",
+  "keyboardResetDefaultTitle": "Reset to Default",
+  "keyboardResetDefaultContent": "Are you sure you want to reset the keyboard to default presets? Your custom modifications will be overwritten.",
+  "keyboardResetDefaultSuccess": "Reset to default presets successfully",
+  "keyboardDeletePageTitle": "Delete Page",
+  "keyboardDeletePageContent": "Are you sure you want to delete \"Page {page}\"?",
+  "@keyboardDeletePageContent": {
+    "placeholders": {
+      "page": {
+        "type": "int"
+      }
+    }
+  },
+  "keyboardDeleteRowTitle": "Delete Key Row",
+  "keyboardDeleteRowContent": "Are you sure you want to delete \"Row {row}\" and all its keys?",
+  "@keyboardDeleteRowContent": {
+    "placeholders": {
+      "row": {
+        "type": "int"
+      }
+    }
+  },
+  "keyboardDeleteKeyTitle": "Delete Key",
+  "keyboardDeleteKeyContent": "Are you sure you want to delete key \"{key}\"?",
+  "@keyboardDeleteKeyContent": {
+    "placeholders": {
+      "key": {
+        "type": "String"
+      }
+    }
+  },
+  "keyboardKeepAtLeastOnePageWarning": "Must keep at least one page",
+  "keyboardRowMaxKeysWarning": "A row currently has {count} keys, row button count cannot be less than {count}",
+  "@keyboardRowMaxKeysWarning": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "keyboardRowReachedMaxWarning": "Key count in this row has reached maximum (max {count} keys)",
+  "@keyboardRowReachedMaxWarning": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "keyboardAddKeyTitle": "Add Key",
+  "keyboardEditKeyTitle": "Edit Key",
+  "keyboardLabelFormField": "Label",
+  "keyboardLabelFormFieldHint": "Text displayed on the key, e.g. Tab, (), A",
+  "keyboardLabelOrIconRequiredError": "Please enter display text or select an icon",
+  "keyboardIconFormField": "Icon (Optional)",
+  "keyboardNoIconOption": "No icon (Use text)",
+  "keyboardActionFormField": "Action",
+  "keyboardValueFormField": "Input Text (Value)",
+  "keyboardValueFormFieldHint": "Text inserted upon click, e.g. ;, =, ->",
+  "keyboardValueRequiredError": "Input text cannot be empty",
+  "keyboardPairPresetFormField": "Pair Symbols Preset (Value)",
+  "keyboardCommandPresetFormField": "Editor Command Preset (Value)",
+  "keyboardModifierPresetFormField": "Terminal Modifier (Value)",
+  "keyboardTerminalKeyPresetFormField": "Terminal Key (Value)",
+  "keyboardCursorOffsetFormField": "Cursor Relative Offset (cursorOffset)",
+  "keyboardCursorOffsetHelper": "e.g. For () cursor in center should move left by 1, enter -1",
+  "keyboardCursorOffsetRequiredError": "Please enter cursor offset (usually -1)",
+  "keyboardCursorOffsetIntegerError": "Offset must be an integer"
 }

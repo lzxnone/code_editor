@@ -8,7 +8,15 @@ import 'package:code_editor/views/main_view.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import 'package:flutter/services.dart';
+
 void main() {
+  WidgetsFlutterBinding.ensureInitialized();
+  SystemChrome.setSystemUIOverlayStyle(
+    const SystemUiOverlayStyle(
+      statusBarColor: Colors.transparent,
+    ),
+  );
   runApp(const MyApp());
 }
 
@@ -57,6 +65,13 @@ class MyApp extends StatelessWidget {
                 seedColor: Colors.blue,
                 brightness: Brightness.light,
               ),
+              appBarTheme: const AppBarTheme(
+                systemOverlayStyle: SystemUiOverlayStyle(
+                  statusBarColor: Colors.transparent,
+                  statusBarIconBrightness: Brightness.dark,
+                  statusBarBrightness: Brightness.light,
+                ),
+              ),
               fontFamily: settings.uiFont.fontFamily,
               fontFamilyFallback: settings.uiFont.fallback,
             ),
@@ -66,6 +81,13 @@ class MyApp extends StatelessWidget {
               colorScheme: ColorScheme.fromSeed(
                 seedColor: Colors.blue,
                 brightness: Brightness.dark,
+              ),
+              appBarTheme: const AppBarTheme(
+                systemOverlayStyle: SystemUiOverlayStyle(
+                  statusBarColor: Colors.transparent,
+                  statusBarIconBrightness: Brightness.light,
+                  statusBarBrightness: Brightness.dark,
+                ),
               ),
               fontFamily: settings.uiFont.fontFamily,
               fontFamilyFallback: settings.uiFont.fallback,
