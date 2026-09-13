@@ -71,6 +71,27 @@
   "darkThemeCategory": "暗色系",
   "lightThemeCategory": "浅色系",
   "codeFontSize": "代码字号缩放",
+  "uiFont": "界面字体",
+  "selectUiFont": "选择界面字体",
+  "themeColor": "主题颜色",
+  "selectThemeColor": "选择主题颜色",
+  "terminalBackgroundColor": "终端背景颜色",
+  "selectTerminalBackgroundColor": "选择终端背景颜色",
+  "uiFontPreview": "代码编辑器界面字体预览 Code Editor 123",
+  "codeFont": "代码字体",
+  "selectCodeFont": "选择代码字体",
+  "codeFontPreview": "const app = \"Code Editor\"; // 代码预览",
+  "terminalFont": "终端字体",
+  "selectTerminalFont": "选择终端字体",
+  "terminalFontPreview": "$ git status -s # 终端字体预览",
+  "fontName": "{font, select, system_default{系统默认} sans_serif{无衬线体} serif{衬线体（宋体）} monospace{系统等宽} consolas{Consolas} courier_new{Courier New} menlo{Menlo / Monaco} jetbrains_mono{JetBrains Mono} fira_code{Fira Code} other{{font}}}",
+  "@fontName": {
+    "placeholders": {
+      "font": {
+        "type": "String"
+      }
+    }
+  },
   "decreaseFontSize": "减小字号",
   "increaseFontSize": "增大字号",
   "fontSizeDialogTitle": "代码字号",
@@ -91,6 +112,10 @@
   "virtualKeyboardSubtitle": "在代码编辑区底部显示辅助符号与快捷键",
   "editVirtualKeyboardConfig": "编辑键盘配置",
   "editVirtualKeyboardConfigSubtitle": "自定义小键盘按键布局与快捷键",
+  "terminalVirtualKeyboard": "终端小键盘",
+  "terminalVirtualKeyboardSubtitle": "在终端下方显示常用特殊键与指令快捷键",
+  "editTerminalVirtualKeyboardConfig": "编辑终端键盘配置",
+  "editTerminalVirtualKeyboardConfigSubtitle": "自定义 Esc / Tab / Ctrl 组合等终端专用按键",
   "virtualKeyboardDialogTitle": "小键盘配置 (JSON)",
   "resetDefault": "恢复默认",
   "configFormatError": "配置格式错误",
@@ -357,21 +382,143 @@
   },
   "keyboardAddKeyTitle": "添加按键",
   "keyboardEditKeyTitle": "编辑按键",
-  "keyboardLabelFormField": "显示文本 (Label)",
+  "keyboardLabelFormField": "显示文本",
   "keyboardLabelFormFieldHint": "按键上显示的文本，如 Tab、()、A",
   "keyboardLabelOrIconRequiredError": "请输入显示文本或选择图标",
-  "keyboardIconFormField": "图标 (Icon, 可选)",
+  "keyboardIconFormField": "图标 (可选)",
+  "keyboardIconName": "{icon, select, undo{撤销} redo{重做} tab{向右缩进} untab{向左缩进} outdent{减少缩进} arrow_left{左箭头} arrow_right{右箭头} arrow_up{上箭头} arrow_down{下箭头} home{移至行首} end{移至行尾} first_page{移至文首} last_page{移至文末} page_up{上翻页} page_down{下翻页} enter{回车} space{空格} escape{退出} insert{插入} clear{清除} keyboard{键盘} backspace{退格} delete{删除} copy{复制} cut{剪切} paste{粘贴} save{保存} search{搜索} select_all{全选} keyboard_hide{收起小键盘} other{{icon}}}",
+  "@keyboardIconName": {
+    "placeholders": {
+      "icon": {
+        "type": "String"
+      }
+    }
+  },
   "keyboardNoIconOption": "无图标 (使用文本显示)",
-  "keyboardActionFormField": "动作类型 (Action)",
-  "keyboardValueFormField": "输入文本内容 (Value)",
+  "keyboardActionFormField": "动作类型",
+  "keyboardActionName": "{action, select, input{普通文本} pair{成对符号} command{编辑器命令} modifier{修饰键} key{特殊键} other{{action}}}",
+  "@keyboardActionName": {
+    "placeholders": {
+      "action": {
+        "type": "String"
+      }
+    }
+  },
+  "keyboardActionInputTerminal": "指令快捷键",
+  "keyboardKeyFormField": "特殊键",
+  "keyboardKeyGroupNavigation": "导航键",
+  "keyboardKeyGroupEditing": "编辑键",
+  "keyboardKeyGroupFunctionKeys": "功能键",
+  "keyboardKeyGroupLetters": "字母键",
+  "keyboardAutoEnter": "发送后自动回车",
+  "keyboardKeyName": "{key, select, escape{退出} tab{Tab} backtab{反向制表} returnKey{回车} enter{回车} numpadEnter{小键盘回车} backspace{退格} delete{删除} insert{插入} space{空格} numpadClear{清除} arrowUp{上} arrowDown{下} arrowLeft{左} arrowRight{右} home{行首} end{行尾} pageUp{上翻页} pageDown{下翻页} f1{F1} f2{F2} f3{F3} f4{F4} f5{F5} f6{F6} f7{F7} f8{F8} f9{F9} f10{F10} f11{F11} f12{F12} other{{key}}}",
+  "@keyboardKeyName": {
+    "placeholders": {
+      "key": {
+        "type": "String"
+      }
+    }
+  },
+  "keyboardKeyInvalidError": "该键在终端中不会产生任何输出，请选择列表中的特殊键",
+  "keyboardValueFormField": "输入文本内容",
   "keyboardValueFormFieldHint": "点击后直接插入的文本，如 ;、=、->",
   "keyboardValueRequiredError": "输入文本不能为空",
-  "keyboardPairPresetFormField": "成对符号预设 (Value)",
-  "keyboardCommandPresetFormField": "预设编辑器命令 (Value)",
-  "keyboardModifierPresetFormField": "终端修饰键 (Value)",
-  "keyboardTerminalKeyPresetFormField": "终端按键 (Value)",
-  "keyboardCursorOffsetFormField": "光标相对偏移 (cursorOffset)",
-  "keyboardCursorOffsetHelper": "例如 () 插入后光标居中需向左偏移 1 位，填写 -1",
+  "keyboardPairValueFormField": "成对符号",
+  "keyboardPairValueFormFieldHint": "例如 ()、[]、\"\"、<>",
+  "keyboardPairValueRequiredError": "请输入成对符号",
+  "keyboardPairValueInvalidError": "请输入至少 2 个字符且左右不同的成对符号，如 ()、[]",
+  "keyboardCommandPresetFormField": "编辑器命令",
+  "keyboardCommandName": "{command, select, tab{向右缩进} untab{向左缩进} undo{撤销} redo{重做} cursor_left{光标左移} cursor_right{光标右移} cursor_up{光标上移} cursor_down{光标下移} line_start{移动至行首} line_end{移动至行尾} page_start{移动至文首} page_end{移动至文末} copy{复制} cut{剪切} paste{粘贴} delete{删除} select_all{全选} keyboard_hide{收起小键盘} other{{command}}}",
+  "@keyboardCommandName": {
+    "placeholders": {
+      "command": {
+        "type": "String"
+      }
+    }
+  },
+  "keyboardModifierPresetFormField": "终端修饰键",
+  "keyboardModifierName": "{modifier, select, ctrl{Ctrl 键} alt{Alt 键} shift{Shift 键} other{{modifier}}}",
+  "@keyboardModifierName": {
+    "placeholders": {
+      "modifier": {
+        "type": "String"
+      }
+    }
+  },
+  "keyboardCursorOffsetFormField": "光标相对偏移",
   "keyboardCursorOffsetRequiredError": "请输入光标偏移（通常为 -1）",
-  "keyboardCursorOffsetIntegerError": "偏移量必须为整数"
+  "keyboardCursorOffsetIntegerError": "偏移量必须为整数",
+  "recommended": "推荐",
+  "presetColors": "预设颜色",
+  "hexColor": "十六进制颜色",
+  "currentColor": "当前",
+  "newColor": "预览",
+  "runTasks": "运行任务",
+  "projectDetect": "项目探测",
+  "projectDetecting": "正在探测项目...",
+  "editRunTasks": "运行任务编辑",
+  "projectSection": "项目",
+  "showHiddenFiles": "显示隐藏文件",
+  "showHiddenFilesSubtitle": "在文件树中展示以点 (.) 开头的隐藏文件与文件夹",
+  "searchTasksHint": "搜索指定任务...",
+  "noTasksAvailable": "暂无可执行任务",
+  "noMatchingTasks": "无匹配的任务",
+  "userCustomTasks": "用户自定义任务",
+  "systemDetectedTasks": "系统动态探测任务",
+  "editCustomTasksTooltip": "编辑自定义任务",
+  "runTasksConfig": "运行任务配置",
+  "editTask": "编辑任务",
+  "addTask": "新增任务",
+  "runTasksConfigSubtitle": "配置将自动保存至项目根目录下的 .code_editor/run_tasks.json",
+  "noCustomTasksInProject": "当前项目暂无自定义任务",
+  "createNow": "立即创建",
+  "saveAndApply": "保存并应用",
+  "taskNameRequired": "任务名称 *",
+  "taskNameHint": "如: 编译并运行 Debug",
+  "taskNameEmptyError": "请输入任务名称",
+  "shellCommandRequired": "Shell 执行指令 *",
+  "shellCommandHint": "如: cmake -B build && cmake --build build",
+  "shellCommandEmptyError": "请输入执行指令",
+  "taskDescOptional": "任务描述（选填）",
+  "taskDescHint": "简要说明此任务的用途",
+  "clearBeforeRun": "执行前清屏 (clear)",
+  "clearBeforeRunSubtitle": "在终端输出任务结果前清理历史屏幕",
+  "runTasksUpdated": "运行任务配置已更新",
+  "detectCompletedMessage": "探测完成，发现 {count} 个可用任务",
+  "@detectCompletedMessage": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "pleaseOpenProjectFirst": "请先打开一个项目",
+  "deleteTaskConfirmMessage": "确定要删除任务 \"{name}\" 吗？",
+  "@deleteTaskConfirmMessage": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "deleteSelectedTasksConfirmMessage": "确定要删除选中的 {count} 个任务吗？",
+  "@deleteSelectedTasksConfirmMessage": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "deleteSelected": "删除选中",
+  "selectTasksToDelete": "选择要删除的任务",
+  "selectedCount": "已选 {count} 项",
+  "@selectedCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "unsavedTaskChangesTitle": "未保存的任务更改",
+  "unsavedTaskChangesMessage": "当前任务内容已被修改，是否放弃未保存的修改并返回？"
 }

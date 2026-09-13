@@ -26,12 +26,20 @@ class TerminalSessionItemWidget extends StatelessWidget {
     final badgeLabel = session.distroId;
     final isHost = session.distroId == 'host';
 
+    final isTerminated = !session.isProcessRunning;
+
     final textStyle = theme.textTheme.bodyMedium?.copyWith(
       fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
-      color: isSelected ? theme.colorScheme.primary : null,
+      color: isTerminated
+          ? theme.colorScheme.error
+          : (isSelected ? theme.colorScheme.primary : null),
+      decoration: isTerminated ? TextDecoration.lineThrough : null,
+      decorationColor: isTerminated ? theme.colorScheme.error : null,
     );
 
-    final iconColor = isSelected ? theme.colorScheme.primary : null;
+    final iconColor = isTerminated
+        ? theme.colorScheme.error
+        : (isSelected ? theme.colorScheme.primary : null);
 
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 2.0),
@@ -66,6 +74,8 @@ class TerminalSessionItemWidget extends StatelessWidget {
                 const SizedBox(width: 6),
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 6.0, vertical: 1.5),
+                  // 系统名可能来自用户自定义导入，过长时限宽避免把标题行挤出边界
+                  constraints: const BoxConstraints(maxWidth: 96.0),
                   decoration: BoxDecoration(
                     color: isHost
                         ? theme.colorScheme.surfaceContainerHighest
@@ -74,6 +84,8 @@ class TerminalSessionItemWidget extends StatelessWidget {
                   ),
                   child: Text(
                     badgeLabel,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                     style: TextStyle(
                       fontSize: 10.0,
                       fontWeight: FontWeight.w600,
@@ -175,9 +187,13 @@ class TerminalSessionItemWidget extends StatelessWidget {
         children: [
           Icon(icon, size: 18, color: color),
           const SizedBox(width: 8),
-          Text(
-            title,
-            style: TextStyle(color: color),
+          Flexible(
+            child: Text(
+              title,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(color: color),
+            ),
           ),
         ],
       ),

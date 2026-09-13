@@ -34,10 +34,12 @@ class TerminalProvider extends ChangeNotifier {
 
   /// 创建新会话
   /// [distroId]: 发行版标识符（如 'alpine', 'host'）
+  /// [workspacePath]: 绑定的工程根目录路径（挂载至容器内部的 /workspace）
   /// [activate]: 是否自动跳转切换到该会话。抽屉右上角加号点击时为 false（直接添加但不跳转）。
   TerminalSession createSession({
     String? name,
     String distroId = 'alpine',
+    String? workspacePath,
     bool activate = false,
     bool autoStartProcess = true,
   }) {
@@ -47,7 +49,11 @@ class TerminalProvider extends ChangeNotifier {
       id: 'session_${DateTime.now().microsecondsSinceEpoch}_$nextIndex',
       name: sessionName,
       distroId: distroId,
+      workspacePath: workspacePath,
       autoStartProcess: autoStartProcess,
+      onProcessTerminated: () {
+        notifyListeners();
+      },
     );
 
     _sessions.add(session);
@@ -58,6 +64,28 @@ class TerminalProvider extends ChangeNotifier {
 
     notifyListeners();
     return session;
+  }
+
+  /// 查找或复用绑定了指定工程路径的终端会话
+  /// 如果存在，直接激活并返回；如果不存在，则新建并激活一个会话
+  TerminalSession getOrCreateSessionForProject({
+    required String projectRoot,
+    String distroId = 'alpine',
+    String? sessionName,
+  }) {
+    final index = _sessions.indexWhere((s) => s.workspacePath == projectRoot);
+    if (index != -1) {
+      selectSession(index);
+      return _sessions[index];
+    }
+
+    return createSession(
+      name: sessionName,
+      distroId: distroId,
+      workspacePath: projectRoot,
+      activate: true,
+      autoStartProcess: true,
+    );
   }
 
   /// 切换当前激活的会话

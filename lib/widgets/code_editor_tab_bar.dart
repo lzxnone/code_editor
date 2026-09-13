@@ -82,7 +82,8 @@ class CodeEditorTabBar extends StatelessWidget {
         builder: (context, constraints) {
           final totalWidth = constraints.maxWidth;
           final tabCount = tabs.length;
-          final equalShare = math.max(28.0, totalWidth / tabCount);
+          // 下限需容纳内边距(8) + 关闭按钮(18) + 脏标记(10)，否则标签内 Row 会右溢出
+          final equalShare = math.max(40.0, totalWidth / tabCount);
 
           return Theme(
             data: theme.copyWith(
@@ -178,26 +179,21 @@ class CodeEditorTabBar extends StatelessWidget {
             child: Row(
               children: [
                 Expanded(
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      if (tab.isModified)
-                        Padding(
-                          padding: const EdgeInsets.only(right: 2.0),
-                          child: Text(
-                            '*',
+                  // 脏标记并入同一个 Text.rich，避免它在极窄标签里单独撑破 Row
+                  child: Text.rich(
+                    TextSpan(
+                      children: [
+                        if (tab.isModified)
+                          TextSpan(
+                            text: '*',
                             style: TextStyle(
                               color: theme.colorScheme.error,
                               fontWeight: FontWeight.bold,
                               fontSize: 12.0,
                             ),
                           ),
-                        ),
-                      Flexible(
-                        child: Text(
-                          displayName,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
+                        TextSpan(
+                          text: displayName,
                           style: TextStyle(
                             fontSize: 12.0,
                             fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
@@ -206,8 +202,10 @@ class CodeEditorTabBar extends StatelessWidget {
                                 : theme.colorScheme.onSurfaceVariant,
                           ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ),
                 InkResponse(

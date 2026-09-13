@@ -10,6 +10,7 @@ class TerminalSession {
   final String id;
   String name;
   final String distroId;
+  final String? workspacePath;
   final DateTime createdAt;
   final Terminal terminal;
   final FocusNode focusNode;
@@ -17,12 +18,14 @@ class TerminalSession {
   Pty? _pty;
   StreamSubscription? _ptyOutputSub;
   bool _isProcessRunning = false;
-  String _inputBuffer = '';
+  VoidCallback? onProcessTerminated;
 
   TerminalSession({
     required this.id,
     this.name = '会话',
     this.distroId = 'alpine',
+    this.workspacePath,
+    this.onProcessTerminated,
     DateTime? createdAt,
     int maxLines = 10000,
     bool autoStartProcess = false,
@@ -31,7 +34,7 @@ class TerminalSession {
         focusNode = FocusNode() {
     _initTerminalEvents();
     if (autoStartProcess) {
-      unawaited(startProcess());
+      unawaited(startProcess(workspacePath: workspacePath));
     }
   }
 
@@ -41,14 +44,12 @@ class TerminalSession {
   String get bufferText => terminal.buffer.getText();
 
   void _initTerminalEvents() {
-    // 监听输入直接送往 PTY
+    // 监听输入直接送往 PTY；若进程已退出或未启动，则完全不处理输入（禁止交互）
     terminal.onOutput = (data) {
       if (_pty != null && _isProcessRunning) {
         try {
           _pty!.write(utf8.encode(data));
         } catch (_) {}
-      } else {
-        _handleLocalEcho(data);
       }
     };
 
@@ -62,48 +63,14 @@ class TerminalSession {
     };
   }
 
-  /// 当无底层进程挂接时的本地简易交互回显支持（保证脱机/本地开发时的基础交互与光标跳动）
-  void _handleLocalEcho(String data) {
-    for (int i = 0; i < data.length; i++) {
-      final char = data[i];
-      if (char == '\r' || char == '\n') {
-        terminal.write('\r\n');
-        _executeLocalCommand(_inputBuffer.trim());
-        _inputBuffer = '';
-      } else if (char == '\x7f' || char == '\b') {
-        // 退格键
-        if (_inputBuffer.isNotEmpty) {
-          _inputBuffer = _inputBuffer.substring(0, _inputBuffer.length - 1);
-          terminal.write('\b \b');
-        }
-      } else if (char.codeUnitAt(0) >= 32) {
-        _inputBuffer += char;
-        terminal.write(char);
-      }
-    }
-  }
-
-  void _executeLocalCommand(String cmd) {
-    if (cmd.isEmpty) {
-      terminal.write('\$ ');
-      return;
-    }
-    if (cmd == 'clear') {
-      clear();
-      terminal.write('\$ ');
-      return;
-    }
-    terminal.write('\x1b[33m[Host fallback]: executed "$cmd"\x1b[0m\r\n');
-    terminal.write('\$ ');
-  }
-
   /// 启动底层真实 PTY 进程（连接 PRoot 容器或 Host Shell）
   Future<void> startProcess({DistroManager? distroManager, String? workspacePath}) async {
     final manager = distroManager ?? DistroManager();
+    final effectiveWorkspace = workspacePath ?? this.workspacePath;
     try {
       final config = await manager.buildLaunchConfig(
         systemName: distroId,
-        workspacePath: workspacePath,
+        workspacePath: effectiveWorkspace,
       );
 
       final initialRows = terminal.viewHeight > 0 ? terminal.viewHeight : 24;
@@ -130,18 +97,19 @@ class TerminalSession {
         },
         onDone: () {
           _isProcessRunning = false;
+          onProcessTerminated?.call();
         },
       );
 
       _pty!.exitCode.then((code) {
         _isProcessRunning = false;
         terminal.write('\r\n\x1b[33m[Process exited with code $code]\x1b[0m\r\n');
+        onProcessTerminated?.call();
       });
     } catch (e) {
       _isProcessRunning = false;
-      terminal.write('\x1b[1;36mWelcome to Terminal [$distroId]\x1b[0m\r\n');
-      terminal.write('\x1b[90m(PTY launch failed: $e. Running in local fallback mode.)\x1b[0m\r\n\r\n');
-      terminal.write('\$ ');
+      terminal.write('\x1b[31m[PTY launch failed: $e]\x1b[0m\r\n');
+      onProcessTerminated?.call();
     }
   }
 

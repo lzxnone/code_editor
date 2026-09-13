@@ -25,6 +25,9 @@ class ProjectProvider extends ChangeNotifier {
   //是否正在加载项目
   bool _isLoading = false;
 
+  //是否显示隐藏文件
+  bool _showHiddenFiles = true;
+
   // 跨 Provider 协同回调
   void Function(String oldPath, String newPath)? onEntityRenamed;
   void Function(String deletedPath)? onEntityDeleted;
@@ -37,9 +40,17 @@ class ProjectProvider extends ChangeNotifier {
   List<String> get openDirectoryPaths => _history.openDirectoryPaths;
   List<FileItem> get items => _items;
   bool get isLoading => _isLoading;
+  bool get showHiddenFiles => _showHiddenFiles;
   FileItem? get cutItem => _cutItem;
   FileItem? get copiedItem => _copiedItem;
   bool get canPaste => _cutItem != null || _copiedItem != null;
+
+  void updateShowHiddenFiles(bool show) {
+    if (_showHiddenFiles != show) {
+      _showHiddenFiles = show;
+      refreshTree();
+    }
+  }
 
   bool isItemCut(String path) {
     if (_cutItem == null) return false;
@@ -88,6 +99,7 @@ class ProjectProvider extends ChangeNotifier {
           ? await FileService.instance.buildTree(
               cleanPath,
               openDirectoryPaths: validOpenPaths,
+              showHiddenFiles: _showHiddenFiles,
             )
           : [];
 
@@ -187,6 +199,7 @@ class ProjectProvider extends ChangeNotifier {
           item.path,
           depth: item.depth + 1,
           openDirectoryPaths: updatedOpenPaths,
+          showHiddenFiles: _showHiddenFiles,
         );
         item.children.clear();
         item.children.addAll(children);
@@ -218,6 +231,7 @@ class ProjectProvider extends ChangeNotifier {
       final items = await FileService.instance.buildTree(
         currentRoot,
         openDirectoryPaths: _history.openDirectoryPaths,
+        showHiddenFiles: _showHiddenFiles,
       );
 
       String? currentFile = _history.lastOpenedFilePath;

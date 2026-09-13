@@ -1,3 +1,4 @@
+import 'dart:math';
 import 'package:code_editor/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -17,7 +18,14 @@ class _EditorContextMenuItem extends PopupMenuItem<void> implements PreferredSiz
             children: [
               Icon(icon, size: 16),
               const SizedBox(width: 8),
-              Text(text, style: const TextStyle(fontSize: 13)),
+              Flexible(
+                child: Text(
+                  text,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(fontSize: 13),
+                ),
+              ),
             ],
           ),
         );
@@ -71,8 +79,34 @@ class _MobileSelectionToolbarWidgetState extends State<_MobileSelectionToolbarWi
         widget.controller.selection.extentOffset != -1 &&
         !widget.controller.selection.isCollapsed;
 
+    final mediaQuery = MediaQuery.of(context);
+    final availableBottom = mediaQuery.size.height - mediaQuery.viewInsets.bottom;
+    TextSelectionToolbarAnchors effectiveAnchors = widget.anchors;
+
+    final primary = effectiveAnchors.primaryAnchor;
+    final secondary = effectiveAnchors.secondaryAnchor;
+
+    // 针对虚拟键盘或底栏的全局安全高度校准：
+    if (secondary != null && secondary.dy + 65.0 > availableBottom) {
+      effectiveAnchors = TextSelectionToolbarAnchors(
+        primaryAnchor: Offset(
+          secondary.dx.clamp(120.0, max(120.0, mediaQuery.size.width - 120.0)),
+          (availableBottom - 12.0).clamp(mediaQuery.padding.top + 48.0, availableBottom),
+        ),
+        secondaryAnchor: null,
+      );
+    } else if (primary.dy + 60.0 > availableBottom && primary.dx >= 0) {
+      effectiveAnchors = TextSelectionToolbarAnchors(
+        primaryAnchor: Offset(
+          primary.dx.clamp(120.0, max(120.0, mediaQuery.size.width - 120.0)),
+          (availableBottom - 12.0).clamp(mediaQuery.padding.top + 48.0, availableBottom),
+        ),
+        secondaryAnchor: null,
+      );
+    }
+
     return AdaptiveTextSelectionToolbar.buttonItems(
-      anchors: widget.anchors,
+      anchors: effectiveAnchors,
       buttonItems: [
         if (hasSelection)
           ContextMenuButtonItem(
@@ -164,15 +198,69 @@ class CodeEditorToolbarController implements SelectionToolbarController {
         anchors: anchors,
       );
     } else {
+      final safeAnchors = _sanitizeMobileAnchors(anchors, renderRect);
       _mobileController.show(
         context: context,
         controller: controller,
-        anchors: anchors,
+        anchors: safeAnchors,
         renderRect: renderRect,
         layerLink: layerLink,
         visibility: visibility,
       );
     }
+  }
+
+  /// 智能校准移动端选区工具栏锚点：
+  /// 1. 优先展示在选区上方（primaryAnchor），避免遮挡当前选中的代码内容及下方代码；
+  /// 2. 当选区位于视口顶部（上方空间不足 54px 时），智能翻转至选区下方（secondaryAnchor）；
+  /// 3. 当选区靠近视口底部或键盘时，保护次锚点不落入键盘/底栏区域，坚决保持在上方；
+  /// 4. 水平坐标智能居中并进行安全边缘约束（左右各留出 120px 缓冲），防止菜单按钮溢出屏幕。
+  static TextSelectionToolbarAnchors _sanitizeMobileAnchors(
+    TextSelectionToolbarAnchors anchors,
+    Rect renderRect,
+  ) {
+    final primary = anchors.primaryAnchor;
+    final secondary = anchors.secondaryAnchor;
+
+    // 确定水平基准坐标并进行安全边距夹取（左右两端预留充足空间以保证多个操作按钮完整可见）
+    final double rawX = (primary.dx > 0) ? primary.dx : (secondary?.dx ?? renderRect.center.dx);
+    final double safeX = (renderRect.width > 240.0)
+        ? rawX.clamp(renderRect.left + 120.0, renderRect.right - 120.0)
+        : renderRect.center.dx;
+
+    // 计算选区上方与下方的垂直可用净空间
+    final double topY = (primary.dy > 0) ? primary.dy : (secondary?.dy ?? renderRect.top + 60.0);
+    final double bottomY = (secondary != null && secondary.dy > 0) ? secondary.dy : (topY + 30.0);
+
+    final double spaceAbove = topY - renderRect.top;
+    final double spaceBelow = renderRect.bottom - bottomY;
+
+    // 规则 1：选区上方空间充足（>= 54.0px，足够容纳工具栏），置于选区上方！
+    // 选区本身与下方的代码行将保持 100% 清晰可见，绝不遮挡。
+    if (spaceAbove >= 54.0) {
+      return TextSelectionToolbarAnchors(
+        primaryAnchor: Offset(safeX, topY),
+        secondaryAnchor: spaceBelow >= 64.0 ? Offset(safeX, bottomY) : null,
+      );
+    }
+
+    // 规则 2：选区位于第一行/第二行（上方空间不足 54px），但下方空间充足（>= 64px）
+    // 智能翻转至选区下方，保证不超出屏幕顶部也不遮挡第一行
+    if (spaceBelow >= 64.0) {
+      return TextSelectionToolbarAnchors(
+        primaryAnchor: const Offset(-10000, -10000),
+        secondaryAnchor: Offset(safeX, bottomY),
+      );
+    }
+
+    // 规则 3：选区跨越很大或上下空间均受限时，安全悬浮于可视区域上边缘内侧
+    return TextSelectionToolbarAnchors(
+      primaryAnchor: Offset(
+        safeX,
+        (renderRect.top + 56.0).clamp(renderRect.top + 10.0, renderRect.bottom - 10.0),
+      ),
+      secondaryAnchor: null,
+    );
   }
 
   Future<void> _showDesktopMenu({

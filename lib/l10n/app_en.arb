@@ -71,6 +71,27 @@
   "darkThemeCategory": "Dark Theme",
   "lightThemeCategory": "Light Theme",
   "codeFontSize": "Font Size",
+  "uiFont": "Interface Font",
+  "selectUiFont": "Select Interface Font",
+  "themeColor": "Theme Color",
+  "selectThemeColor": "Select Theme Color",
+  "terminalBackgroundColor": "Terminal Background",
+  "selectTerminalBackgroundColor": "Select Terminal Background",
+  "uiFontPreview": "Code Editor interface font preview 123",
+  "codeFont": "Code Font",
+  "selectCodeFont": "Select Code Font",
+  "codeFontPreview": "const app = \"Code Editor\"; // code preview",
+  "terminalFont": "Terminal Font",
+  "selectTerminalFont": "Select Terminal Font",
+  "terminalFontPreview": "$ git status -s # terminal font preview",
+  "fontName": "{font, select, system_default{System Default} sans_serif{Sans-Serif} serif{Serif (Songti)} monospace{System Monospace} consolas{Consolas} courier_new{Courier New} menlo{Menlo / Monaco} jetbrains_mono{JetBrains Mono} fira_code{Fira Code} other{{font}}}",
+  "@fontName": {
+    "placeholders": {
+      "font": {
+        "type": "String"
+      }
+    }
+  },
   "decreaseFontSize": "Decrease font size",
   "increaseFontSize": "Increase font size",
   "fontSizeDialogTitle": "Editor Font Size",
@@ -91,6 +112,10 @@
   "virtualKeyboardSubtitle": "Show accessory symbols and shortcuts below the code editor",
   "editVirtualKeyboardConfig": "Edit Keyboard Config",
   "editVirtualKeyboardConfigSubtitle": "Customize keyboard layout and shortcuts",
+  "terminalVirtualKeyboard": "Terminal Accessory Keyboard",
+  "terminalVirtualKeyboardSubtitle": "Show special keys and command shortcuts below the terminal",
+  "editTerminalVirtualKeyboardConfig": "Edit Terminal Keyboard Config",
+  "editTerminalVirtualKeyboardConfigSubtitle": "Customize Esc / Tab / Ctrl combos and other terminal keys",
   "virtualKeyboardDialogTitle": "Keyboard Config (JSON)",
   "resetDefault": "Reset to Default",
   "configFormatError": "Configuration format error",
@@ -361,17 +386,139 @@
   "keyboardLabelFormFieldHint": "Text displayed on the key, e.g. Tab, (), A",
   "keyboardLabelOrIconRequiredError": "Please enter display text or select an icon",
   "keyboardIconFormField": "Icon (Optional)",
+  "keyboardIconName": "{icon, select, undo{Undo} redo{Redo} tab{Indent} untab{Outdent} outdent{Decrease Indent} arrow_left{Left Arrow} arrow_right{Right Arrow} arrow_up{Up Arrow} arrow_down{Down Arrow} home{Line Start} end{Line End} first_page{Document Start} last_page{Document End} page_up{Page Up} page_down{Page Down} enter{Enter} space{Space} escape{Escape} insert{Insert} clear{Clear} keyboard{Keyboard} backspace{Backspace} delete{Delete} copy{Copy} cut{Cut} paste{Paste} save{Save} search{Search} select_all{Select All} keyboard_hide{Hide Keyboard} other{{icon}}}",
+  "@keyboardIconName": {
+    "placeholders": {
+      "icon": {
+        "type": "String"
+      }
+    }
+  },
   "keyboardNoIconOption": "No icon (Use text)",
   "keyboardActionFormField": "Action",
-  "keyboardValueFormField": "Input Text (Value)",
+  "keyboardActionName": "{action, select, input{Plain Text} pair{Pair Symbols} command{Editor Command} modifier{Modifier Key} key{Special Key} other{{action}}}",
+  "@keyboardActionName": {
+    "placeholders": {
+      "action": {
+        "type": "String"
+      }
+    }
+  },
+  "keyboardActionInputTerminal": "Command Shortcut",
+  "keyboardKeyFormField": "Special Key",
+  "keyboardKeyGroupNavigation": "Navigation",
+  "keyboardKeyGroupEditing": "Editing",
+  "keyboardKeyGroupFunctionKeys": "Function Keys",
+  "keyboardKeyGroupLetters": "Letters",
+  "keyboardAutoEnter": "Send Enter after",
+  "keyboardKeyName": "{key, select, escape{Escape} tab{Tab} backtab{Backtab} returnKey{Return} enter{Enter} numpadEnter{Keypad Enter} backspace{Backspace} delete{Delete} insert{Insert} space{Space} numpadClear{Clear} arrowUp{Up} arrowDown{Down} arrowLeft{Left} arrowRight{Right} home{Home} end{End} pageUp{Page Up} pageDown{Page Down} f1{F1} f2{F2} f3{F3} f4{F4} f5{F5} f6{F6} f7{F7} f8{F8} f9{F9} f10{F10} f11{F11} f12{F12} other{{key}}}",
+  "@keyboardKeyName": {
+    "placeholders": {
+      "key": {
+        "type": "String"
+      }
+    }
+  },
+  "keyboardKeyInvalidError": "This key produces no output in the terminal; please pick a listed special key",
+  "keyboardValueFormField": "Input Text",
   "keyboardValueFormFieldHint": "Text inserted upon click, e.g. ;, =, ->",
   "keyboardValueRequiredError": "Input text cannot be empty",
-  "keyboardPairPresetFormField": "Pair Symbols Preset (Value)",
-  "keyboardCommandPresetFormField": "Editor Command Preset (Value)",
-  "keyboardModifierPresetFormField": "Terminal Modifier (Value)",
-  "keyboardTerminalKeyPresetFormField": "Terminal Key (Value)",
-  "keyboardCursorOffsetFormField": "Cursor Relative Offset (cursorOffset)",
-  "keyboardCursorOffsetHelper": "e.g. For () cursor in center should move left by 1, enter -1",
+  "keyboardPairValueFormField": "Pair Symbols",
+  "keyboardPairValueFormFieldHint": "e.g. (), [], \"\", <>",
+  "keyboardPairValueRequiredError": "Please enter the pair symbols",
+  "keyboardPairValueInvalidError": "Enter at least 2 characters with different halves, e.g. (), []",
+  "keyboardCommandPresetFormField": "Editor Command",
+  "keyboardCommandName": "{command, select, tab{Indent} untab{Outdent} undo{Undo} redo{Redo} cursor_left{Cursor Left} cursor_right{Cursor Right} cursor_up{Cursor Up} cursor_down{Cursor Down} line_start{Move to Line Start} line_end{Move to Line End} page_start{Move to Document Start} page_end{Move to Document End} copy{Copy} cut{Cut} paste{Paste} delete{Delete} select_all{Select All} keyboard_hide{Hide Keyboard} other{{command}}}",
+  "@keyboardCommandName": {
+    "placeholders": {
+      "command": {
+        "type": "String"
+      }
+    }
+  },
+  "keyboardModifierPresetFormField": "Terminal Modifier",
+  "keyboardModifierName": "{modifier, select, ctrl{Ctrl Key} alt{Alt Key} shift{Shift Key} other{{modifier}}}",
+  "@keyboardModifierName": {
+    "placeholders": {
+      "modifier": {
+        "type": "String"
+      }
+    }
+  },
+  "keyboardCursorOffsetFormField": "Cursor Relative Offset",
   "keyboardCursorOffsetRequiredError": "Please enter cursor offset (usually -1)",
-  "keyboardCursorOffsetIntegerError": "Offset must be an integer"
+  "keyboardCursorOffsetIntegerError": "Offset must be an integer",
+  "recommended": "Recommended",
+  "presetColors": "Preset Colors",
+  "hexColor": "Hex Color",
+  "currentColor": "Current",
+  "newColor": "Preview",
+  "runTasks": "Run Tasks",
+  "projectDetect": "Detect Project",
+  "projectDetecting": "Detecting project...",
+  "editRunTasks": "Edit Run Tasks",
+  "projectSection": "Project",
+  "showHiddenFiles": "Show Hidden Files",
+  "showHiddenFilesSubtitle": "Show hidden files and folders starting with dot (.) in file tree",
+  "searchTasksHint": "Search tasks...",
+  "noTasksAvailable": "No executable tasks available",
+  "noMatchingTasks": "No matching tasks found",
+  "userCustomTasks": "User Custom Tasks",
+  "systemDetectedTasks": "System Detected Tasks",
+  "editCustomTasksTooltip": "Edit Custom Tasks",
+  "runTasksConfig": "Run Tasks Configuration",
+  "editTask": "Edit Task",
+  "addTask": "Add Task",
+  "runTasksConfigSubtitle": "Configuration will be saved to .code_editor/run_tasks.json in project root",
+  "noCustomTasksInProject": "No custom tasks in current project",
+  "createNow": "Create Now",
+  "saveAndApply": "Save & Apply",
+  "taskNameRequired": "Task Name *",
+  "taskNameHint": "e.g. Build & Run Debug",
+  "taskNameEmptyError": "Please enter task name",
+  "shellCommandRequired": "Shell Command *",
+  "shellCommandHint": "e.g. cmake -B build && cmake --build build",
+  "shellCommandEmptyError": "Please enter command",
+  "taskDescOptional": "Description (Optional)",
+  "taskDescHint": "Briefly describe the task purpose",
+  "clearBeforeRun": "Clear Screen (clear)",
+  "clearBeforeRunSubtitle": "Clear terminal output before executing task",
+  "runTasksUpdated": "Run tasks configuration updated",
+  "detectCompletedMessage": "Detection completed, found {count} tasks",
+  "@detectCompletedMessage": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "pleaseOpenProjectFirst": "Please open a project first",
+  "deleteTaskConfirmMessage": "Are you sure you want to delete task \"{name}\"?",
+  "@deleteTaskConfirmMessage": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "deleteSelectedTasksConfirmMessage": "Are you sure you want to delete the selected {count} tasks?",
+  "@deleteSelectedTasksConfirmMessage": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "deleteSelected": "Delete Selected",
+  "selectTasksToDelete": "Select Tasks to Delete",
+  "selectedCount": "{count} selected",
+  "@selectedCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "unsavedTaskChangesTitle": "Unsaved Task Changes",
+  "unsavedTaskChangesMessage": "The task has been modified. Do you want to discard unsaved changes and leave?"
 }

@@ -5,6 +5,7 @@ import 'package:code_editor/models/virtual_keyboard_config.dart';
 import 'package:code_editor/providers/settings_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../widgets/color_palette_dialog.dart';
 import 'virtual_keyboard_config_view.dart';
 
 /// 设置页面
@@ -38,6 +39,7 @@ class SettingsView extends StatelessWidget {
           // ==============================
           _buildSectionHeader(context, l10n.appearanceSection),
           _buildThemeModeTile(context, provider, l10n),
+          _buildThemeColorTile(context, provider, l10n),
           _buildUiFontTile(context, provider),
 
           const Divider(height: 32, indent: 16, endIndent: 16),
@@ -59,13 +61,24 @@ class SettingsView extends StatelessWidget {
           // ==============================
           // 3. 终端分组 (Terminal)
           // ==============================
-          _buildSectionHeader(context, '终端'),
+          _buildSectionHeader(context, l10n.terminal),
+          _buildTerminalBackgroundTile(context, provider, l10n),
+          _buildTerminalVirtualKeyboardTile(context, provider, l10n),
+          _buildTerminalVirtualKeyboardConfigTile(context, provider, l10n),
           _buildTerminalFontTile(context, provider),
 
           const Divider(height: 32, indent: 16, endIndent: 16),
 
           // ==============================
-          // 4. 语言分组 (Language)
+          // 4. 项目分组 (Project)
+          // ==============================
+          _buildSectionHeader(context, l10n.projectSection),
+          _buildShowHiddenFilesTile(context, provider, l10n),
+
+          const Divider(height: 32, indent: 16, endIndent: 16),
+
+          // ==============================
+          // 5. 语言分组 (Language)
           // ==============================
           _buildSectionHeader(context, l10n.languageSection),
           _buildLanguageTile(context, provider, l10n),
@@ -178,19 +191,20 @@ class SettingsView extends StatelessWidget {
   /// 外观：UI 界面字体条目
   Widget _buildUiFontTile(BuildContext context, SettingsProvider provider) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context)!;
     final currentFont = provider.uiFont;
     return ListTile(
       leading: Icon(Icons.font_download_outlined, color: theme.colorScheme.primary),
-      title: const Text('界面字体'),
-      subtitle: Text(currentFont.name),
+      title: Text(l10n.uiFont),
+      subtitle: Text(l10n.fontName(currentFont.id)),
       trailing: const Icon(Icons.chevron_right),
       onTap: () {
         _showFontSelector(
           context,
-          title: '选择界面字体',
+          title: l10n.selectUiFont,
           fonts: AppFonts.uiFonts,
           currentId: provider.uiFontId,
-          previewSample: '代码编辑器界面字体预览 Code Editor 123',
+          previewSample: l10n.uiFontPreview,
           onSelected: (id) => provider.setUiFontId(id),
         );
       },
@@ -200,19 +214,25 @@ class SettingsView extends StatelessWidget {
   /// 编辑区：代码字体条目
   Widget _buildEditorFontTile(BuildContext context, SettingsProvider provider) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context)!;
     final currentFont = provider.editorFont;
+    final fontName = l10n.fontName(currentFont.id);
+    final subtitle = currentFont.id == 'jetbrains_mono'
+        ? '$fontName (${l10n.recommended})'
+        : fontName;
     return ListTile(
       leading: Icon(Icons.text_fields, color: theme.colorScheme.primary),
-      title: const Text('代码字体'),
-      subtitle: Text(currentFont.name),
+      title: Text(l10n.codeFont),
+      subtitle: Text(subtitle),
       trailing: const Icon(Icons.chevron_right),
       onTap: () {
         _showFontSelector(
           context,
-          title: '选择代码字体',
+          title: l10n.selectCodeFont,
           fonts: AppFonts.editorFonts,
           currentId: provider.editorFontId,
-          previewSample: 'void main() { int a = 123; } // 代码预览',
+          previewSample: l10n.codeFontPreview,
+          showRecommendation: true,
           onSelected: (id) => provider.setEditorFontId(id),
         );
       },
@@ -222,22 +242,105 @@ class SettingsView extends StatelessWidget {
   /// 终端：终端字体条目
   Widget _buildTerminalFontTile(BuildContext context, SettingsProvider provider) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context)!;
     final currentFont = provider.terminalFont;
+    final fontName = l10n.fontName(currentFont.id);
+    final subtitle = currentFont.id == 'jetbrains_mono'
+        ? '$fontName (${l10n.recommended})'
+        : fontName;
     return ListTile(
-      leading: Icon(Icons.terminal, color: theme.colorScheme.primary),
-      title: const Text('终端字体'),
-      subtitle: Text(currentFont.name),
+      leading: Icon(Icons.font_download_outlined, color: theme.colorScheme.primary),
+      title: Text(l10n.terminalFont),
+      subtitle: Text(subtitle),
       trailing: const Icon(Icons.chevron_right),
       onTap: () {
         _showFontSelector(
           context,
-          title: '选择终端字体',
+          title: l10n.selectTerminalFont,
           fonts: AppFonts.terminalFonts,
           currentId: provider.terminalFontId,
-          previewSample: '\$ git status -s # 终端字体预览',
+          previewSample: l10n.terminalFontPreview,
+          showRecommendation: true,
           onSelected: (id) => provider.setTerminalFontId(id),
         );
       },
+    );
+  }
+
+  /// 外观：主题颜色条目（点击弹出调色板）
+  Widget _buildThemeColorTile(
+    BuildContext context,
+    SettingsProvider provider,
+    AppLocalizations l10n,
+  ) {
+    final theme = Theme.of(context);
+    final current = provider.appThemeColor;
+
+    return ListTile(
+      leading: Icon(Icons.palette_outlined, color: theme.colorScheme.primary),
+      title: Text(l10n.themeColor),
+      subtitle: Text(colorToHex(current)),
+      trailing: _buildColorTrailing(context, current),
+      onTap: () async {
+        final picked = await ColorPaletteDialog.show(
+          context,
+          title: l10n.selectThemeColor,
+          current: current,
+          palette: ColorPaletteDialog.uiPalette,
+        );
+        if (picked != null) {
+          await provider.setAppThemeColor(picked);
+        }
+      },
+    );
+  }
+
+  /// 终端：终端背景颜色条目（点击弹出调色板）
+  Widget _buildTerminalBackgroundTile(
+    BuildContext context,
+    SettingsProvider provider,
+    AppLocalizations l10n,
+  ) {
+    final theme = Theme.of(context);
+    final current = provider.terminalBackgroundColor;
+
+    return ListTile(
+      leading: Icon(Icons.palette_outlined, color: theme.colorScheme.primary),
+      title: Text(l10n.terminalBackgroundColor),
+      subtitle: Text(colorToHex(current)),
+      trailing: _buildColorTrailing(context, current),
+      onTap: () async {
+        final picked = await ColorPaletteDialog.show(
+          context,
+          title: l10n.selectTerminalBackgroundColor,
+          current: current,
+          palette: ColorPaletteDialog.terminalPalette,
+        );
+        if (picked != null) {
+          await provider.setTerminalBackgroundColor(picked);
+        }
+      },
+    );
+  }
+
+  /// 颜色预览圆点 + 右箭头（与"代码高亮主题"条目的尾部样式一致）
+  Widget _buildColorTrailing(BuildContext context, Color color) {
+    final theme = Theme.of(context);
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          width: 24,
+          height: 24,
+          decoration: BoxDecoration(
+            color: color,
+            shape: BoxShape.circle,
+            border: Border.all(color: theme.colorScheme.outlineVariant, width: 1.5),
+          ),
+        ),
+        const SizedBox(width: 8),
+        const Icon(Icons.chevron_right),
+      ],
     );
   }
 
@@ -249,7 +352,9 @@ class SettingsView extends StatelessWidget {
     required String currentId,
     required ValueChanged<String> onSelected,
     required String previewSample,
+    bool showRecommendation = false,
   }) {
+    final l10n = AppLocalizations.of(context)!;
     showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
@@ -280,13 +385,17 @@ class SettingsView extends StatelessWidget {
                     itemBuilder: (context, index) {
                       final item = fonts[index];
                       final isSelected = item.id == currentId;
+                      final isRecommended = showRecommendation && item.id == 'jetbrains_mono';
+                      final fontTitle = isRecommended
+                          ? '${l10n.fontName(item.id)} (${l10n.recommended})'
+                          : l10n.fontName(item.id);
                       return ListTile(
                         leading: Icon(
                           item.isMonospace ? Icons.code : Icons.font_download_outlined,
                           color: isSelected ? theme.colorScheme.primary : null,
                         ),
                         title: Text(
-                          item.name,
+                          fontTitle,
                           style: TextStyle(
                             fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
                             color: isSelected ? theme.colorScheme.primary : null,
@@ -681,6 +790,50 @@ class SettingsView extends StatelessWidget {
 
 
 
+  /// 终端：终端小键盘开关条目（与编辑区开关相互独立）
+  Widget _buildTerminalVirtualKeyboardTile(
+    BuildContext context,
+    SettingsProvider provider,
+    AppLocalizations l10n,
+  ) {
+    final theme = Theme.of(context);
+
+    return SwitchListTile(
+      secondary: Icon(Icons.keyboard_command_key, color: theme.colorScheme.primary),
+      title: Text(l10n.terminalVirtualKeyboard),
+      subtitle: Text(l10n.terminalVirtualKeyboardSubtitle),
+      value: provider.enableTerminalVirtualKeyboard,
+      onChanged: (val) => provider.setKeyboardEnabled(KeyboardScope.terminal, val),
+    );
+  }
+
+  /// 终端：终端键盘配置编辑条目
+  Widget _buildTerminalVirtualKeyboardConfigTile(
+    BuildContext context,
+    SettingsProvider provider,
+    AppLocalizations l10n,
+  ) {
+    final theme = Theme.of(context);
+    final enabled = provider.enableTerminalVirtualKeyboard;
+
+    return ListTile(
+      enabled: enabled,
+      leading: Icon(Icons.tune, color: enabled ? theme.colorScheme.primary : theme.disabledColor),
+      title: Text(l10n.editTerminalVirtualKeyboardConfig),
+      subtitle: Text(l10n.editTerminalVirtualKeyboardConfigSubtitle),
+      trailing: const Icon(Icons.chevron_right),
+      onTap: () {
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (_) => const VirtualKeyboardConfigView(
+              scope: KeyboardScope.terminal,
+            ),
+          ),
+        );
+      },
+    );
+  }
+
   /// 语言：应用语言选择条目
   Widget _buildLanguageTile(
     BuildContext context,
@@ -766,6 +919,24 @@ class SettingsView extends StatelessWidget {
             ],
           ),
         );
+      },
+    );
+  }
+
+  /// 项目配置：显示隐藏文件开关
+  Widget _buildShowHiddenFilesTile(
+    BuildContext context,
+    SettingsProvider provider,
+    AppLocalizations l10n,
+  ) {
+    final theme = Theme.of(context);
+    return SwitchListTile(
+      secondary: Icon(Icons.visibility_outlined, color: theme.colorScheme.primary),
+      title: Text(l10n.showHiddenFiles),
+      subtitle: Text(l10n.showHiddenFilesSubtitle),
+      value: provider.showHiddenFiles,
+      onChanged: (val) {
+        provider.setShowHiddenFiles(val);
       },
     );
   }

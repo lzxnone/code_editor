@@ -1,13 +1,16 @@
 import 'package:code_editor/l10n/app_localizations.dart';
+import 'package:code_editor/models/virtual_keyboard_config.dart';
 import 'package:code_editor/providers/distro_provider.dart';
 import 'package:code_editor/providers/settings_provider.dart';
 import 'package:code_editor/providers/terminal_provider.dart';
 import 'package:code_editor/views/terminal_view.dart';
 import 'package:code_editor/widgets/terminal_session_item_widget.dart';
+import 'package:code_editor/widgets/virtual_keyboard_widget.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:xterm/xterm.dart' as xterm;
 
 class FakeDistroProvider extends DistroProvider {
   final List<String> _systems;
@@ -113,9 +116,9 @@ void main() {
       expect(provider.activeIndex, equals(0));
       expect(provider.activeSession?.name, equals('会话'));
 
-      // Check AppBar title and subtitle
+      // Check AppBar title and subtitle: without a project open, no subtitle is displayed
       expect(find.text('会话'), findsWidgets);
-      expect(find.textContaining('终端'), findsOneWidget);
+      expect(find.textContaining('终端'), findsNothing);
     });
 
     testWidgets('Right drawer can be opened and shows title "会话" with add button', (tester) async {
@@ -136,12 +139,17 @@ void main() {
       // Verify item text format: (1) 会话
       expect(find.text('(1) 会话'), findsOneWidget);
 
-      // Tap Add button in drawer: creates session but does NOT switch
+      // Tap Add button in drawer: creates session, activates it and closes drawer
       await tester.tap(find.byIcon(Icons.add));
       await tester.pumpAndSettle();
 
       expect(provider.sessions.length, equals(2));
-      expect(provider.activeIndex, equals(0)); // Did not switch!
+      expect(provider.activeIndex, equals(1)); // Activated!
+      expect(find.byType(Drawer), findsNothing); // Drawer closed!
+
+      // Re-open drawer to verify item 2 is present
+      await tester.tap(find.byIcon(Icons.format_list_bulleted));
+      await tester.pumpAndSettle();
       expect(find.text('(2) 会话'), findsOneWidget);
     });
 
@@ -154,18 +162,21 @@ void main() {
       await tester.tap(find.byIcon(Icons.format_list_bulleted));
       await tester.pumpAndSettle();
 
-      // Add session 2
+      // Add session 2 (creates and switches to session 2, closing drawer)
       await tester.tap(find.byIcon(Icons.add));
       await tester.pumpAndSettle();
-      expect(provider.activeIndex, equals(0));
+      expect(provider.activeIndex, equals(1));
+      expect(find.byType(Drawer), findsNothing);
 
-      // Tap session 2 item
-      await tester.tap(find.text('(2) 会话'));
+      // Re-open drawer and tap session 1 item
+      await tester.tap(find.byIcon(Icons.format_list_bulleted));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('(1) 会话'));
       await tester.pumpAndSettle();
 
-      // Drawer should be closed and activeIndex is now 1
+      // Drawer should be closed and activeIndex is now 0
       expect(find.byType(Drawer), findsNothing);
-      expect(provider.activeIndex, equals(1));
+      expect(provider.activeIndex, equals(0));
     });
 
     testWidgets('Long press on session item opens context menu with rename and delete', (tester) async {
@@ -277,10 +288,14 @@ void main() {
       await tester.tap(find.byIcon(Icons.format_list_bulleted));
       await tester.pumpAndSettle();
 
-      // Add second session
+      // Add second session (which automatically closes the drawer)
       await tester.tap(find.byIcon(Icons.add));
       await tester.pumpAndSettle();
       expect(provider.sessions.length, equals(2));
+
+      // Re-open drawer
+      await tester.tap(find.byIcon(Icons.format_list_bulleted));
+      await tester.pumpAndSettle();
 
       // Long press second session
       final items = find.byType(TerminalSessionItemWidget);
@@ -311,8 +326,12 @@ void main() {
       await tester.tap(find.byIcon(Icons.format_list_bulleted));
       await tester.pumpAndSettle();
 
-      // Add second session
+      // Add second session (which automatically closes the drawer)
       await tester.tap(find.byIcon(Icons.add));
+      await tester.pumpAndSettle();
+
+      // Re-open drawer
+      await tester.tap(find.byIcon(Icons.format_list_bulleted));
       await tester.pumpAndSettle();
 
       provider.renameSession(provider.sessions[0].id, '第一项');
@@ -333,7 +352,7 @@ void main() {
       expect(find.text('(2) 第一项'), findsOneWidget);
     });
 
-    testWidgets('English locale renders "Session", "Terminal · alpine", and "Sessions" dynamically', (tester) async {
+    testWidgets('English locale renders "Session" and "Sessions" dynamically', (tester) async {
       final provider = TerminalProvider();
       await tester.pumpWidget(
         MultiProvider(
@@ -351,9 +370,8 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      // Check AppBar title "Session" and subtitle "Terminal · alpine"
+      // Check AppBar title "Session" (no project open, so subtitle is null)
       expect(find.text('Session'), findsOneWidget);
-      expect(find.text('Terminal · alpine'), findsOneWidget);
 
       // Open drawer
       await tester.tap(find.byIcon(Icons.format_list_bulleted));
@@ -401,9 +419,91 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      // The created session's name is FIXED as "Session", while subtitle translates to Chinese
+      // The created session's name is FIXED as "Session"
       expect(find.text('Session'), findsOneWidget);
-      expect(find.text('终端 · alpine'), findsOneWidget);
+    });
+
+    testWidgets('Active modifier also applies to soft-keyboard input', (tester) async {
+      final terminalProvider = TerminalProvider();
+      final settingsProvider = SettingsProvider();
+      await settingsProvider.init();
+      await settingsProvider.setKeyboardEnabled(KeyboardScope.terminal, true);
+
+      // 先建会话并接管输出，便于观察终端最终发出的字节
+      terminalProvider.ensureInitialized(defaultName: 'Session', defaultDistroId: 'alpine');
+      final session = terminalProvider.activeSession!;
+      final emitted = <String>[];
+      session.terminal.onOutput = emitted.add;
+
+      await tester.pumpWidget(
+        MultiProvider(
+          providers: [
+            ChangeNotifierProvider<TerminalProvider>.value(value: terminalProvider),
+            ChangeNotifierProvider<SettingsProvider>.value(value: settingsProvider),
+            ChangeNotifierProvider<DistroProvider>.value(value: FakeDistroProvider()),
+          ],
+          child: MaterialApp(
+            locale: const Locale('zh'),
+            localizationsDelegates: AppLocalizations.localizationsDelegates,
+            supportedLocales: AppLocalizations.supportedLocales,
+            home: const TerminalView(),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // 展开小键盘（默认折叠只露第一行），点亮 Ctrl
+      await tester.drag(find.byType(VirtualKeyboardWidget), const Offset(0, -90));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Ctrl'));
+      await tester.pumpAndSettle();
+
+      // 模拟软键盘/IME 打进一个字符：它不产生 KeyEvent，只能在 onOutput 层被改写
+      session.terminal.textInput('c');
+      expect(emitted.last, '\x03', reason: '点亮 Ctrl 后软键盘输入的 c 应变成 ^C');
+
+      // 一次性状态已被消耗，再打一次就是普通字母
+      session.terminal.textInput('c');
+      expect(emitted.last, 'c');
+
+      // 未点修饰键时不应改写
+      session.terminal.textInput('d');
+      expect(emitted.last, 'd');
+    });
+
+    testWidgets('terminal background color follows the setting', (tester) async {
+      final terminalProvider = TerminalProvider();
+      final settingsProvider = SettingsProvider();
+      await settingsProvider.init();
+      await settingsProvider.setTerminalBackgroundColor(const Color(0xFF002B36));
+
+      await tester.pumpWidget(
+        MultiProvider(
+          providers: [
+            ChangeNotifierProvider<TerminalProvider>.value(value: terminalProvider),
+            ChangeNotifierProvider<SettingsProvider>.value(value: settingsProvider),
+            ChangeNotifierProvider<DistroProvider>.value(value: FakeDistroProvider()),
+          ],
+          child: MaterialApp(
+            locale: const Locale('zh'),
+            localizationsDelegates: AppLocalizations.localizationsDelegates,
+            supportedLocales: AppLocalizations.supportedLocales,
+            home: const TerminalView(),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // 容器与 xterm 主题都应使用设置的背景色
+      final terminalView = tester.widget<xterm.TerminalView>(find.byType(xterm.TerminalView));
+      expect(terminalView.theme.background.toARGB32(), 0xFF002B36);
+
+      // 浅色背景时前景自动切成深色，保证可读
+      await settingsProvider.setTerminalBackgroundColor(const Color(0xFFFFFFFF));
+      await tester.pumpAndSettle();
+      final lightView = tester.widget<xterm.TerminalView>(find.byType(xterm.TerminalView));
+      expect(lightView.theme.background.toARGB32(), 0xFFFFFFFF);
+      expect(lightView.theme.foreground.computeLuminance(), lessThan(0.5));
     });
 
     test('SettingsProvider manages UI, Editor, and Terminal font choices correctly', () async {
@@ -423,6 +523,82 @@ void main() {
       await settings.setTerminalFontId('consolas');
       expect(settings.terminalFont.id, equals('consolas'));
       expect(settings.terminalFont.fontFamily, equals('Consolas'));
+    });
+
+    testWidgets('Terminal accessory keyboard sends real keys through the PTY channel', (tester) async {
+      final terminalProvider = TerminalProvider();
+      final settingsProvider = SettingsProvider();
+      await settingsProvider.init();
+      // 与编辑区开关相互独立：这里显式打开终端小键盘
+      await settingsProvider.setKeyboardEnabled(KeyboardScope.terminal, true);
+
+      await tester.pumpWidget(
+        MultiProvider(
+          providers: [
+            ChangeNotifierProvider<TerminalProvider>.value(value: terminalProvider),
+            ChangeNotifierProvider<SettingsProvider>.value(value: settingsProvider),
+            ChangeNotifierProvider<DistroProvider>.value(value: FakeDistroProvider()),
+          ],
+          child: MaterialApp(
+            locale: const Locale('zh'),
+            localizationsDelegates: AppLocalizations.localizationsDelegates,
+            supportedLocales: AppLocalizations.supportedLocales,
+            home: const TerminalView(),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(terminalProvider.sessions, isNotEmpty);
+      // 终端小键盘已挂载（默认预设：两行特殊键 + 修饰键）
+      expect(find.byType(VirtualKeyboardWidget), findsOneWidget);
+      expect(find.text('Esc'), findsOneWidget);
+      expect(find.text('Ctrl'), findsOneWidget);
+
+      // 接管 onOutput（真实场景下由 TerminalSession 接到 PTY）
+      final emitted = <String>[];
+      terminalProvider.activeSession!.terminal.onOutput = emitted.add;
+
+      // 第一行：Esc / ↑ / 回车 / 文本符号（带图标的键在键盘上渲染图标）
+      await tester.tap(find.text('Esc'));
+      await tester.pumpAndSettle();
+      expect(emitted.last, '\x1b');
+
+      await tester.tap(find.byIcon(Icons.arrow_upward));
+      await tester.pumpAndSettle();
+      expect(emitted.last, '\x1b[A');
+
+      await tester.tap(find.text('-'));
+      await tester.pumpAndSettle();
+      expect(emitted.last, '-');
+
+      // 默认折叠只显示第一行，上拉展开到第二行（与编辑区行为一致）
+      await tester.drag(find.byType(VirtualKeyboardWidget), const Offset(0, -60));
+      await tester.pumpAndSettle();
+
+      // 第二行：End / : / 方向键
+      await tester.tap(find.text('End'));
+      await tester.pumpAndSettle();
+      expect(emitted.last, '\x1b[F');
+
+      await tester.tap(find.text(':'));
+      await tester.pumpAndSettle();
+      expect(emitted.last, ':');
+
+      // 运行时修饰键：一次性 Ctrl 与方向键叠加成 Ctrl+↑（一次性随即被消耗）
+      await tester.tap(find.text('Ctrl'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byIcon(Icons.arrow_upward));
+      await tester.pumpAndSettle();
+      expect(emitted.last, '\x1b[1;5A', reason: '一次性 Ctrl 应与方向键叠加');
+      await tester.tap(find.byIcon(Icons.arrow_upward));
+      await tester.pumpAndSettle();
+      expect(emitted.last, '\x1b[A', reason: '一次性 Ctrl 应已被消耗');
+
+      // 关闭终端小键盘开关后应卸载
+      await settingsProvider.setKeyboardEnabled(KeyboardScope.terminal, false);
+      await tester.pumpAndSettle();
+      expect(find.byType(VirtualKeyboardWidget), findsNothing);
     });
   });
 }

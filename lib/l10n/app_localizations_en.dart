@@ -242,6 +242,62 @@ class AppLocalizationsEn extends AppLocalizations {
   String get codeFontSize => 'Font Size';
 
   @override
+  String get uiFont => 'Interface Font';
+
+  @override
+  String get selectUiFont => 'Select Interface Font';
+
+  @override
+  String get themeColor => 'Theme Color';
+
+  @override
+  String get selectThemeColor => 'Select Theme Color';
+
+  @override
+  String get terminalBackgroundColor => 'Terminal Background';
+
+  @override
+  String get selectTerminalBackgroundColor => 'Select Terminal Background';
+
+  @override
+  String get uiFontPreview => 'Code Editor interface font preview 123';
+
+  @override
+  String get codeFont => 'Code Font';
+
+  @override
+  String get selectCodeFont => 'Select Code Font';
+
+  @override
+  String get codeFontPreview => 'const app = \"Code Editor\"; // code preview';
+
+  @override
+  String get terminalFont => 'Terminal Font';
+
+  @override
+  String get selectTerminalFont => 'Select Terminal Font';
+
+  @override
+  String get terminalFontPreview => '\$ git status -s # terminal font preview';
+
+  @override
+  String fontName(String font) {
+    String _temp0 = intl.Intl.selectLogic(font, {
+      'system_default': 'System Default',
+      'sans_serif': 'Sans-Serif',
+      'serif': 'Serif (Songti)',
+      'monospace': 'System Monospace',
+      'consolas': 'Consolas',
+      'courier_new': 'Courier New',
+      'menlo': 'Menlo / Monaco',
+      'jetbrains_mono': 'JetBrains Mono',
+      'fira_code': 'Fira Code',
+      'other': '$font',
+    });
+    return '$_temp0';
+  }
+
+  @override
   String get decreaseFontSize => 'Decrease font size';
 
   @override
@@ -280,6 +336,21 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get editVirtualKeyboardConfigSubtitle =>
       'Customize keyboard layout and shortcuts';
+
+  @override
+  String get terminalVirtualKeyboard => 'Terminal Accessory Keyboard';
+
+  @override
+  String get terminalVirtualKeyboardSubtitle =>
+      'Show special keys and command shortcuts below the terminal';
+
+  @override
+  String get editTerminalVirtualKeyboardConfig =>
+      'Edit Terminal Keyboard Config';
+
+  @override
+  String get editTerminalVirtualKeyboardConfigSubtitle =>
+      'Customize Esc / Tab / Ctrl combos and other terminal keys';
 
   @override
   String get virtualKeyboardDialogTitle => 'Keyboard Config (JSON)';
@@ -684,13 +755,128 @@ class AppLocalizationsEn extends AppLocalizations {
   String get keyboardIconFormField => 'Icon (Optional)';
 
   @override
+  String keyboardIconName(String icon) {
+    String _temp0 = intl.Intl.selectLogic(icon, {
+      'undo': 'Undo',
+      'redo': 'Redo',
+      'tab': 'Indent',
+      'untab': 'Outdent',
+      'outdent': 'Decrease Indent',
+      'arrow_left': 'Left Arrow',
+      'arrow_right': 'Right Arrow',
+      'arrow_up': 'Up Arrow',
+      'arrow_down': 'Down Arrow',
+      'home': 'Line Start',
+      'end': 'Line End',
+      'first_page': 'Document Start',
+      'last_page': 'Document End',
+      'page_up': 'Page Up',
+      'page_down': 'Page Down',
+      'enter': 'Enter',
+      'space': 'Space',
+      'escape': 'Escape',
+      'insert': 'Insert',
+      'clear': 'Clear',
+      'keyboard': 'Keyboard',
+      'backspace': 'Backspace',
+      'delete': 'Delete',
+      'copy': 'Copy',
+      'cut': 'Cut',
+      'paste': 'Paste',
+      'save': 'Save',
+      'search': 'Search',
+      'select_all': 'Select All',
+      'keyboard_hide': 'Hide Keyboard',
+      'other': '$icon',
+    });
+    return '$_temp0';
+  }
+
+  @override
   String get keyboardNoIconOption => 'No icon (Use text)';
 
   @override
   String get keyboardActionFormField => 'Action';
 
   @override
-  String get keyboardValueFormField => 'Input Text (Value)';
+  String keyboardActionName(String action) {
+    String _temp0 = intl.Intl.selectLogic(action, {
+      'input': 'Plain Text',
+      'pair': 'Pair Symbols',
+      'command': 'Editor Command',
+      'modifier': 'Modifier Key',
+      'key': 'Special Key',
+      'other': '$action',
+    });
+    return '$_temp0';
+  }
+
+  @override
+  String get keyboardActionInputTerminal => 'Command Shortcut';
+
+  @override
+  String get keyboardKeyFormField => 'Special Key';
+
+  @override
+  String get keyboardKeyGroupNavigation => 'Navigation';
+
+  @override
+  String get keyboardKeyGroupEditing => 'Editing';
+
+  @override
+  String get keyboardKeyGroupFunctionKeys => 'Function Keys';
+
+  @override
+  String get keyboardKeyGroupLetters => 'Letters';
+
+  @override
+  String get keyboardAutoEnter => 'Send Enter after';
+
+  @override
+  String keyboardKeyName(String key) {
+    String _temp0 = intl.Intl.selectLogic(key, {
+      'escape': 'Escape',
+      'tab': 'Tab',
+      'backtab': 'Backtab',
+      'returnKey': 'Return',
+      'enter': 'Enter',
+      'numpadEnter': 'Keypad Enter',
+      'backspace': 'Backspace',
+      'delete': 'Delete',
+      'insert': 'Insert',
+      'space': 'Space',
+      'numpadClear': 'Clear',
+      'arrowUp': 'Up',
+      'arrowDown': 'Down',
+      'arrowLeft': 'Left',
+      'arrowRight': 'Right',
+      'home': 'Home',
+      'end': 'End',
+      'pageUp': 'Page Up',
+      'pageDown': 'Page Down',
+      'f1': 'F1',
+      'f2': 'F2',
+      'f3': 'F3',
+      'f4': 'F4',
+      'f5': 'F5',
+      'f6': 'F6',
+      'f7': 'F7',
+      'f8': 'F8',
+      'f9': 'F9',
+      'f10': 'F10',
+      'f11': 'F11',
+      'f12': 'F12',
+      'other': '$key',
+    });
+    return '$_temp0';
+  }
+
+  @override
+  String get keyboardKeyInvalidError =>
+      'This key produces no output in the terminal; please pick a listed special key';
+
+  @override
+  String get keyboardValueFormField => 'Input Text';
 
   @override
   String get keyboardValueFormFieldHint =>
@@ -700,24 +886,63 @@ class AppLocalizationsEn extends AppLocalizations {
   String get keyboardValueRequiredError => 'Input text cannot be empty';
 
   @override
-  String get keyboardPairPresetFormField => 'Pair Symbols Preset (Value)';
+  String get keyboardPairValueFormField => 'Pair Symbols';
 
   @override
-  String get keyboardCommandPresetFormField => 'Editor Command Preset (Value)';
+  String get keyboardPairValueFormFieldHint => 'e.g. (), [], \"\", <>';
 
   @override
-  String get keyboardModifierPresetFormField => 'Terminal Modifier (Value)';
+  String get keyboardPairValueRequiredError => 'Please enter the pair symbols';
 
   @override
-  String get keyboardTerminalKeyPresetFormField => 'Terminal Key (Value)';
+  String get keyboardPairValueInvalidError =>
+      'Enter at least 2 characters with different halves, e.g. (), []';
 
   @override
-  String get keyboardCursorOffsetFormField =>
-      'Cursor Relative Offset (cursorOffset)';
+  String get keyboardCommandPresetFormField => 'Editor Command';
 
   @override
-  String get keyboardCursorOffsetHelper =>
-      'e.g. For () cursor in center should move left by 1, enter -1';
+  String keyboardCommandName(String command) {
+    String _temp0 = intl.Intl.selectLogic(command, {
+      'tab': 'Indent',
+      'untab': 'Outdent',
+      'undo': 'Undo',
+      'redo': 'Redo',
+      'cursor_left': 'Cursor Left',
+      'cursor_right': 'Cursor Right',
+      'cursor_up': 'Cursor Up',
+      'cursor_down': 'Cursor Down',
+      'line_start': 'Move to Line Start',
+      'line_end': 'Move to Line End',
+      'page_start': 'Move to Document Start',
+      'page_end': 'Move to Document End',
+      'copy': 'Copy',
+      'cut': 'Cut',
+      'paste': 'Paste',
+      'delete': 'Delete',
+      'select_all': 'Select All',
+      'keyboard_hide': 'Hide Keyboard',
+      'other': '$command',
+    });
+    return '$_temp0';
+  }
+
+  @override
+  String get keyboardModifierPresetFormField => 'Terminal Modifier';
+
+  @override
+  String keyboardModifierName(String modifier) {
+    String _temp0 = intl.Intl.selectLogic(modifier, {
+      'ctrl': 'Ctrl Key',
+      'alt': 'Alt Key',
+      'shift': 'Shift Key',
+      'other': '$modifier',
+    });
+    return '$_temp0';
+  }
+
+  @override
+  String get keyboardCursorOffsetFormField => 'Cursor Relative Offset';
 
   @override
   String get keyboardCursorOffsetRequiredError =>
@@ -725,4 +950,151 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get keyboardCursorOffsetIntegerError => 'Offset must be an integer';
+
+  @override
+  String get recommended => 'Recommended';
+
+  @override
+  String get presetColors => 'Preset Colors';
+
+  @override
+  String get hexColor => 'Hex Color';
+
+  @override
+  String get currentColor => 'Current';
+
+  @override
+  String get newColor => 'Preview';
+
+  @override
+  String get runTasks => 'Run Tasks';
+
+  @override
+  String get projectDetect => 'Detect Project';
+
+  @override
+  String get projectDetecting => 'Detecting project...';
+
+  @override
+  String get editRunTasks => 'Edit Run Tasks';
+
+  @override
+  String get projectSection => 'Project';
+
+  @override
+  String get showHiddenFiles => 'Show Hidden Files';
+
+  @override
+  String get showHiddenFilesSubtitle =>
+      'Show hidden files and folders starting with dot (.) in file tree';
+
+  @override
+  String get searchTasksHint => 'Search tasks...';
+
+  @override
+  String get noTasksAvailable => 'No executable tasks available';
+
+  @override
+  String get noMatchingTasks => 'No matching tasks found';
+
+  @override
+  String get userCustomTasks => 'User Custom Tasks';
+
+  @override
+  String get systemDetectedTasks => 'System Detected Tasks';
+
+  @override
+  String get editCustomTasksTooltip => 'Edit Custom Tasks';
+
+  @override
+  String get runTasksConfig => 'Run Tasks Configuration';
+
+  @override
+  String get editTask => 'Edit Task';
+
+  @override
+  String get addTask => 'Add Task';
+
+  @override
+  String get runTasksConfigSubtitle =>
+      'Configuration will be saved to .code_editor/run_tasks.json in project root';
+
+  @override
+  String get noCustomTasksInProject => 'No custom tasks in current project';
+
+  @override
+  String get createNow => 'Create Now';
+
+  @override
+  String get saveAndApply => 'Save & Apply';
+
+  @override
+  String get taskNameRequired => 'Task Name *';
+
+  @override
+  String get taskNameHint => 'e.g. Build & Run Debug';
+
+  @override
+  String get taskNameEmptyError => 'Please enter task name';
+
+  @override
+  String get shellCommandRequired => 'Shell Command *';
+
+  @override
+  String get shellCommandHint => 'e.g. cmake -B build && cmake --build build';
+
+  @override
+  String get shellCommandEmptyError => 'Please enter command';
+
+  @override
+  String get taskDescOptional => 'Description (Optional)';
+
+  @override
+  String get taskDescHint => 'Briefly describe the task purpose';
+
+  @override
+  String get clearBeforeRun => 'Clear Screen (clear)';
+
+  @override
+  String get clearBeforeRunSubtitle =>
+      'Clear terminal output before executing task';
+
+  @override
+  String get runTasksUpdated => 'Run tasks configuration updated';
+
+  @override
+  String detectCompletedMessage(int count) {
+    return 'Detection completed, found $count tasks';
+  }
+
+  @override
+  String get pleaseOpenProjectFirst => 'Please open a project first';
+
+  @override
+  String deleteTaskConfirmMessage(String name) {
+    return 'Are you sure you want to delete task \"$name\"?';
+  }
+
+  @override
+  String deleteSelectedTasksConfirmMessage(int count) {
+    return 'Are you sure you want to delete the selected $count tasks?';
+  }
+
+  @override
+  String get deleteSelected => 'Delete Selected';
+
+  @override
+  String get selectTasksToDelete => 'Select Tasks to Delete';
+
+  @override
+  String selectedCount(int count) {
+    return '$count selected';
+  }
+
+  @override
+  String get unsavedTaskChangesTitle => 'Unsaved Task Changes';
+
+  @override
+  String get unsavedTaskChangesMessage =>
+      'The task has been modified. Do you want to discard unsaved changes and leave?';
 }

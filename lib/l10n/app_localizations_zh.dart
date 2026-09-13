@@ -238,6 +238,62 @@ class AppLocalizationsZh extends AppLocalizations {
   String get codeFontSize => '代码字号缩放';
 
   @override
+  String get uiFont => '界面字体';
+
+  @override
+  String get selectUiFont => '选择界面字体';
+
+  @override
+  String get themeColor => '主题颜色';
+
+  @override
+  String get selectThemeColor => '选择主题颜色';
+
+  @override
+  String get terminalBackgroundColor => '终端背景颜色';
+
+  @override
+  String get selectTerminalBackgroundColor => '选择终端背景颜色';
+
+  @override
+  String get uiFontPreview => '代码编辑器界面字体预览 Code Editor 123';
+
+  @override
+  String get codeFont => '代码字体';
+
+  @override
+  String get selectCodeFont => '选择代码字体';
+
+  @override
+  String get codeFontPreview => 'const app = \"Code Editor\"; // 代码预览';
+
+  @override
+  String get terminalFont => '终端字体';
+
+  @override
+  String get selectTerminalFont => '选择终端字体';
+
+  @override
+  String get terminalFontPreview => '\$ git status -s # 终端字体预览';
+
+  @override
+  String fontName(String font) {
+    String _temp0 = intl.Intl.selectLogic(font, {
+      'system_default': '系统默认',
+      'sans_serif': '无衬线体',
+      'serif': '衬线体（宋体）',
+      'monospace': '系统等宽',
+      'consolas': 'Consolas',
+      'courier_new': 'Courier New',
+      'menlo': 'Menlo / Monaco',
+      'jetbrains_mono': 'JetBrains Mono',
+      'fira_code': 'Fira Code',
+      'other': '$font',
+    });
+    return '$_temp0';
+  }
+
+  @override
   String get decreaseFontSize => '减小字号';
 
   @override
@@ -274,6 +330,19 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get editVirtualKeyboardConfigSubtitle => '自定义小键盘按键布局与快捷键';
+
+  @override
+  String get terminalVirtualKeyboard => '终端小键盘';
+
+  @override
+  String get terminalVirtualKeyboardSubtitle => '在终端下方显示常用特殊键与指令快捷键';
+
+  @override
+  String get editTerminalVirtualKeyboardConfig => '编辑终端键盘配置';
+
+  @override
+  String get editTerminalVirtualKeyboardConfigSubtitle =>
+      '自定义 Esc / Tab / Ctrl 组合等终端专用按键';
 
   @override
   String get virtualKeyboardDialogTitle => '小键盘配置 (JSON)';
@@ -655,7 +724,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get keyboardEditKeyTitle => '编辑按键';
 
   @override
-  String get keyboardLabelFormField => '显示文本 (Label)';
+  String get keyboardLabelFormField => '显示文本';
 
   @override
   String get keyboardLabelFormFieldHint => '按键上显示的文本，如 Tab、()、A';
@@ -664,16 +733,130 @@ class AppLocalizationsZh extends AppLocalizations {
   String get keyboardLabelOrIconRequiredError => '请输入显示文本或选择图标';
 
   @override
-  String get keyboardIconFormField => '图标 (Icon, 可选)';
+  String get keyboardIconFormField => '图标 (可选)';
+
+  @override
+  String keyboardIconName(String icon) {
+    String _temp0 = intl.Intl.selectLogic(icon, {
+      'undo': '撤销',
+      'redo': '重做',
+      'tab': '向右缩进',
+      'untab': '向左缩进',
+      'outdent': '减少缩进',
+      'arrow_left': '左箭头',
+      'arrow_right': '右箭头',
+      'arrow_up': '上箭头',
+      'arrow_down': '下箭头',
+      'home': '移至行首',
+      'end': '移至行尾',
+      'first_page': '移至文首',
+      'last_page': '移至文末',
+      'page_up': '上翻页',
+      'page_down': '下翻页',
+      'enter': '回车',
+      'space': '空格',
+      'escape': '退出',
+      'insert': '插入',
+      'clear': '清除',
+      'keyboard': '键盘',
+      'backspace': '退格',
+      'delete': '删除',
+      'copy': '复制',
+      'cut': '剪切',
+      'paste': '粘贴',
+      'save': '保存',
+      'search': '搜索',
+      'select_all': '全选',
+      'keyboard_hide': '收起小键盘',
+      'other': '$icon',
+    });
+    return '$_temp0';
+  }
 
   @override
   String get keyboardNoIconOption => '无图标 (使用文本显示)';
 
   @override
-  String get keyboardActionFormField => '动作类型 (Action)';
+  String get keyboardActionFormField => '动作类型';
 
   @override
-  String get keyboardValueFormField => '输入文本内容 (Value)';
+  String keyboardActionName(String action) {
+    String _temp0 = intl.Intl.selectLogic(action, {
+      'input': '普通文本',
+      'pair': '成对符号',
+      'command': '编辑器命令',
+      'modifier': '修饰键',
+      'key': '特殊键',
+      'other': '$action',
+    });
+    return '$_temp0';
+  }
+
+  @override
+  String get keyboardActionInputTerminal => '指令快捷键';
+
+  @override
+  String get keyboardKeyFormField => '特殊键';
+
+  @override
+  String get keyboardKeyGroupNavigation => '导航键';
+
+  @override
+  String get keyboardKeyGroupEditing => '编辑键';
+
+  @override
+  String get keyboardKeyGroupFunctionKeys => '功能键';
+
+  @override
+  String get keyboardKeyGroupLetters => '字母键';
+
+  @override
+  String get keyboardAutoEnter => '发送后自动回车';
+
+  @override
+  String keyboardKeyName(String key) {
+    String _temp0 = intl.Intl.selectLogic(key, {
+      'escape': '退出',
+      'tab': 'Tab',
+      'backtab': '反向制表',
+      'returnKey': '回车',
+      'enter': '回车',
+      'numpadEnter': '小键盘回车',
+      'backspace': '退格',
+      'delete': '删除',
+      'insert': '插入',
+      'space': '空格',
+      'numpadClear': '清除',
+      'arrowUp': '上',
+      'arrowDown': '下',
+      'arrowLeft': '左',
+      'arrowRight': '右',
+      'home': '行首',
+      'end': '行尾',
+      'pageUp': '上翻页',
+      'pageDown': '下翻页',
+      'f1': 'F1',
+      'f2': 'F2',
+      'f3': 'F3',
+      'f4': 'F4',
+      'f5': 'F5',
+      'f6': 'F6',
+      'f7': 'F7',
+      'f8': 'F8',
+      'f9': 'F9',
+      'f10': 'F10',
+      'f11': 'F11',
+      'f12': 'F12',
+      'other': '$key',
+    });
+    return '$_temp0';
+  }
+
+  @override
+  String get keyboardKeyInvalidError => '该键在终端中不会产生任何输出，请选择列表中的特殊键';
+
+  @override
+  String get keyboardValueFormField => '输入文本内容';
 
   @override
   String get keyboardValueFormFieldHint => '点击后直接插入的文本，如 ;、=、->';
@@ -682,26 +865,210 @@ class AppLocalizationsZh extends AppLocalizations {
   String get keyboardValueRequiredError => '输入文本不能为空';
 
   @override
-  String get keyboardPairPresetFormField => '成对符号预设 (Value)';
+  String get keyboardPairValueFormField => '成对符号';
 
   @override
-  String get keyboardCommandPresetFormField => '预设编辑器命令 (Value)';
+  String get keyboardPairValueFormFieldHint => '例如 ()、[]、\"\"、<>';
 
   @override
-  String get keyboardModifierPresetFormField => '终端修饰键 (Value)';
+  String get keyboardPairValueRequiredError => '请输入成对符号';
 
   @override
-  String get keyboardTerminalKeyPresetFormField => '终端按键 (Value)';
+  String get keyboardPairValueInvalidError => '请输入至少 2 个字符且左右不同的成对符号，如 ()、[]';
 
   @override
-  String get keyboardCursorOffsetFormField => '光标相对偏移 (cursorOffset)';
+  String get keyboardCommandPresetFormField => '编辑器命令';
 
   @override
-  String get keyboardCursorOffsetHelper => '例如 () 插入后光标居中需向左偏移 1 位，填写 -1';
+  String keyboardCommandName(String command) {
+    String _temp0 = intl.Intl.selectLogic(command, {
+      'tab': '向右缩进',
+      'untab': '向左缩进',
+      'undo': '撤销',
+      'redo': '重做',
+      'cursor_left': '光标左移',
+      'cursor_right': '光标右移',
+      'cursor_up': '光标上移',
+      'cursor_down': '光标下移',
+      'line_start': '移动至行首',
+      'line_end': '移动至行尾',
+      'page_start': '移动至文首',
+      'page_end': '移动至文末',
+      'copy': '复制',
+      'cut': '剪切',
+      'paste': '粘贴',
+      'delete': '删除',
+      'select_all': '全选',
+      'keyboard_hide': '收起小键盘',
+      'other': '$command',
+    });
+    return '$_temp0';
+  }
+
+  @override
+  String get keyboardModifierPresetFormField => '终端修饰键';
+
+  @override
+  String keyboardModifierName(String modifier) {
+    String _temp0 = intl.Intl.selectLogic(modifier, {
+      'ctrl': 'Ctrl 键',
+      'alt': 'Alt 键',
+      'shift': 'Shift 键',
+      'other': '$modifier',
+    });
+    return '$_temp0';
+  }
+
+  @override
+  String get keyboardCursorOffsetFormField => '光标相对偏移';
 
   @override
   String get keyboardCursorOffsetRequiredError => '请输入光标偏移（通常为 -1）';
 
   @override
   String get keyboardCursorOffsetIntegerError => '偏移量必须为整数';
+
+  @override
+  String get recommended => '推荐';
+
+  @override
+  String get presetColors => '预设颜色';
+
+  @override
+  String get hexColor => '十六进制颜色';
+
+  @override
+  String get currentColor => '当前';
+
+  @override
+  String get newColor => '预览';
+
+  @override
+  String get runTasks => '运行任务';
+
+  @override
+  String get projectDetect => '项目探测';
+
+  @override
+  String get projectDetecting => '正在探测项目...';
+
+  @override
+  String get editRunTasks => '运行任务编辑';
+
+  @override
+  String get projectSection => '项目';
+
+  @override
+  String get showHiddenFiles => '显示隐藏文件';
+
+  @override
+  String get showHiddenFilesSubtitle => '在文件树中展示以点 (.) 开头的隐藏文件与文件夹';
+
+  @override
+  String get searchTasksHint => '搜索指定任务...';
+
+  @override
+  String get noTasksAvailable => '暂无可执行任务';
+
+  @override
+  String get noMatchingTasks => '无匹配的任务';
+
+  @override
+  String get userCustomTasks => '用户自定义任务';
+
+  @override
+  String get systemDetectedTasks => '系统动态探测任务';
+
+  @override
+  String get editCustomTasksTooltip => '编辑自定义任务';
+
+  @override
+  String get runTasksConfig => '运行任务配置';
+
+  @override
+  String get editTask => '编辑任务';
+
+  @override
+  String get addTask => '新增任务';
+
+  @override
+  String get runTasksConfigSubtitle =>
+      '配置将自动保存至项目根目录下的 .code_editor/run_tasks.json';
+
+  @override
+  String get noCustomTasksInProject => '当前项目暂无自定义任务';
+
+  @override
+  String get createNow => '立即创建';
+
+  @override
+  String get saveAndApply => '保存并应用';
+
+  @override
+  String get taskNameRequired => '任务名称 *';
+
+  @override
+  String get taskNameHint => '如: 编译并运行 Debug';
+
+  @override
+  String get taskNameEmptyError => '请输入任务名称';
+
+  @override
+  String get shellCommandRequired => 'Shell 执行指令 *';
+
+  @override
+  String get shellCommandHint => '如: cmake -B build && cmake --build build';
+
+  @override
+  String get shellCommandEmptyError => '请输入执行指令';
+
+  @override
+  String get taskDescOptional => '任务描述（选填）';
+
+  @override
+  String get taskDescHint => '简要说明此任务的用途';
+
+  @override
+  String get clearBeforeRun => '执行前清屏 (clear)';
+
+  @override
+  String get clearBeforeRunSubtitle => '在终端输出任务结果前清理历史屏幕';
+
+  @override
+  String get runTasksUpdated => '运行任务配置已更新';
+
+  @override
+  String detectCompletedMessage(int count) {
+    return '探测完成，发现 $count 个可用任务';
+  }
+
+  @override
+  String get pleaseOpenProjectFirst => '请先打开一个项目';
+
+  @override
+  String deleteTaskConfirmMessage(String name) {
+    return '确定要删除任务 \"$name\" 吗？';
+  }
+
+  @override
+  String deleteSelectedTasksConfirmMessage(int count) {
+    return '确定要删除选中的 $count 个任务吗？';
+  }
+
+  @override
+  String get deleteSelected => '删除选中';
+
+  @override
+  String get selectTasksToDelete => '选择要删除的任务';
+
+  @override
+  String selectedCount(int count) {
+    return '已选 $count 项';
+  }
+
+  @override
+  String get unsavedTaskChangesTitle => '未保存的任务更改';
+
+  @override
+  String get unsavedTaskChangesMessage => '当前任务内容已被修改，是否放弃未保存的修改并返回？';
 }

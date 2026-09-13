@@ -1,15 +1,22 @@
 import 'package:code_editor/l10n/app_localizations.dart';
 import 'package:code_editor/models/app_font.dart';
 import 'package:code_editor/models/terminal_session.dart';
+import 'package:code_editor/models/virtual_keyboard_config.dart';
 import 'package:code_editor/providers/distro_provider.dart';
+import 'package:code_editor/providers/project_provider.dart';
 import 'package:code_editor/providers/settings_provider.dart';
 import 'package:code_editor/providers/terminal_provider.dart';
+import 'package:code_editor/utils/terminal_theme_helper.dart';
 import 'package:code_editor/widgets/distro_extract_dialog.dart';
 import 'package:code_editor/widgets/distro_selector_dialog.dart';
 import 'package:code_editor/widgets/terminal_drawer.dart';
+import 'package:code_editor/widgets/terminal_keyboard_sink.dart';
+import 'package:code_editor/widgets/terminal_modifier_state.dart';
+import 'package:code_editor/widgets/virtual_keyboard_widget.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:xterm/xterm.dart' as xterm;
+import 'package:xterm/xterm.dart' show TerminalInputHandler, defaultInputHandler;
 
 /// 终端视图（支持多系统实例切换、全屏会话保持、右侧抽屉多会话管理与交互）
 class TerminalView extends StatefulWidget {
@@ -84,15 +91,17 @@ class _TerminalViewState extends State<TerminalView> {
     final theme = Theme.of(context);
     final l10n = AppLocalizations.of(context)!;
     final provider = context.watch<TerminalProvider>();
-    final distroProvider = context.watch<DistroProvider?>();
+    final projectProvider = context.watch<ProjectProvider?>();
 
     final activeSession = provider.activeSession;
     final sessions = provider.sessions;
     final activeIndex = provider.activeIndex;
 
     final titleText = activeSession?.name ?? l10n.sessionDefaultName;
-    final currentSystem = activeSession?.distroId ?? distroProvider?.selectedSystem;
-    final subtitleText = currentSystem != null ? l10n.terminalWithSystem(currentSystem) : l10n.terminal;
+    final projectRoot = activeSession?.workspacePath ?? projectProvider?.rootPath;
+    final String? subtitleText = (projectRoot != null && projectRoot.trim().isNotEmpty)
+        ? projectRoot.trim()
+        : null;
 
     return Scaffold(
       key: _scaffoldKey,
@@ -116,14 +125,15 @@ class _TerminalViewState extends State<TerminalView> {
               ),
               overflow: TextOverflow.ellipsis,
             ),
-            Text(
-              subtitleText,
-              style: TextStyle(
-                fontSize: 11.0,
-                color: theme.colorScheme.onSurfaceVariant,
+            if (subtitleText != null)
+              Text(
+                subtitleText,
+                style: TextStyle(
+                  fontSize: 11.0,
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+                overflow: TextOverflow.ellipsis,
               ),
-              overflow: TextOverflow.ellipsis,
-            ),
           ],
         ),
         actions: [
@@ -180,6 +190,46 @@ class _TerminalSessionBody extends StatefulWidget {
 }
 
 class _TerminalSessionBodyState extends State<_TerminalSessionBody> {
+  /// 小键盘修饰键的运行时状态：键盘组件与终端共用同一份
+  late final TerminalModifierState _modifiers = TerminalModifierState();
+
+  /// 终端原有的输入处理器与输出出口（用于串联，而不是替换）
+  TerminalInputHandler? _delegateInputHandler;
+  void Function(String)? _delegateOnOutput;
+
+  @override
+  void initState() {
+    super.initState();
+    final terminal = widget.session.terminal;
+
+    // ① 按键事件（硬件键盘、小键盘 key 格）都会经过 inputHandler：
+    //    把运行时修饰键叠加进事件，再交给 xterm 默认链路。
+    _delegateInputHandler = terminal.inputHandler;
+    terminal.inputHandler = ModifierAwareInputHandler(
+      state: _modifiers,
+      delegate: _delegateInputHandler ?? defaultInputHandler,
+    );
+
+    // ② 软键盘 / IME 打进来的字符不产生 KeyEvent，只能在这里改写。
+    _delegateOnOutput = terminal.onOutput;
+    terminal.onOutput = (data) {
+      final transformed = applyModifierToTypedText(data, _modifiers.mods);
+      _delegateOnOutput?.call(transformed ?? data);
+      if (transformed != null) _modifiers.consume();
+    };
+  }
+
+  @override
+  void dispose() {
+    final terminal = widget.session.terminal;
+    if (terminal.inputHandler is ModifierAwareInputHandler) {
+      terminal.inputHandler = _delegateInputHandler;
+    }
+    terminal.onOutput = _delegateOnOutput;
+    _modifiers.dispose();
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
     final session = widget.session;
@@ -192,18 +242,42 @@ class _TerminalSessionBodyState extends State<_TerminalSessionBody> {
       fontFamilyFallback: terminalFont.fallback,
     );
 
+    // 终端小键盘：开关与配置均独立于编辑区
+    final keyboardEnabled = settings?.keyboardEnabledFor(KeyboardScope.terminal) ?? false;
+    final keyboardConfig = settings?.keyboardConfigFor(KeyboardScope.terminal);
+
+    // 终端背景颜色（设置项）：容器与 xterm 主题保持一致
+    final backgroundColor = settings?.terminalBackgroundColor ?? const Color(0xFF1E1E1E);
+
     return Container(
-      color: const Color(0xFF181818),
+      color: backgroundColor,
       child: SafeArea(
         top: false,
-        child: xterm.TerminalView(
-          session.terminal,
-          focusNode: session.focusNode,
-          autofocus: true,
-          theme: xterm.TerminalThemes.defaultTheme,
-          textStyle: terminalStyle,
-          cursorType: xterm.TerminalCursorType.block,
-          padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 8.0),
+        child: Column(
+          children: [
+            Expanded(
+              child: xterm.TerminalView(
+                session.terminal,
+                focusNode: session.focusNode,
+                autofocus: true,
+                theme: terminalThemeWithBackground(backgroundColor),
+                textStyle: terminalStyle,
+                cursorType: xterm.TerminalCursorType.block,
+                padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 8.0),
+              ),
+            ),
+            if (keyboardEnabled && keyboardConfig != null && keyboardConfig.hasKeys)
+              VirtualKeyboardWidget(
+                controller: null,
+                focusNode: session.focusNode,
+                sink: TerminalKeyboardSink(
+                  terminal: session.terminal,
+                  focusNode: session.focusNode,
+                ),
+                modifierState: _modifiers,
+                config: keyboardConfig,
+              ),
+          ],
         ),
       ),
     );

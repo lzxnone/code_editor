@@ -24,9 +24,13 @@ class VirtualKeyboardPageConfigSection extends StatelessWidget {
           children: [
             Icon(Icons.tune, size: 20, color: theme.colorScheme.primary),
             const SizedBox(width: 8),
-            Text(
-              l10n.keyboardPageConfigSectionTitle,
-              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+            Expanded(
+              child: Text(
+                l10n.keyboardPageConfigSectionTitle,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+              ),
             ),
           ],
         ),
@@ -41,20 +45,24 @@ class VirtualKeyboardPageConfigSection extends StatelessWidget {
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
             child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(l10n.keyboardRowButtons, style: const TextStyle(fontWeight: FontWeight.w500)),
-                    const SizedBox(height: 2),
-                    Text(
-                      l10n.keyboardRowGridDescription(count),
-                      style: TextStyle(fontSize: 12, color: theme.hintColor),
-                    ),
-                  ],
+                // 左侧文案必须可收缩，否则 Row 内的定宽控件会被挤出右边界
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(l10n.keyboardRowButtons, style: const TextStyle(fontWeight: FontWeight.w500)),
+                      const SizedBox(height: 2),
+                      Text(
+                        l10n.keyboardRowGridDescription(count),
+                        style: TextStyle(fontSize: 12, color: theme.hintColor),
+                      ),
+                    ],
+                  ),
                 ),
+                const SizedBox(width: 12),
                 Row(
+                  mainAxisSize: MainAxisSize.min,
                   children: [
                     IconButton.filledTonal(
                       icon: const Icon(Icons.remove, size: 18),

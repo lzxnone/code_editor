@@ -1,5 +1,6 @@
 import 'package:code_editor/l10n/app_localizations.dart';
 import 'package:code_editor/providers/distro_provider.dart';
+import 'package:code_editor/providers/project_provider.dart';
 import 'package:code_editor/providers/terminal_provider.dart';
 import 'package:code_editor/utils/dialog_utils.dart';
 import 'package:code_editor/widgets/terminal_session_item_widget.dart';
@@ -60,12 +61,16 @@ class TerminalDrawer extends StatelessWidget {
                           DialogUtils.showToast(context, l10n.noSystemSelectedWarning);
                           return;
                         }
-                        // 基于当前选择的系统创建新终端
+                        // 基于当前选择的系统创建新终端并直接激活进入
+                        final projectRoot = context.read<ProjectProvider?>()?.rootPath;
                         provider.createSession(
                           name: l10n.sessionDefaultName,
                           distroId: currentSystem,
-                          activate: false,
+                          workspacePath: projectRoot,
+                          activate: true,
                         );
+                        // 自动关闭右侧抽屉，直接进入新创建的会话
+                        Navigator.of(context).maybePop();
                       },
                     ),
                   ],

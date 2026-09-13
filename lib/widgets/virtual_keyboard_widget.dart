@@ -3,10 +3,22 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:re_editor/re_editor.dart';
 
+import 'virtual_keyboard_sink.dart';
+import 'terminal_modifier_state.dart';
+
 /// 编辑器下方的虚拟辅助小键盘组件
 class VirtualKeyboardWidget extends StatefulWidget {
   final CodeLineEditingController? controller;
   final FocusNode? focusNode;
+
+  /// 输入汇聚实现。为空时按 [controller] 自动构造编辑区实现；
+  /// 终端作用域传入 `TerminalKeyboardSink`。
+  final VirtualKeyboardSink? sink;
+
+  /// 终端修饰键运行时状态。终端作用域由外部注入，使终端也能读到同一份状态
+  /// （把修饰符叠加到软键盘/硬件键盘的输入上）；为空时组件内部自建一份。
+  final TerminalModifierState? modifierState;
+
   final VirtualKeyboardConfig config;
   final Color? backgroundColor;
 
@@ -14,6 +26,8 @@ class VirtualKeyboardWidget extends StatefulWidget {
     super.key,
     required this.controller,
     this.focusNode,
+    this.sink,
+    this.modifierState,
     required this.config,
     this.backgroundColor,
   });
@@ -28,6 +42,15 @@ class _VirtualKeyboardWidgetState extends State<VirtualKeyboardWidget>
   late AnimationController _animationController;
   int _currentPage = 0;
 
+  /// 输入汇聚实现（终端作用域由外部注入，否则按 controller 构造编辑区实现）
+  VirtualKeyboardSink? _sink;
+
+  /// 修饰键运行时状态（终端作用域由外部注入，使终端能共用同一份状态）
+  late TerminalModifierState _modifiers;
+
+  /// 是否由本组件创建了 [_modifiers]（自建时才负责释放）
+  bool _ownsModifiers = false;
+
   static const double _rowHeight = 30.0;
   static const double _indicatorHeight = 12.0;
 
@@ -40,18 +63,64 @@ class _VirtualKeyboardWidgetState extends State<VirtualKeyboardWidget>
       duration: const Duration(milliseconds: 200),
       value: 0.0, // 默认折叠（0.0 表示仅显示第一行，1.0 表示完全展开）
     );
+    _resolveSink();
+    _resolveModifiers();
+  }
+
+  @override
+  void didUpdateWidget(covariant VirtualKeyboardWidget oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.sink != widget.sink || oldWidget.controller != widget.controller) {
+      _resolveSink();
+    }
+    if (oldWidget.modifierState != widget.modifierState) {
+      _releaseModifiers();
+      _resolveModifiers();
+    }
+  }
+
+  /// 终端作用域由外部注入 sink；编辑区按 controller 自动构造
+  void _resolveSink() {
+    _sink = widget.sink ??
+        (widget.controller != null
+            ? EditorKeyboardSink(controller: widget.controller!, focusNode: widget.focusNode)
+            : null);
+  }
+
+  void _resolveModifiers() {
+    final injected = widget.modifierState;
+    if (injected != null) {
+      _modifiers = injected;
+      _ownsModifiers = false;
+    } else {
+      _modifiers = TerminalModifierState();
+      _ownsModifiers = true;
+    }
+    _modifiers.addListener(_onModifiersChanged);
+  }
+
+  void _releaseModifiers() {
+    _modifiers.removeListener(_onModifiersChanged);
+    if (_ownsModifiers) {
+      _modifiers.dispose();
+    }
+  }
+
+  void _onModifiersChanged() {
+    if (mounted) setState(() {});
   }
 
   @override
   void dispose() {
+    _releaseModifiers();
     _pageController.dispose();
     _animationController.dispose();
     super.dispose();
   }
 
   void _handleKeyTap(KeyboardKeyItem keyItem) {
-    final controller = widget.controller;
-    if (controller == null) return;
+    final sink = _sink;
+    if (sink == null) return;
 
     // 轻微触觉反馈提升敲击手感
     HapticFeedback.lightImpact();
@@ -61,133 +130,45 @@ class _VirtualKeyboardWidgetState extends State<VirtualKeyboardWidget>
       widget.focusNode!.requestFocus();
     }
 
+    // 修饰键只切换运行时状态，不产生输出
+    if (keyItem.action == 'modifier') {
+      _modifiers.toggle(keyItem.value);
+      return;
+    }
+
+    final mods = _effectiveMods(keyItem.mods);
+
     switch (keyItem.action) {
       case 'command':
-        _handleCommand(controller, keyItem.value);
+        sink.sendCommand(keyItem.value);
         break;
       case 'pair':
-        _handlePair(controller, keyItem.value, keyItem.cursorOffset);
+        sink.sendPair(keyItem.value, keyItem.cursorOffset);
+        break;
+      case 'key':
+        sink.sendNamedKey(keyItem.value, mods: mods);
         break;
       case 'input':
       default:
-        _handleInput(controller, keyItem.value.isNotEmpty ? keyItem.value : keyItem.label);
-        break;
-    }
-  }
-
-  void _handleInput(CodeLineEditingController controller, String text) {
-    if (text.isEmpty) return;
-    controller.replaceSelection(text);
-  }
-
-  void _handlePair(CodeLineEditingController controller, String pairText, int offset) {
-    final hasSelection = !controller.selection.isCollapsed &&
-        controller.selection.baseOffset != -1 &&
-        controller.selection.extentOffset != -1;
-
-    if (hasSelection) {
-      final selected = controller.selectedText;
-      if (pairText.length >= 2) {
-        final left = pairText.substring(0, pairText.length ~/ 2);
-        final right = pairText.substring(pairText.length ~/ 2);
-        final wrapped = left + selected + right;
-        controller.replaceSelection(wrapped);
-      } else {
-        controller.replaceSelection(pairText + selected + pairText);
-      }
-    } else {
-      controller.replaceSelection(pairText);
-      if (offset != 0) {
-        final curSel = controller.selection;
-        final targetOffset = (curSel.extentOffset + offset).clamp(0, controller.extentLine.length);
-        controller.selection = CodeLineSelection.collapsed(
-          index: curSel.extentIndex,
-          offset: targetOffset,
+        sink.sendText(
+          keyItem.value.isNotEmpty ? keyItem.value : keyItem.label,
+          appendEnter: keyItem.autoEnter,
         );
-      }
+        break;
     }
+
+    // 一次性修饰键被"下一次任意按键"消耗（含 Esc、方向键这类不产生字符的键）
+    _modifiers.consume();
   }
 
-  void _handleCommand(CodeLineEditingController controller, String command) {
-    final cmd = command.toLowerCase().trim();
-    switch (cmd) {
-      case 'tab':
-        controller.applyIndent();
-        break;
-      case 'untab':
-      case 'outdent':
-        controller.applyOutdent();
-        break;
-      case 'cursor_left':
-      case 'left':
-        controller.moveCursor(AxisDirection.left);
-        break;
-      case 'cursor_right':
-      case 'right':
-        controller.moveCursor(AxisDirection.right);
-        break;
-      case 'cursor_up':
-      case 'up':
-        controller.moveCursor(AxisDirection.up);
-        break;
-      case 'cursor_down':
-      case 'down':
-        controller.moveCursor(AxisDirection.down);
-        break;
-      case 'line_start':
-      case 'home':
-        controller.moveCursorToLineStart();
-        break;
-      case 'line_end':
-      case 'end':
-        controller.moveCursorToLineEnd();
-        break;
-      case 'page_start':
-        controller.moveCursorToPageStart();
-        break;
-      case 'page_end':
-        controller.moveCursorToPageEnd();
-        break;
-      case 'undo':
-        if (controller.canUndo) {
-          controller.undo();
-        }
-        break;
-      case 'redo':
-        if (controller.canRedo) {
-          controller.redo();
-        }
-        break;
-      case 'copy':
-        controller.copy();
-        break;
-      case 'cut':
-        controller.cut();
-        break;
-      case 'paste':
-        controller.paste();
-        break;
-      case 'backspace':
-      case 'delete_backward':
-        controller.deleteBackward();
-        break;
-      case 'delete':
-      case 'delete_forward':
-        controller.deleteForward();
-        break;
-      case 'select_all':
-        controller.selectAll();
-        break;
-      case 'keyboard_hide':
-      case 'hide_keyboard':
-        widget.focusNode?.unfocus();
-        SystemChannels.textInput.invokeMethod('TextInput.hide');
-        break;
-      default:
-        // 未知命令安全降级为直接输入其命令名称或原文本
-        controller.replaceSelection(command);
-        break;
-    }
+  /// 合并按键自身配置的修饰符与运行时激活的修饰符
+  KeyboardKeyMods _effectiveMods(KeyboardKeyMods own) {
+    final active = _modifiers.mods;
+    return KeyboardKeyMods(
+      ctrl: own.ctrl || active.ctrl,
+      alt: own.alt || active.alt,
+      shift: own.shift || active.shift,
+    );
   }
 
   @override
@@ -392,9 +373,18 @@ class _VirtualKeyboardWidgetState extends State<VirtualKeyboardWidget>
   Widget _buildKeyButton(KeyboardKeyItem keyItem, bool isDark) {
     final iconData = KeyboardIconHelper.getIcon(keyItem.icon);
 
-    final btnBgColor = isDark ? const Color(0xFF2C2C2C) : const Color(0xFFFFFFFF);
-    final btnTextColor = isDark ? const Color(0xFFE0E0E0) : const Color(0xFF303133);
-    final borderColor = isDark ? const Color(0xFF383838) : const Color(0xFFE4E7ED);
+    // 修饰键处于激活（一次性或锁定）状态时高亮，让用户看清当前修饰状态
+    final isModifierActive = keyItem.action == 'modifier' && _modifiers.isActive(keyItem.value);
+
+    final btnBgColor = isModifierActive
+        ? (isDark ? const Color(0xFF2F4F6F) : const Color(0xFFD6E6FF))
+        : (isDark ? const Color(0xFF2C2C2C) : const Color(0xFFFFFFFF));
+    final btnTextColor = isModifierActive
+        ? (isDark ? const Color(0xFFFFFFFF) : const Color(0xFF0B57D0))
+        : (isDark ? const Color(0xFFE0E0E0) : const Color(0xFF303133));
+    final borderColor = isModifierActive
+        ? const Color(0xFF0B57D0)
+        : (isDark ? const Color(0xFF383838) : const Color(0xFFE4E7ED));
 
     Widget content;
     if (iconData != null) {

@@ -14,6 +14,7 @@ class FileService {
     int depth = 0,
     List<String> openDirectoryPaths = const [],
     int maxDepth = 10,
+    bool showHiddenFiles = true,
   }) async {
     if(depth > maxDepth) {
       return [];
@@ -45,7 +46,7 @@ class FileService {
       for(var entity in entities) {
         try {
           final fileName = p.basename(entity.path);
-          if (fileName.startsWith('.')) continue;
+          if (!showHiddenFiles && fileName.startsWith('.')) continue;
 
           final entityPath = p.normalize(entity.path);
           String? relativePath;
@@ -64,6 +65,7 @@ class FileService {
                 depth: depth + 1,
                 openDirectoryPaths: openDirectoryPaths,
                 maxDepth: maxDepth,
+                showHiddenFiles: showHiddenFiles,
               );
             }
             items.add(FileItem(

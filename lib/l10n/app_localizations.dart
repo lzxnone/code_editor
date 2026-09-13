@@ -524,6 +524,90 @@ abstract class AppLocalizations {
   /// **'代码字号缩放'**
   String get codeFontSize;
 
+  /// No description provided for @uiFont.
+  ///
+  /// In zh, this message translates to:
+  /// **'界面字体'**
+  String get uiFont;
+
+  /// No description provided for @selectUiFont.
+  ///
+  /// In zh, this message translates to:
+  /// **'选择界面字体'**
+  String get selectUiFont;
+
+  /// No description provided for @themeColor.
+  ///
+  /// In zh, this message translates to:
+  /// **'主题颜色'**
+  String get themeColor;
+
+  /// No description provided for @selectThemeColor.
+  ///
+  /// In zh, this message translates to:
+  /// **'选择主题颜色'**
+  String get selectThemeColor;
+
+  /// No description provided for @terminalBackgroundColor.
+  ///
+  /// In zh, this message translates to:
+  /// **'终端背景颜色'**
+  String get terminalBackgroundColor;
+
+  /// No description provided for @selectTerminalBackgroundColor.
+  ///
+  /// In zh, this message translates to:
+  /// **'选择终端背景颜色'**
+  String get selectTerminalBackgroundColor;
+
+  /// No description provided for @uiFontPreview.
+  ///
+  /// In zh, this message translates to:
+  /// **'代码编辑器界面字体预览 Code Editor 123'**
+  String get uiFontPreview;
+
+  /// No description provided for @codeFont.
+  ///
+  /// In zh, this message translates to:
+  /// **'代码字体'**
+  String get codeFont;
+
+  /// No description provided for @selectCodeFont.
+  ///
+  /// In zh, this message translates to:
+  /// **'选择代码字体'**
+  String get selectCodeFont;
+
+  /// No description provided for @codeFontPreview.
+  ///
+  /// In zh, this message translates to:
+  /// **'const app = \"Code Editor\"; // 代码预览'**
+  String get codeFontPreview;
+
+  /// No description provided for @terminalFont.
+  ///
+  /// In zh, this message translates to:
+  /// **'终端字体'**
+  String get terminalFont;
+
+  /// No description provided for @selectTerminalFont.
+  ///
+  /// In zh, this message translates to:
+  /// **'选择终端字体'**
+  String get selectTerminalFont;
+
+  /// No description provided for @terminalFontPreview.
+  ///
+  /// In zh, this message translates to:
+  /// **'\$ git status -s # 终端字体预览'**
+  String get terminalFontPreview;
+
+  /// No description provided for @fontName.
+  ///
+  /// In zh, this message translates to:
+  /// **'{font, select, system_default{系统默认} sans_serif{无衬线体} serif{衬线体（宋体）} monospace{系统等宽} consolas{Consolas} courier_new{Courier New} menlo{Menlo / Monaco} jetbrains_mono{JetBrains Mono} fira_code{Fira Code} other{{font}}}'**
+  String fontName(String font);
+
   /// No description provided for @decreaseFontSize.
   ///
   /// In zh, this message translates to:
@@ -595,6 +679,30 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'自定义小键盘按键布局与快捷键'**
   String get editVirtualKeyboardConfigSubtitle;
+
+  /// No description provided for @terminalVirtualKeyboard.
+  ///
+  /// In zh, this message translates to:
+  /// **'终端小键盘'**
+  String get terminalVirtualKeyboard;
+
+  /// No description provided for @terminalVirtualKeyboardSubtitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'在终端下方显示常用特殊键与指令快捷键'**
+  String get terminalVirtualKeyboardSubtitle;
+
+  /// No description provided for @editTerminalVirtualKeyboardConfig.
+  ///
+  /// In zh, this message translates to:
+  /// **'编辑终端键盘配置'**
+  String get editTerminalVirtualKeyboardConfig;
+
+  /// No description provided for @editTerminalVirtualKeyboardConfigSubtitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'自定义 Esc / Tab / Ctrl 组合等终端专用按键'**
+  String get editTerminalVirtualKeyboardConfigSubtitle;
 
   /// No description provided for @virtualKeyboardDialogTitle.
   ///
@@ -1259,7 +1367,7 @@ abstract class AppLocalizations {
   /// No description provided for @keyboardLabelFormField.
   ///
   /// In zh, this message translates to:
-  /// **'显示文本 (Label)'**
+  /// **'显示文本'**
   String get keyboardLabelFormField;
 
   /// No description provided for @keyboardLabelFormFieldHint.
@@ -1277,8 +1385,14 @@ abstract class AppLocalizations {
   /// No description provided for @keyboardIconFormField.
   ///
   /// In zh, this message translates to:
-  /// **'图标 (Icon, 可选)'**
+  /// **'图标 (可选)'**
   String get keyboardIconFormField;
+
+  /// No description provided for @keyboardIconName.
+  ///
+  /// In zh, this message translates to:
+  /// **'{icon, select, undo{撤销} redo{重做} tab{向右缩进} untab{向左缩进} outdent{减少缩进} arrow_left{左箭头} arrow_right{右箭头} arrow_up{上箭头} arrow_down{下箭头} home{移至行首} end{移至行尾} first_page{移至文首} last_page{移至文末} page_up{上翻页} page_down{下翻页} enter{回车} space{空格} escape{退出} insert{插入} clear{清除} keyboard{键盘} backspace{退格} delete{删除} copy{复制} cut{剪切} paste{粘贴} save{保存} search{搜索} select_all{全选} keyboard_hide{收起小键盘} other{{icon}}}'**
+  String keyboardIconName(String icon);
 
   /// No description provided for @keyboardNoIconOption.
   ///
@@ -1289,13 +1403,73 @@ abstract class AppLocalizations {
   /// No description provided for @keyboardActionFormField.
   ///
   /// In zh, this message translates to:
-  /// **'动作类型 (Action)'**
+  /// **'动作类型'**
   String get keyboardActionFormField;
+
+  /// No description provided for @keyboardActionName.
+  ///
+  /// In zh, this message translates to:
+  /// **'{action, select, input{普通文本} pair{成对符号} command{编辑器命令} modifier{修饰键} key{特殊键} other{{action}}}'**
+  String keyboardActionName(String action);
+
+  /// No description provided for @keyboardActionInputTerminal.
+  ///
+  /// In zh, this message translates to:
+  /// **'指令快捷键'**
+  String get keyboardActionInputTerminal;
+
+  /// No description provided for @keyboardKeyFormField.
+  ///
+  /// In zh, this message translates to:
+  /// **'特殊键'**
+  String get keyboardKeyFormField;
+
+  /// No description provided for @keyboardKeyGroupNavigation.
+  ///
+  /// In zh, this message translates to:
+  /// **'导航键'**
+  String get keyboardKeyGroupNavigation;
+
+  /// No description provided for @keyboardKeyGroupEditing.
+  ///
+  /// In zh, this message translates to:
+  /// **'编辑键'**
+  String get keyboardKeyGroupEditing;
+
+  /// No description provided for @keyboardKeyGroupFunctionKeys.
+  ///
+  /// In zh, this message translates to:
+  /// **'功能键'**
+  String get keyboardKeyGroupFunctionKeys;
+
+  /// No description provided for @keyboardKeyGroupLetters.
+  ///
+  /// In zh, this message translates to:
+  /// **'字母键'**
+  String get keyboardKeyGroupLetters;
+
+  /// No description provided for @keyboardAutoEnter.
+  ///
+  /// In zh, this message translates to:
+  /// **'发送后自动回车'**
+  String get keyboardAutoEnter;
+
+  /// No description provided for @keyboardKeyName.
+  ///
+  /// In zh, this message translates to:
+  /// **'{key, select, escape{退出} tab{Tab} backtab{反向制表} returnKey{回车} enter{回车} numpadEnter{小键盘回车} backspace{退格} delete{删除} insert{插入} space{空格} numpadClear{清除} arrowUp{上} arrowDown{下} arrowLeft{左} arrowRight{右} home{行首} end{行尾} pageUp{上翻页} pageDown{下翻页} f1{F1} f2{F2} f3{F3} f4{F4} f5{F5} f6{F6} f7{F7} f8{F8} f9{F9} f10{F10} f11{F11} f12{F12} other{{key}}}'**
+  String keyboardKeyName(String key);
+
+  /// No description provided for @keyboardKeyInvalidError.
+  ///
+  /// In zh, this message translates to:
+  /// **'该键在终端中不会产生任何输出，请选择列表中的特殊键'**
+  String get keyboardKeyInvalidError;
 
   /// No description provided for @keyboardValueFormField.
   ///
   /// In zh, this message translates to:
-  /// **'输入文本内容 (Value)'**
+  /// **'输入文本内容'**
   String get keyboardValueFormField;
 
   /// No description provided for @keyboardValueFormFieldHint.
@@ -1310,41 +1484,59 @@ abstract class AppLocalizations {
   /// **'输入文本不能为空'**
   String get keyboardValueRequiredError;
 
-  /// No description provided for @keyboardPairPresetFormField.
+  /// No description provided for @keyboardPairValueFormField.
   ///
   /// In zh, this message translates to:
-  /// **'成对符号预设 (Value)'**
-  String get keyboardPairPresetFormField;
+  /// **'成对符号'**
+  String get keyboardPairValueFormField;
+
+  /// No description provided for @keyboardPairValueFormFieldHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'例如 ()、[]、\"\"、<>'**
+  String get keyboardPairValueFormFieldHint;
+
+  /// No description provided for @keyboardPairValueRequiredError.
+  ///
+  /// In zh, this message translates to:
+  /// **'请输入成对符号'**
+  String get keyboardPairValueRequiredError;
+
+  /// No description provided for @keyboardPairValueInvalidError.
+  ///
+  /// In zh, this message translates to:
+  /// **'请输入至少 2 个字符且左右不同的成对符号，如 ()、[]'**
+  String get keyboardPairValueInvalidError;
 
   /// No description provided for @keyboardCommandPresetFormField.
   ///
   /// In zh, this message translates to:
-  /// **'预设编辑器命令 (Value)'**
+  /// **'编辑器命令'**
   String get keyboardCommandPresetFormField;
+
+  /// No description provided for @keyboardCommandName.
+  ///
+  /// In zh, this message translates to:
+  /// **'{command, select, tab{向右缩进} untab{向左缩进} undo{撤销} redo{重做} cursor_left{光标左移} cursor_right{光标右移} cursor_up{光标上移} cursor_down{光标下移} line_start{移动至行首} line_end{移动至行尾} page_start{移动至文首} page_end{移动至文末} copy{复制} cut{剪切} paste{粘贴} delete{删除} select_all{全选} keyboard_hide{收起小键盘} other{{command}}}'**
+  String keyboardCommandName(String command);
 
   /// No description provided for @keyboardModifierPresetFormField.
   ///
   /// In zh, this message translates to:
-  /// **'终端修饰键 (Value)'**
+  /// **'终端修饰键'**
   String get keyboardModifierPresetFormField;
 
-  /// No description provided for @keyboardTerminalKeyPresetFormField.
+  /// No description provided for @keyboardModifierName.
   ///
   /// In zh, this message translates to:
-  /// **'终端按键 (Value)'**
-  String get keyboardTerminalKeyPresetFormField;
+  /// **'{modifier, select, ctrl{Ctrl 键} alt{Alt 键} shift{Shift 键} other{{modifier}}}'**
+  String keyboardModifierName(String modifier);
 
   /// No description provided for @keyboardCursorOffsetFormField.
   ///
   /// In zh, this message translates to:
-  /// **'光标相对偏移 (cursorOffset)'**
+  /// **'光标相对偏移'**
   String get keyboardCursorOffsetFormField;
-
-  /// No description provided for @keyboardCursorOffsetHelper.
-  ///
-  /// In zh, this message translates to:
-  /// **'例如 () 插入后光标居中需向左偏移 1 位，填写 -1'**
-  String get keyboardCursorOffsetHelper;
 
   /// No description provided for @keyboardCursorOffsetRequiredError.
   ///
@@ -1357,6 +1549,276 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'偏移量必须为整数'**
   String get keyboardCursorOffsetIntegerError;
+
+  /// No description provided for @recommended.
+  ///
+  /// In zh, this message translates to:
+  /// **'推荐'**
+  String get recommended;
+
+  /// No description provided for @presetColors.
+  ///
+  /// In zh, this message translates to:
+  /// **'预设颜色'**
+  String get presetColors;
+
+  /// No description provided for @hexColor.
+  ///
+  /// In zh, this message translates to:
+  /// **'十六进制颜色'**
+  String get hexColor;
+
+  /// No description provided for @currentColor.
+  ///
+  /// In zh, this message translates to:
+  /// **'当前'**
+  String get currentColor;
+
+  /// No description provided for @newColor.
+  ///
+  /// In zh, this message translates to:
+  /// **'预览'**
+  String get newColor;
+
+  /// No description provided for @runTasks.
+  ///
+  /// In zh, this message translates to:
+  /// **'运行任务'**
+  String get runTasks;
+
+  /// No description provided for @projectDetect.
+  ///
+  /// In zh, this message translates to:
+  /// **'项目探测'**
+  String get projectDetect;
+
+  /// No description provided for @projectDetecting.
+  ///
+  /// In zh, this message translates to:
+  /// **'正在探测项目...'**
+  String get projectDetecting;
+
+  /// No description provided for @editRunTasks.
+  ///
+  /// In zh, this message translates to:
+  /// **'运行任务编辑'**
+  String get editRunTasks;
+
+  /// No description provided for @projectSection.
+  ///
+  /// In zh, this message translates to:
+  /// **'项目'**
+  String get projectSection;
+
+  /// No description provided for @showHiddenFiles.
+  ///
+  /// In zh, this message translates to:
+  /// **'显示隐藏文件'**
+  String get showHiddenFiles;
+
+  /// No description provided for @showHiddenFilesSubtitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'在文件树中展示以点 (.) 开头的隐藏文件与文件夹'**
+  String get showHiddenFilesSubtitle;
+
+  /// No description provided for @searchTasksHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'搜索指定任务...'**
+  String get searchTasksHint;
+
+  /// No description provided for @noTasksAvailable.
+  ///
+  /// In zh, this message translates to:
+  /// **'暂无可执行任务'**
+  String get noTasksAvailable;
+
+  /// No description provided for @noMatchingTasks.
+  ///
+  /// In zh, this message translates to:
+  /// **'无匹配的任务'**
+  String get noMatchingTasks;
+
+  /// No description provided for @userCustomTasks.
+  ///
+  /// In zh, this message translates to:
+  /// **'用户自定义任务'**
+  String get userCustomTasks;
+
+  /// No description provided for @systemDetectedTasks.
+  ///
+  /// In zh, this message translates to:
+  /// **'系统动态探测任务'**
+  String get systemDetectedTasks;
+
+  /// No description provided for @editCustomTasksTooltip.
+  ///
+  /// In zh, this message translates to:
+  /// **'编辑自定义任务'**
+  String get editCustomTasksTooltip;
+
+  /// No description provided for @runTasksConfig.
+  ///
+  /// In zh, this message translates to:
+  /// **'运行任务配置'**
+  String get runTasksConfig;
+
+  /// No description provided for @editTask.
+  ///
+  /// In zh, this message translates to:
+  /// **'编辑任务'**
+  String get editTask;
+
+  /// No description provided for @addTask.
+  ///
+  /// In zh, this message translates to:
+  /// **'新增任务'**
+  String get addTask;
+
+  /// No description provided for @runTasksConfigSubtitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'配置将自动保存至项目根目录下的 .code_editor/run_tasks.json'**
+  String get runTasksConfigSubtitle;
+
+  /// No description provided for @noCustomTasksInProject.
+  ///
+  /// In zh, this message translates to:
+  /// **'当前项目暂无自定义任务'**
+  String get noCustomTasksInProject;
+
+  /// No description provided for @createNow.
+  ///
+  /// In zh, this message translates to:
+  /// **'立即创建'**
+  String get createNow;
+
+  /// No description provided for @saveAndApply.
+  ///
+  /// In zh, this message translates to:
+  /// **'保存并应用'**
+  String get saveAndApply;
+
+  /// No description provided for @taskNameRequired.
+  ///
+  /// In zh, this message translates to:
+  /// **'任务名称 *'**
+  String get taskNameRequired;
+
+  /// No description provided for @taskNameHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'如: 编译并运行 Debug'**
+  String get taskNameHint;
+
+  /// No description provided for @taskNameEmptyError.
+  ///
+  /// In zh, this message translates to:
+  /// **'请输入任务名称'**
+  String get taskNameEmptyError;
+
+  /// No description provided for @shellCommandRequired.
+  ///
+  /// In zh, this message translates to:
+  /// **'Shell 执行指令 *'**
+  String get shellCommandRequired;
+
+  /// No description provided for @shellCommandHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'如: cmake -B build && cmake --build build'**
+  String get shellCommandHint;
+
+  /// No description provided for @shellCommandEmptyError.
+  ///
+  /// In zh, this message translates to:
+  /// **'请输入执行指令'**
+  String get shellCommandEmptyError;
+
+  /// No description provided for @taskDescOptional.
+  ///
+  /// In zh, this message translates to:
+  /// **'任务描述（选填）'**
+  String get taskDescOptional;
+
+  /// No description provided for @taskDescHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'简要说明此任务的用途'**
+  String get taskDescHint;
+
+  /// No description provided for @clearBeforeRun.
+  ///
+  /// In zh, this message translates to:
+  /// **'执行前清屏 (clear)'**
+  String get clearBeforeRun;
+
+  /// No description provided for @clearBeforeRunSubtitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'在终端输出任务结果前清理历史屏幕'**
+  String get clearBeforeRunSubtitle;
+
+  /// No description provided for @runTasksUpdated.
+  ///
+  /// In zh, this message translates to:
+  /// **'运行任务配置已更新'**
+  String get runTasksUpdated;
+
+  /// No description provided for @detectCompletedMessage.
+  ///
+  /// In zh, this message translates to:
+  /// **'探测完成，发现 {count} 个可用任务'**
+  String detectCompletedMessage(int count);
+
+  /// No description provided for @pleaseOpenProjectFirst.
+  ///
+  /// In zh, this message translates to:
+  /// **'请先打开一个项目'**
+  String get pleaseOpenProjectFirst;
+
+  /// No description provided for @deleteTaskConfirmMessage.
+  ///
+  /// In zh, this message translates to:
+  /// **'确定要删除任务 \"{name}\" 吗？'**
+  String deleteTaskConfirmMessage(String name);
+
+  /// No description provided for @deleteSelectedTasksConfirmMessage.
+  ///
+  /// In zh, this message translates to:
+  /// **'确定要删除选中的 {count} 个任务吗？'**
+  String deleteSelectedTasksConfirmMessage(int count);
+
+  /// No description provided for @deleteSelected.
+  ///
+  /// In zh, this message translates to:
+  /// **'删除选中'**
+  String get deleteSelected;
+
+  /// No description provided for @selectTasksToDelete.
+  ///
+  /// In zh, this message translates to:
+  /// **'选择要删除的任务'**
+  String get selectTasksToDelete;
+
+  /// No description provided for @selectedCount.
+  ///
+  /// In zh, this message translates to:
+  /// **'已选 {count} 项'**
+  String selectedCount(int count);
+
+  /// No description provided for @unsavedTaskChangesTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'未保存的任务更改'**
+  String get unsavedTaskChangesTitle;
+
+  /// No description provided for @unsavedTaskChangesMessage.
+  ///
+  /// In zh, this message translates to:
+  /// **'当前任务内容已被修改，是否放弃未保存的修改并返回？'**
+  String get unsavedTaskChangesMessage;
 }
 
 class _AppLocalizationsDelegate

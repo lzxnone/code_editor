@@ -1,4 +1,7 @@
 /// 字体定义与预设常量
+///
+/// 注意：[name] 仅作为代码内的定义说明，界面展示名称一律取自 l10n
+/// （`fontName(id)`），避免中英文文案两处维护。
 class AppFontItem {
   final String id;
   final String name;
@@ -133,7 +136,7 @@ class AppFonts {
   /// 预设的开源编程字体配置（用户后续下载字体包放入 assets/fonts/ 并配置 pubspec 后即可即开即用）
   static const AppFontItem editorJetBrainsMono = AppFontItem(
     id: 'jetbrains_mono',
-    name: 'JetBrains Mono (推荐)',
+    name: 'JetBrains Mono',
     fontFamily: 'JetBrains Mono',
     fallback: ['monospace'],
     isMonospace: true,
@@ -200,7 +203,7 @@ class AppFonts {
 
   static const AppFontItem terminalJetBrainsMono = AppFontItem(
     id: 'jetbrains_mono',
-    name: 'JetBrains Mono (推荐)',
+    name: 'JetBrains Mono',
     fontFamily: 'JetBrains Mono',
     fallback: ['monospace'],
     isMonospace: true,

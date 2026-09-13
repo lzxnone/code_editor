@@ -12,10 +12,14 @@ class CodeEditorAppBar extends StatelessWidget implements PreferredSizeWidget {
   final VoidCallback? onSave;
   final VoidCallback? onSaveAll;
   final VoidCallback? onRun;
+  final VoidCallback? onRunTasks;
   final VoidCallback? onTerminal;
   final VoidCallback? onCloseAllTabs;
   final VoidCallback? onCloseProject;
   final VoidCallback? onSettings;
+  final VoidCallback? onProjectDetect;
+  final VoidCallback? onEditRunTasks;
+  final bool isDetecting;
 
   const CodeEditorAppBar({
     super.key,
@@ -25,10 +29,14 @@ class CodeEditorAppBar extends StatelessWidget implements PreferredSizeWidget {
     this.onSave,
     this.onSaveAll,
     this.onRun,
+    this.onRunTasks,
     this.onTerminal,
     this.onCloseAllTabs,
     this.onCloseProject,
     this.onSettings,
+    this.onProjectDetect,
+    this.onEditRunTasks,
+    this.isDetecting = false,
   });
 
   @override
@@ -121,28 +129,23 @@ class CodeEditorAppBar extends StatelessWidget implements PreferredSizeWidget {
               onPressed: onSave ?? () {},
             ),
           ),
-          Focus(
-            canRequestFocus: false,
-            skipTraversal: true,
-            child: IconButton(
-              visualDensity: VisualDensity.compact,
-              icon: const Icon(Icons.terminal),
-              tooltip: '终端',
-              onPressed: onTerminal ??
-                  () {
-                    Navigator.of(context).push(
-                      MaterialPageRoute<void>(
-                        builder: (context) => const TerminalView(),
-                      ),
-                    );
-                  },
-            ),
-          ),
           _MoreMenuButton(
             onSaveAll: onSaveAll,
+            onRunTasks: onRunTasks,
+            onTerminal: onTerminal ??
+                () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute<void>(
+                      builder: (context) => const TerminalView(),
+                    ),
+                  );
+                },
+            onProjectDetect: onProjectDetect,
+            onEditRunTasks: onEditRunTasks,
             onCloseAllTabs: onCloseAllTabs,
             onCloseProject: onCloseProject,
             onSettings: onSettings,
+            isDetecting: isDetecting,
           ),
         ],
       ),
@@ -153,15 +156,25 @@ class CodeEditorAppBar extends StatelessWidget implements PreferredSizeWidget {
 /// 基于 OverlayEntry 的右上角更多菜单组件（带对齐右上角缩放淡入淡出动画，非模态不关闭键盘）
 class _MoreMenuButton extends StatefulWidget {
   final VoidCallback? onSaveAll;
+  final VoidCallback? onRunTasks;
+  final VoidCallback? onTerminal;
+  final VoidCallback? onProjectDetect;
+  final VoidCallback? onEditRunTasks;
   final VoidCallback? onCloseAllTabs;
   final VoidCallback? onCloseProject;
   final VoidCallback? onSettings;
+  final bool isDetecting;
 
   const _MoreMenuButton({
     this.onSaveAll,
+    this.onRunTasks,
+    this.onTerminal,
+    this.onProjectDetect,
+    this.onEditRunTasks,
     this.onCloseAllTabs,
     this.onCloseProject,
     this.onSettings,
+    this.isDetecting = false,
   });
 
   @override
@@ -280,12 +293,14 @@ class _MoreMenuButtonState extends State<_MoreMenuButton> with SingleTickerProvi
                 ),
                 clipBehavior: Clip.antiAlias,
                 child: Container(
-                  width: 170,
+                  // 菜单宽度随系统字号放大，避免大字号下文案被截断（上限避免超出窄屏）
+                  width: (170.0 * MediaQuery.textScalerOf(context).scale(1.0)).clamp(170.0, 280.0),
                   padding: const EdgeInsets.symmetric(vertical: 4.0),
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
+                      // 分组 1: 保存所有，运行任务，终端
                       _buildMenuItem(
                         icon: Icons.save_as_outlined,
                         title: l10n.saveAll,
@@ -295,17 +310,58 @@ class _MoreMenuButtonState extends State<_MoreMenuButton> with SingleTickerProvi
                         },
                       ),
                       _buildMenuItem(
-                        icon: Icons.close_fullscreen_outlined,
-                        title: l10n.closeAllTabs,
+                        icon: Icons.playlist_play,
+                        title: l10n.runTasks,
                         iconColor: onSurfaceColor,
                         onTap: () {
-                          _closeMenu(onClosed: widget.onCloseAllTabs);
+                          _closeMenu(onClosed: widget.onRunTasks);
+                        },
+                      ),
+                      _buildMenuItem(
+                        icon: Icons.terminal,
+                        title: l10n.terminal,
+                        iconColor: onSurfaceColor,
+                        onTap: () {
+                          _closeMenu(onClosed: widget.onTerminal);
                         },
                       ),
                       Divider(
                         height: 9,
                         thickness: 0.8,
                         color: theme.colorScheme.outlineVariant,
+                      ),
+                      // 分组 2: 项目探测，运行任务编辑
+                      _buildMenuItem(
+                        icon: widget.isDetecting ? Icons.hourglass_top : Icons.radar_outlined,
+                        title: widget.isDetecting ? l10n.projectDetecting : l10n.projectDetect,
+                        iconColor: onSurfaceColor,
+                        enabled: !widget.isDetecting,
+                        onTap: () {
+                          if (widget.isDetecting) return;
+                          _closeMenu(onClosed: widget.onProjectDetect);
+                        },
+                      ),
+                      _buildMenuItem(
+                        icon: Icons.tune_outlined,
+                        title: l10n.editRunTasks,
+                        iconColor: onSurfaceColor,
+                        onTap: () {
+                          _closeMenu(onClosed: widget.onEditRunTasks);
+                        },
+                      ),
+                      Divider(
+                        height: 9,
+                        thickness: 0.8,
+                        color: theme.colorScheme.outlineVariant,
+                      ),
+                      // 分组 3: 关闭所有标签，关闭当前项目
+                      _buildMenuItem(
+                        icon: Icons.close_fullscreen_outlined,
+                        title: l10n.closeAllTabs,
+                        iconColor: onSurfaceColor,
+                        onTap: () {
+                          _closeMenu(onClosed: widget.onCloseAllTabs);
+                        },
                       ),
                       _buildMenuItem(
                         icon: Icons.folder_off_outlined,
@@ -320,6 +376,7 @@ class _MoreMenuButtonState extends State<_MoreMenuButton> with SingleTickerProvi
                         thickness: 0.8,
                         color: theme.colorScheme.outlineVariant,
                       ),
+                      // 分组 4: 设置
                       _buildMenuItem(
                         icon: Icons.settings,
                         title: l10n.settings,
@@ -348,10 +405,18 @@ class _MoreMenuButtonState extends State<_MoreMenuButton> with SingleTickerProvi
     required Color iconColor,
     required VoidCallback onTap,
     bool isDestructive = false,
+    bool enabled = true,
   }) {
     final theme = Theme.of(context);
+    final effectiveColor = enabled
+        ? (isDestructive ? theme.colorScheme.error : iconColor)
+        : theme.colorScheme.outline.withValues(alpha: 0.5);
+    final effectiveTextColor = enabled
+        ? (isDestructive ? theme.colorScheme.error : theme.colorScheme.onSurface)
+        : theme.colorScheme.outline.withValues(alpha: 0.5);
+
     return InkWell(
-      onTap: onTap,
+      onTap: enabled ? onTap : null,
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 10.0),
         child: Row(
@@ -360,14 +425,18 @@ class _MoreMenuButtonState extends State<_MoreMenuButton> with SingleTickerProvi
             Icon(
               icon,
               size: 18,
-              color: isDestructive ? theme.colorScheme.error : iconColor,
+              color: effectiveColor,
             ),
             const SizedBox(width: 10),
-            Text(
-              title,
-              style: TextStyle(
-                fontSize: 14.0,
-                color: isDestructive ? theme.colorScheme.error : theme.colorScheme.onSurface,
+            Flexible(
+              child: Text(
+                title,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontSize: 14.0,
+                  color: effectiveTextColor,
+                ),
               ),
             ),
           ],

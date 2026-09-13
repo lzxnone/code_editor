@@ -43,7 +43,7 @@ class _VirtualKeyboardConfigViewState extends State<VirtualKeyboardConfigView> {
   void initState() {
     super.initState();
     final settingsProvider = context.read<SettingsProvider>();
-    _config = settingsProvider.virtualKeyboardConfig;
+    _config = settingsProvider.keyboardConfigFor(widget.scope);
     if (_currentPageIndex >= _config.pages.length) {
       _currentPageIndex = 0;
     }
@@ -77,12 +77,12 @@ class _VirtualKeyboardConfigViewState extends State<VirtualKeyboardConfigView> {
     });
   }
 
-  /// 保存并同步到 SettingsProvider
+  /// 保存并同步到 SettingsProvider（按作用域写入对应的那份配置）
   Future<void> _syncAndSaveConfig() async {
     final settingsProvider = context.read<SettingsProvider>();
     const encoder = JsonEncoder.withIndent('  ');
     final jsonStr = encoder.convert(_config.toJson());
-    await settingsProvider.setVirtualKeyboardConfig(jsonStr);
+    await settingsProvider.setKeyboardConfig(widget.scope, jsonStr);
   }
 
   /// 恢复默认配置
@@ -109,10 +109,10 @@ class _VirtualKeyboardConfigViewState extends State<VirtualKeyboardConfigView> {
     if (confirmed == true) {
       if (!mounted) return;
       final settingsProvider = context.read<SettingsProvider>();
-      await settingsProvider.resetVirtualKeyboardConfig();
+      await settingsProvider.resetKeyboardConfig(widget.scope);
       if (!mounted) return;
       setState(() {
-        _config = settingsProvider.virtualKeyboardConfig;
+        _config = settingsProvider.keyboardConfigFor(widget.scope);
         _currentPageIndex = 0;
         _expandedRowsByPage.clear();
         _scrollOffsetByPage.clear();
@@ -132,13 +132,10 @@ class _VirtualKeyboardConfigViewState extends State<VirtualKeyboardConfigView> {
     }
 
     setState(() {
+      // 新建页面默认为空，不自动新增按键行，由用户手动添加
       final newPage = KeyboardPageItem(
         count: 7,
-        keys: [
-          [
-            const KeyboardKeyItem(label: 'New', value: 'New'),
-          ],
-        ],
+        keys: const [],
       );
       final newPages = List<KeyboardPageItem>.from(_config.pages)..add(newPage);
       _config = _config.copyWith(pages: newPages);
@@ -471,10 +468,14 @@ class _VirtualKeyboardConfigViewState extends State<VirtualKeyboardConfigView> {
           children: [
             Text(
               l10n.virtualKeyboardConfigTitle,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
               style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
             ),
             Text(
               subtitleText,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
               style: TextStyle(
                 fontSize: 12,
                 color: theme.colorScheme.onSurface.withValues(alpha: 0.65),
@@ -531,17 +532,23 @@ class _VirtualKeyboardConfigViewState extends State<VirtualKeyboardConfigView> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Row(
-              children: [
-                Icon(Icons.keyboard_alt_outlined, size: 20, color: theme.colorScheme.primary),
-                const SizedBox(width: 8),
-                Text(
-                  l10n.keyboardPageKeysSectionTitle,
-                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                ),
-              ],
+            // 左侧标题需可收缩，右侧“添加新行”按钮才不会把标题挤出右边界
+            Expanded(
+              child: Row(
+                children: [
+                  Icon(Icons.keyboard_alt_outlined, size: 20, color: theme.colorScheme.primary),
+                  const SizedBox(width: 8),
+                  Flexible(
+                    child: Text(
+                      l10n.keyboardPageKeysSectionTitle,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                ],
+              ),
             ),
             TextButton.icon(
               icon: const Icon(Icons.add, size: 18),

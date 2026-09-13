@@ -60,7 +60,13 @@ class DistroSelectorDialog extends StatelessWidget {
                   children: [
                     const Icon(Icons.layers_outlined, size: 18),
                     const SizedBox(width: 8),
-                    Text(l10n.importBuiltinAlpine),
+                    Flexible(
+                      child: Text(
+                        l10n.importBuiltinAlpine,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -70,7 +76,13 @@ class DistroSelectorDialog extends StatelessWidget {
                   children: [
                     const Icon(Icons.folder_open_outlined, size: 18),
                     const SizedBox(width: 8),
-                    Text(l10n.importExternalTarGz),
+                    Flexible(
+                      child: Text(
+                        l10n.importExternalTarGz,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
                   ],
                 ),
               ),

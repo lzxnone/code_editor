@@ -289,11 +289,15 @@ class _FileItemWidgetState extends State<FileItemWidget> {
         children: [
           Icon(icon, size: 18, color: iconColor),
           const SizedBox(width: 8),
-          Text(
-            title,
-            style: isDestructive
-                ? TextStyle(color: theme.colorScheme.error)
-                : TextStyle(color: theme.colorScheme.onSurface),
+          Flexible(
+            child: Text(
+              title,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: isDestructive
+                  ? TextStyle(color: theme.colorScheme.error)
+                  : TextStyle(color: theme.colorScheme.onSurface),
+            ),
           ),
         ],
       ),

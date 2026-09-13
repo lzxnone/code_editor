@@ -459,6 +459,8 @@ class _CodeEditorWidgetState extends State<CodeEditorWidget> {
                     scrollController: _scrollController,
                     wordWrap: activeWordWrap,
                     toolbarController: _toolbarController,
+                    margin: const EdgeInsets.only(left: 2.0, top: 4.0, right: 8, bottom: 8.0),
+                    padding: const EdgeInsets.fromLTRB(0.0, 0.0, 0.0, 0.0),
                     style: CodeEditorStyle(
                       fontSize: displayFontSize,
                       textColor: activeTheme.textColor,
