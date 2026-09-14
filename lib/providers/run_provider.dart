@@ -40,6 +40,7 @@ class RunProvider extends ChangeNotifier {
 
   /// 内部方法：尝试从现有任务列表中匹配 lastRunTaskId
   void _resolveLastRunTask() {
+    _lastRunTask = null;
     if (_lastRunTaskId == null) return;
     for (final task in allTasks) {
       if (task.id == _lastRunTaskId) {
@@ -67,8 +68,17 @@ class RunProvider extends ChangeNotifier {
   /// 当打开或切换工程时初始化任务（读取持久化任务 + 首次自动探测系统任务）
   Future<void> onProjectOpened(String projectRoot, {String? activeFilePath}) async {
     _currentProjectRoot = projectRoot;
+    // 切换工程时首先立即清空上一工程的内存任务状态，防止跨项目污染
+    _detectedTasks = [];
+    _customTasks = [];
+    _lastRunTaskId = null;
+    _lastRunTask = null;
+    notifyListeners();
+
     // 1. 加载持久化的自定义任务与最近运行任务ID
     final config = await _storageService.loadConfig(projectRoot);
+    if (_currentProjectRoot != projectRoot) return;
+
     _customTasks = config.tasks;
     _lastRunTaskId = config.lastRunTaskId;
     _resolveLastRunTask();
@@ -101,6 +111,7 @@ class RunProvider extends ChangeNotifier {
     _isDetecting = true;
     // 清空内存中的旧探测结果
     _detectedTasks = [];
+    _resolveLastRunTask();
     notifyListeners();
 
     try {
@@ -108,8 +119,10 @@ class RunProvider extends ChangeNotifier {
         projectRoot: projectRoot,
         currentFilePath: currentFilePath,
       );
-      _detectedTasks = detected;
-      _resolveLastRunTask();
+      if (_currentProjectRoot == projectRoot) {
+        _detectedTasks = detected;
+        _resolveLastRunTask();
+      }
     } catch (e) {
       debugPrint('[RunProvider] 项目探测失败: $e');
     } finally {

@@ -28,22 +28,25 @@ class RunTaskStorageService {
       }
 
       final dynamic decoded = jsonDecode(content);
-      if (decoded is Map<String, dynamic>) {
-        final lastId = decoded['lastRunTaskId'] as String?;
+      if (decoded is Map) {
+        final lastId = decoded['lastRunTaskId']?.toString();
         final tasksRaw = decoded['tasks'];
         List<RunTask> list = [];
         if (tasksRaw is List) {
-          list = tasksRaw
-              .whereType<Map<String, dynamic>>()
-              .map((item) => RunTask.fromJson(item))
-              .toList();
+          for (final item in tasksRaw) {
+            if (item is Map) {
+              list.add(RunTask.fromJson(Map<String, dynamic>.from(item)));
+            }
+          }
         }
         return (tasks: list, lastRunTaskId: lastId);
       } else if (decoded is List) {
-        final list = decoded
-            .whereType<Map<String, dynamic>>()
-            .map((item) => RunTask.fromJson(item))
-            .toList();
+        List<RunTask> list = [];
+        for (final item in decoded) {
+          if (item is Map) {
+            list.add(RunTask.fromJson(Map<String, dynamic>.from(item)));
+          }
+        }
         return (tasks: list, lastRunTaskId: null);
       }
       return (tasks: <RunTask>[], lastRunTaskId: null);

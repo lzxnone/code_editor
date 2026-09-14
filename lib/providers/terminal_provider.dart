@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:code_editor/models/terminal_session.dart';
 import 'package:flutter/material.dart';
 
@@ -26,9 +27,15 @@ class TerminalProvider extends ChangeNotifier {
   void ensureInitialized({
     String defaultName = '会话',
     String defaultDistroId = 'alpine',
+    String? workspacePath,
   }) {
     if (_sessions.isEmpty) {
-      createSession(name: defaultName, distroId: defaultDistroId, activate: true);
+      createSession(
+        name: defaultName,
+        distroId: defaultDistroId,
+        workspacePath: workspacePath,
+        activate: true,
+      );
     }
   }
 
@@ -66,17 +73,23 @@ class TerminalProvider extends ChangeNotifier {
     return session;
   }
 
-  /// 查找或复用绑定了指定工程路径的终端会话
+  /// 查找或复用绑定了指定工程路径与系统实例的终端会话
   /// 如果存在，直接激活并返回；如果不存在，则新建并激活一个会话
   TerminalSession getOrCreateSessionForProject({
     required String projectRoot,
-    String distroId = 'alpine',
+    String distroId = 'ubuntu',
     String? sessionName,
   }) {
-    final index = _sessions.indexWhere((s) => s.workspacePath == projectRoot);
+    final index = _sessions.indexWhere(
+      (s) => s.workspacePath == projectRoot && s.distroId == distroId,
+    );
     if (index != -1) {
+      final session = _sessions[index];
       selectSession(index);
-      return _sessions[index];
+      if (!session.isProcessRunning) {
+        unawaited(session.startProcess());
+      }
+      return session;
     }
 
     return createSession(

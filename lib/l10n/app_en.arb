@@ -164,7 +164,7 @@
   "terminalInputHint": "Enter command...",
   "sendCommandTooltip": "Send Command",
   "importNewSystem": "Import New System",
-  "importBuiltinAlpine": "Import from App (Alpine)",
+  "importFromApp": "Import from App",
   "importExternalTarGz": "Import from External (.tar.gz)",
   "selectSystemDefaultPrompt": "Select a system as default; new terminals will start in this system:",
   "noSystemsPrompt": "No systems available. Tap \"+\" at top right to import",
@@ -205,8 +205,56 @@
     }
   },
   "permanentDelete": "Permanently Delete",
+  "distroManagementTitle": "System Management",
+  "installedStatus": "Installed",
+  "notInstalledStatus": "Not Installed",
+  "downloadingStatus": "Downloading",
+  "downloadAction": "Download",
+  "installAction": "Install",
+  "builtinTag": "Built-in",
+  "cancelDownloadAction": "Cancel Download",
+  "cancelDownloadConfirmTitle": "Cancel Download",
+  "cancelDownloadConfirmMessage": "Are you sure you want to cancel the downloading system package? The downloaded parts will be discarded.",
+  "deletingSystemProgress": "Deleting system and cleaning storage, please wait...",
+  "cannotDeleteBuiltinSystem": "Built-in system is protected and cannot be deleted",
+  "recommendedTag": "Recommended",
+  "downloadFailed": "Download failed: {error}",
+  "@downloadFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
   "deleteSystemSuccess": "System \"{name}\" and associated sessions deleted",
   "@deleteSystemSuccess": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "deletePackageConfirmTitle": "Confirm Delete Package",
+  "deletePackageConfirmMessage": "Are you sure you want to delete the package for \"{name}\"? You can download it again at any time.",
+  "@deletePackageConfirmMessage": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "deletingPackageProgress": "Deleting package, please wait...",
+  "deletePackageSuccess": "Deleted \"{name}\" package",
+  "@deletePackageSuccess": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "deletePackageTooltip": "Delete downloaded system package",
+  "importSystemInstanceTitle": "Create {name} System Instance",
+  "@importSystemInstanceTitle": {
     "placeholders": {
       "name": {
         "type": "String"
@@ -481,7 +529,7 @@
   "shellCommandEmptyError": "Please enter command",
   "taskDescOptional": "Description (Optional)",
   "taskDescHint": "Briefly describe the task purpose",
-  "clearBeforeRun": "Clear Screen (clear)",
+  "clearBeforeRun": "Clear Screen",
   "clearBeforeRunSubtitle": "Clear terminal output before executing task",
   "runTasksUpdated": "Run tasks configuration updated",
   "detectCompletedMessage": "Detection completed, found {count} tasks",
@@ -520,5 +568,83 @@
     }
   },
   "unsavedTaskChangesTitle": "Unsaved Task Changes",
-  "unsavedTaskChangesMessage": "The task has been modified. Do you want to discard unsaved changes and leave?"
+  "unsavedTaskChangesMessage": "The task has been modified. Do you want to discard unsaved changes and leave?",
+  "downloadSection": "Download",
+  "downloadSource": "Download Source",
+  "selectDownloadSource": "Select Download Source",
+  "mirrorName": "{mirror, select, tsinghua{Tsinghua TUNA Mirror (Recommended)} bfsu{BFSU Open Source Mirror} iscas{ISCAS Open Source Mirror} official{LinuxContainers Official Mirror} other{{mirror}}}",
+  "@mirrorName": {
+    "placeholders": {
+      "mirror": {
+        "type": "String"
+      }
+    }
+  },
+  "unnamedTask": "Unnamed Task",
+  "shellCommandHelperText": "Supports single-line commands (e.g. make) or multi-line Shell scripts (packaged and executed automatically)",
+  "detectedTaskCmakeBuildRunDesc": "Configure, build, and try launching the target executable",
+  "detectedTaskCmakeBuildDesc": "Only execute cmake generation and build",
+  "detectedTaskCmakeCleanDesc": "Clean build cache directory",
+  "detectedTaskGradleRunDesc": "Execute application main entrypoint",
+  "detectedTaskGradleAssembleDesc": "Build debug output package",
+  "detectedTaskGradleBuildDesc": "Execute full build and tests",
+  "detectedTaskMakeDefaultDesc": "Execute default Makefile build target",
+  "detectedTaskNpmStartDesc": "Start Node service or frontend development environment",
+  "detectedTaskNpmTestDesc": "Execute npm test suite",
+  "detectedTaskCargoRunDesc": "Compile and run Rust project",
+  "detectedTaskCargoBuildDesc": "Compile Rust project only",
+  "detectedTaskDartRunDesc": "Launch Dart application",
+  "detectedTaskSinglePythonDesc": "Run current Python script",
+  "detectedTaskSingleCDesc": "Compile and execute current C source file",
+  "detectedTaskSingleCppDesc": "Compile and execute current C++ source file",
+  "detectedTaskSingleShDesc": "Run current Shell script",
+  "detectedTaskSingleDartDesc": "Run current Dart file",
+  "detectedTaskSingleGoDesc": "Run current Go source file",
+  "detectedTaskSingleRustDesc": "Compile and execute current Rust source file",
+  "detectedTaskSingleJsDesc": "Run current JavaScript script",
+  "missingDistroTitle": "System Environment Not Ready",
+  "noDistroAvailableContent": "No available Linux execution environment detected.\n\nProject tasks need to run inside a Linux container. Please install or download a Linux system first (e.g. Ubuntu or Alpine).",
+  "distroNotInstalledContent": "System \"{distro}\" is not installed or has been removed.\n\nPlease install it in System Management or select another available system.",
+  "@distroNotInstalledContent": {
+    "placeholders": {
+      "distro": {
+        "type": "String"
+      }
+    }
+  },
+  "openFromApp": "Open from App",
+  "openFromExternal": "Open from External",
+  "projectsTitle": "Projects",
+  "newProject": "New Project",
+  "newProjectTitle": "New Project",
+  "projectNameHint": "Enter project name",
+  "renameProject": "Rename Project",
+  "deleteProject": "Delete Project",
+  "deleteProjectConfirmMessage": "Are you sure you want to delete project \"{name}\"? This action cannot be undone.",
+  "@deleteProjectConfirmMessage": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "projectAlreadyExists": "A project with this name already exists",
+  "noProjects": "No projects yet, click top right to create one",
+  "projectCreated": "Project created successfully",
+  "projectRenamed": "Project renamed successfully",
+  "projectDeleted": "Project deleted",
+  "importFromExternal": "Import from External",
+  "confirmProjectNameTitle": "Confirm Project Name",
+  "importingProject": "Importing project...",
+  "projectImported": "Project imported successfully",
+  "importProjectFailed": "Failed to import project: {error}",
+  "@importProjectFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "unsupportedProjectArchiveFormat": "Unsupported file format. Only archive files (.zip, .tar.gz, .tar.xz, .tar, etc.) are supported",
+  "unsupportedDistroArchiveFormat": "Unsupported file format. Only system archives (.tar.gz, .tar.xz, .tar) are supported"
 }

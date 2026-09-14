@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:code_editor/models/app_font.dart';
+import 'package:code_editor/models/distro_manifest.dart';
 import 'package:code_editor/models/editor_theme.dart';
 import 'package:code_editor/models/virtual_keyboard_config.dart';
 import 'package:flutter/foundation.dart';
@@ -30,6 +31,9 @@ class SettingsProvider extends ChangeNotifier {
   //项目配置
   static const String _keyShowHiddenFiles = 'show_hidden_files'; //显示隐藏文件
 
+  //下载配置
+  static const String _keyDownloadMirrorId = 'download_mirror_id'; //下载源镜像ID
+
   //语言
   static const String _keyAppLocale = 'app_locale';
 
@@ -50,9 +54,12 @@ class SettingsProvider extends ChangeNotifier {
   String _terminalKeyboardConfigJson = VirtualKeyboardConfig.defaultTerminalJsonPretty();
   VirtualKeyboardConfig _terminalKeyboardConfig = VirtualKeyboardConfig.defaultTerminalConfiguration();
   bool _showHiddenFiles = true;
+  String _downloadMirrorId = 'tsinghua'; // 默认清华源
   Locale? _locale;
 
   bool get showHiddenFiles => _showHiddenFiles;
+  String get downloadMirrorId => _downloadMirrorId;
+  DistroMirror get downloadMirror => DistroRepository.getMirrorById(_downloadMirrorId);
 
   ThemeMode get appThemeMode => _appThemeMode;
   Color get appThemeColor => _appThemeColor;
@@ -260,6 +267,12 @@ class SettingsProvider extends ChangeNotifier {
         _showHiddenFiles = savedShowHiddenFiles;
       }
 
+      //设置下载源镜像配置
+      final savedMirrorId = prefs.getString(_keyDownloadMirrorId);
+      if (savedMirrorId != null && savedMirrorId.isNotEmpty) {
+        _downloadMirrorId = savedMirrorId;
+      }
+
       //设置语言
       final savedLocale = prefs.getString(_keyAppLocale);
       if(savedLocale != null && savedLocale.isNotEmpty) {
@@ -410,6 +423,17 @@ class SettingsProvider extends ChangeNotifier {
     try {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setBool(_keyShowHiddenFiles, show);
+    } catch (_) {}
+  }
+
+  /// 设置系统安装包下载镜像源
+  Future<void> setDownloadMirrorId(String mirrorId) async {
+    if (_downloadMirrorId == mirrorId) return;
+    _downloadMirrorId = mirrorId;
+    notifyListeners();
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(_keyDownloadMirrorId, mirrorId);
     } catch (_) {}
   }
 }

@@ -2,7 +2,10 @@ import 'dart:io';
 import 'package:code_editor/l10n/app_localizations.dart';
 import 'package:code_editor/providers/distro_provider.dart';
 import 'package:code_editor/providers/terminal_provider.dart';
+import 'package:code_editor/models/distro_manifest.dart';
+import 'package:code_editor/services/distro_download_manager.dart';
 import 'package:code_editor/utils/dialog_utils.dart';
+import 'package:code_editor/views/distro_management_view.dart';
 import 'package:code_editor/widgets/distro_extract_dialog.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
@@ -55,14 +58,14 @@ class DistroSelectorDialog extends StatelessWidget {
             onSelected: (action) => _handleImportAction(context, action),
             itemBuilder: (context) => [
               PopupMenuItem(
-                value: 'builtin',
+                value: 'management_view',
                 child: Row(
                   children: [
-                    const Icon(Icons.layers_outlined, size: 18),
+                    const Icon(Icons.apps_rounded, size: 18),
                     const SizedBox(width: 8),
                     Flexible(
                       child: Text(
-                        l10n.importBuiltinAlpine,
+                        l10n.importFromApp,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
@@ -197,47 +200,46 @@ class DistroSelectorDialog extends StatelessWidget {
   }
 
   /// 处理导入菜单操作
+  bool _isValidDistroArchive(String path) {
+    final lower = path.toLowerCase();
+    return lower.endsWith('.tar.gz') ||
+        lower.endsWith('.tgz') ||
+        lower.endsWith('.tar.xz') ||
+        lower.endsWith('.txz') ||
+        lower.endsWith('.tar');
+  }
+
   Future<void> _handleImportAction(BuildContext context, String action) async {
     final distroProvider = context.read<DistroProvider>();
     final l10n = AppLocalizations.of(context)!;
 
-    if (action == 'builtin') {
-      // 1. 从内置 Alpine 导入
-      final defaultName = _generateUniqueSystemName('alpine', distroProvider.installedSystems);
-      final systemName = await DialogUtils.showInputDialog(
-        context,
-        title: l10n.importBuiltinAlpineTitle,
-        hintText: l10n.systemNameHintWithDefault(defaultName),
-        initialValue: defaultName,
+    if (action == 'management_view') {
+      // 1. 跳转到应用内系统管理页面
+      final selectedItem = await Navigator.of(context).push<DistroManifestItem>(
+        MaterialPageRoute(builder: (_) => const DistroManagementView()),
       );
 
-      if (systemName == null || systemName.trim().isEmpty || !context.mounted) return;
-      final cleanName = systemName.trim();
-
-      // 模态同步解压
-      final success = await DistroExtractDialog.show(
-        context: context,
-        systemName: cleanName,
-        task: (onProgress, isCancelled) {
-          return distroProvider.importBuiltinAlpine(
-            systemName: cleanName,
-            onProgress: onProgress,
-            isCancelled: isCancelled,
-          );
-        },
-      );
-
-      if (success && context.mounted) {
-        DialogUtils.showSuccessToast(context, l10n.systemImportSuccess(cleanName));
+      if (selectedItem != null && context.mounted) {
+        // 用户直接点击已经安装的 item 本身，代表用户选择了那个 zip，返回后解压创建系统
+        await _handleCreateSystemFromManifest(context, selectedItem);
       }
     } else if (action == 'external') {
-      // 2. 从外部选择 .tar.gz 压缩包导入
+      // 2. 从外部选择 .tar.gz / .tar.xz 压缩包导入
       final result = await FilePicker.platform.pickFiles(
-        type: FileType.any,
+        type: FileType.custom,
+        allowedExtensions: const ['tar', 'gz', 'tgz', 'xz', 'txz'],
       );
 
       if (result == null || result.files.single.path == null || !context.mounted) return;
       final filePath = result.files.single.path!;
+
+      if (!_isValidDistroArchive(filePath)) {
+        if (context.mounted) {
+          DialogUtils.showErrorToast(context, l10n.unsupportedDistroArchiveFormat);
+        }
+        return;
+      }
+
       final file = File(filePath);
 
       // 提取默认名称（去掉 .tar.gz, .tgz 等后缀）
@@ -281,6 +283,58 @@ class DistroSelectorDialog extends StatelessWidget {
       if (success && context.mounted) {
         DialogUtils.showSuccessToast(context, l10n.externalSystemImportSuccess(cleanName));
       }
+    }
+  }
+
+  /// 从选中的发行版安装包解压创建新的系统实例
+  Future<void> _handleCreateSystemFromManifest(BuildContext context, DistroManifestItem item) async {
+    final distroProvider = context.read<DistroProvider>();
+    final l10n = AppLocalizations.of(context)!;
+
+    final defaultName = _generateUniqueSystemName(item.id, distroProvider.installedSystems);
+    final systemName = await DialogUtils.showInputDialog(
+      context,
+      title: l10n.importSystemInstanceTitle(item.name),
+      hintText: l10n.systemNameHintWithDefault(defaultName),
+      initialValue: defaultName,
+    );
+
+    if (systemName == null || systemName.trim().isEmpty || !context.mounted) return;
+    final cleanName = systemName.trim();
+
+    // 模态同步解压
+    final success = await DistroExtractDialog.show(
+      context: context,
+      systemName: cleanName,
+      task: (onProgress, isCancelled) async {
+        if (item.id == 'ubuntu') {
+          return distroProvider.importBuiltinUbuntu(
+            systemName: cleanName,
+            onProgress: onProgress,
+            isCancelled: isCancelled,
+          );
+        } else if (item.id == 'alpine') {
+          return distroProvider.importBuiltinAlpine(
+            systemName: cleanName,
+            onProgress: onProgress,
+            isCancelled: isCancelled,
+          );
+        } else {
+          final file = await DistroDownloadManager().getPackageFile(item.id, item.currentPackageSource!);
+          return distroProvider.importFromCustomTarGz(
+            systemName: cleanName,
+            tarGzFile: file,
+            onProgress: onProgress,
+            isCancelled: isCancelled,
+          );
+        }
+      },
+    );
+
+    if (success && context.mounted) {
+      DialogUtils.showSuccessToast(context, l10n.systemImportSuccess(cleanName));
+      await distroProvider.refreshSystems();
+      await distroProvider.selectSystem(cleanName);
     }
   }
 

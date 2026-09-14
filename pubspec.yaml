@@ -44,8 +44,10 @@ flutter:
 
   assets:
     - assets/distros/
+    - assets/certs/
     - assets/shims/x86_64/
     - assets/shims/arm64-v8a/
+    - assets/icons/distros/
 
   fonts:
     - family: JetBrains Mono

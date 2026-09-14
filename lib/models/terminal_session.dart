@@ -18,6 +18,7 @@ class TerminalSession {
   Pty? _pty;
   StreamSubscription? _ptyOutputSub;
   bool _isProcessRunning = false;
+  Completer<bool>? _processCompleter;
   VoidCallback? onProcessTerminated;
 
   TerminalSession({
@@ -39,6 +40,9 @@ class TerminalSession {
   }
 
   bool get isProcessRunning => _isProcessRunning;
+
+  /// 获取终端进程启动就绪的 Future
+  Future<bool>? get onProcessReady => _processCompleter?.future;
 
   /// 获取终端缓冲区当前全部可见文本（常用于测试与日志断言）
   String get bufferText => terminal.buffer.getText();
@@ -65,6 +69,9 @@ class TerminalSession {
 
   /// 启动底层真实 PTY 进程（连接 PRoot 容器或 Host Shell）
   Future<void> startProcess({DistroManager? distroManager, String? workspacePath}) async {
+    if (_processCompleter == null || _processCompleter!.isCompleted) {
+      _processCompleter = Completer<bool>();
+    }
     final manager = distroManager ?? DistroManager();
     final effectiveWorkspace = workspacePath ?? this.workspacePath;
     try {
@@ -86,6 +93,9 @@ class TerminalSession {
         columns: initialCols,
       );
       _isProcessRunning = true;
+      if (!(_processCompleter?.isCompleted ?? true)) {
+        _processCompleter?.complete(true);
+      }
 
       // PTY 输出数据流实时解码并写入终端
       _ptyOutputSub = _pty!.output.listen(
@@ -108,8 +118,47 @@ class TerminalSession {
       });
     } catch (e) {
       _isProcessRunning = false;
+      if (!(_processCompleter?.isCompleted ?? true)) {
+        _processCompleter?.complete(false);
+      }
       terminal.write('\x1b[31m[PTY launch failed: $e]\x1b[0m\r\n');
       onProcessTerminated?.call();
+    }
+  }
+
+  /// 等待终端底层伪终端进程启动并就绪
+  Future<bool> waitForReady({Duration timeout = const Duration(seconds: 10)}) async {
+    if (_isProcessRunning && _pty != null) return true;
+    if (_processCompleter != null) {
+      try {
+        return await _processCompleter!.future.timeout(timeout, onTimeout: () => false);
+      } catch (_) {
+        return false;
+      }
+    }
+    return false;
+  }
+
+  /// 向终端底层伪终端 (PTY) 真正写入待执行指令
+  ///
+  /// 该方法通过 [_pty.write] 向进程标准输入通道写入指令并换行，触发 Shell 真正执行任务，
+  /// 所有输出实时经由 PTY 流向终端画布呈现给用户。
+  Future<void> executeCommand(String command) async {
+    if (!_isProcessRunning && _processCompleter == null) {
+      unawaited(startProcess());
+    }
+
+    final isReady = await waitForReady();
+    if (isReady && _pty != null && _isProcessRunning) {
+      // 适度微延迟确保 Shell 终端行纪律（termios）已就绪并开始监听 stdin
+      await Future<void>.delayed(const Duration(milliseconds: 60));
+      try {
+        _pty!.write(utf8.encode('$command\n'));
+      } catch (e) {
+        terminal.write('\r\n\x1b[31m[写入终端失败: $e]\x1b[0m\r\n');
+      }
+    } else {
+      terminal.write('\r\n\x1b[31m[无法执行命令：终端环境未启动或启动失败]\x1b[0m\r\n');
     }
   }
 

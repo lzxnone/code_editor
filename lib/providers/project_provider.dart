@@ -152,6 +152,31 @@ class ProjectProvider extends ChangeNotifier {
     }
   }
 
+  // 打开指定路径的项目
+  Future<void> openSpecificDirectory(String directoryPath) async {
+    try {
+      if (directoryPath.trim().isEmpty) return;
+
+      final cleanPath = p.normalize(directoryPath.trim());
+      final currentRoot = _history.rootPath != null ? p.normalize(_history.rootPath!) : null;
+      final isSameRoot = currentRoot != null && cleanPath == currentRoot;
+
+      await ProjectHistoryService.instance.recordHistory(
+        rootPath: cleanPath,
+        lastOpenedFilePath: isSameRoot ? _history.lastOpenedFilePath : null,
+        openDirectoryPaths: isSameRoot ? _history.openDirectoryPaths : const [],
+        openFilePaths: isSameRoot ? _history.openFilePaths : const [],
+      );
+
+      _cutItem = null;
+      _copiedItem = null;
+
+      await _loadProjectFromHistory();
+    } catch (e) {
+      debugPrint('打开指定项目失败: $e');
+    }
+  }
+
   //选择项目历史
   Future<void> switchProject(ProjectHistory selectedHistory) async {
     final selectedRoot = selectedHistory.rootPath;

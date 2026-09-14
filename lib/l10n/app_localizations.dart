@@ -950,11 +950,11 @@ abstract class AppLocalizations {
   /// **'导入新系统'**
   String get importNewSystem;
 
-  /// No description provided for @importBuiltinAlpine.
+  /// No description provided for @importFromApp.
   ///
   /// In zh, this message translates to:
-  /// **'从软件中导入 (Alpine)'**
-  String get importBuiltinAlpine;
+  /// **'从软件中导入'**
+  String get importFromApp;
 
   /// No description provided for @importExternalTarGz.
   ///
@@ -1028,11 +1028,131 @@ abstract class AppLocalizations {
   /// **'彻底删除'**
   String get permanentDelete;
 
+  /// No description provided for @distroManagementTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'系统管理'**
+  String get distroManagementTitle;
+
+  /// No description provided for @installedStatus.
+  ///
+  /// In zh, this message translates to:
+  /// **'已安装'**
+  String get installedStatus;
+
+  /// No description provided for @notInstalledStatus.
+  ///
+  /// In zh, this message translates to:
+  /// **'未安装'**
+  String get notInstalledStatus;
+
+  /// No description provided for @downloadingStatus.
+  ///
+  /// In zh, this message translates to:
+  /// **'下载中'**
+  String get downloadingStatus;
+
+  /// No description provided for @downloadAction.
+  ///
+  /// In zh, this message translates to:
+  /// **'下载'**
+  String get downloadAction;
+
+  /// No description provided for @installAction.
+  ///
+  /// In zh, this message translates to:
+  /// **'安装'**
+  String get installAction;
+
+  /// No description provided for @builtinTag.
+  ///
+  /// In zh, this message translates to:
+  /// **'内置'**
+  String get builtinTag;
+
+  /// No description provided for @cancelDownloadAction.
+  ///
+  /// In zh, this message translates to:
+  /// **'取消下载'**
+  String get cancelDownloadAction;
+
+  /// No description provided for @cancelDownloadConfirmTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'取消下载'**
+  String get cancelDownloadConfirmTitle;
+
+  /// No description provided for @cancelDownloadConfirmMessage.
+  ///
+  /// In zh, this message translates to:
+  /// **'确定要取消正在下载的系统资源吗？已下载的部分将被清除。'**
+  String get cancelDownloadConfirmMessage;
+
+  /// No description provided for @deletingSystemProgress.
+  ///
+  /// In zh, this message translates to:
+  /// **'正在删除系统并清理数据，请稍候...'**
+  String get deletingSystemProgress;
+
+  /// No description provided for @cannotDeleteBuiltinSystem.
+  ///
+  /// In zh, this message translates to:
+  /// **'内置系统受到保护，无法删除'**
+  String get cannotDeleteBuiltinSystem;
+
+  /// No description provided for @recommendedTag.
+  ///
+  /// In zh, this message translates to:
+  /// **'推荐'**
+  String get recommendedTag;
+
+  /// No description provided for @downloadFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'下载失败: {error}'**
+  String downloadFailed(String error);
+
   /// No description provided for @deleteSystemSuccess.
   ///
   /// In zh, this message translates to:
   /// **'已彻底删除系统 \"{name}\" 及关联会话'**
   String deleteSystemSuccess(String name);
+
+  /// No description provided for @deletePackageConfirmTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'确认删除安装包'**
+  String get deletePackageConfirmTitle;
+
+  /// No description provided for @deletePackageConfirmMessage.
+  ///
+  /// In zh, this message translates to:
+  /// **'确定要删除 \"{name}\" 的系统安装包吗？删除后可随时重新下载。'**
+  String deletePackageConfirmMessage(String name);
+
+  /// No description provided for @deletingPackageProgress.
+  ///
+  /// In zh, this message translates to:
+  /// **'正在删除安装包，请稍候...'**
+  String get deletingPackageProgress;
+
+  /// No description provided for @deletePackageSuccess.
+  ///
+  /// In zh, this message translates to:
+  /// **'已删除 \"{name}\" 安装包'**
+  String deletePackageSuccess(String name);
+
+  /// No description provided for @deletePackageTooltip.
+  ///
+  /// In zh, this message translates to:
+  /// **'删除已下载的系统安装包'**
+  String get deletePackageTooltip;
+
+  /// No description provided for @importSystemInstanceTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'创建 {name} 系统实例'**
+  String importSystemInstanceTitle(String name);
 
   /// No description provided for @deleteSystemTooltip.
   ///
@@ -1751,7 +1871,7 @@ abstract class AppLocalizations {
   /// No description provided for @clearBeforeRun.
   ///
   /// In zh, this message translates to:
-  /// **'执行前清屏 (clear)'**
+  /// **'执行前清屏'**
   String get clearBeforeRun;
 
   /// No description provided for @clearBeforeRunSubtitle.
@@ -1819,6 +1939,306 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'当前任务内容已被修改，是否放弃未保存的修改并返回？'**
   String get unsavedTaskChangesMessage;
+
+  /// No description provided for @downloadSection.
+  ///
+  /// In zh, this message translates to:
+  /// **'下载'**
+  String get downloadSection;
+
+  /// No description provided for @downloadSource.
+  ///
+  /// In zh, this message translates to:
+  /// **'下载源'**
+  String get downloadSource;
+
+  /// No description provided for @selectDownloadSource.
+  ///
+  /// In zh, this message translates to:
+  /// **'选择下载源'**
+  String get selectDownloadSource;
+
+  /// No description provided for @mirrorName.
+  ///
+  /// In zh, this message translates to:
+  /// **'{mirror, select, tsinghua{清华大学开源软件镜像站 (推荐)} bfsu{北京外国语大学开源软件镜像站} iscas{中国科学院软件研究所开源镜像站} official{LinuxContainers 官方镜像源} other{{mirror}}}'**
+  String mirrorName(String mirror);
+
+  /// No description provided for @unnamedTask.
+  ///
+  /// In zh, this message translates to:
+  /// **'未命名任务'**
+  String get unnamedTask;
+
+  /// No description provided for @shellCommandHelperText.
+  ///
+  /// In zh, this message translates to:
+  /// **'支持单行指令（如 make）或多行 Shell 脚本（自动封装执行）'**
+  String get shellCommandHelperText;
+
+  /// No description provided for @detectedTaskCmakeBuildRunDesc.
+  ///
+  /// In zh, this message translates to:
+  /// **'配置、编译并尝试启动生成的目标程序'**
+  String get detectedTaskCmakeBuildRunDesc;
+
+  /// No description provided for @detectedTaskCmakeBuildDesc.
+  ///
+  /// In zh, this message translates to:
+  /// **'仅执行 cmake 生成与构建'**
+  String get detectedTaskCmakeBuildDesc;
+
+  /// No description provided for @detectedTaskCmakeCleanDesc.
+  ///
+  /// In zh, this message translates to:
+  /// **'清理构建缓存目录'**
+  String get detectedTaskCmakeCleanDesc;
+
+  /// No description provided for @detectedTaskGradleRunDesc.
+  ///
+  /// In zh, this message translates to:
+  /// **'执行应用程序主入口'**
+  String get detectedTaskGradleRunDesc;
+
+  /// No description provided for @detectedTaskGradleAssembleDesc.
+  ///
+  /// In zh, this message translates to:
+  /// **'构建调试输出包'**
+  String get detectedTaskGradleAssembleDesc;
+
+  /// No description provided for @detectedTaskGradleBuildDesc.
+  ///
+  /// In zh, this message translates to:
+  /// **'执行完整构建与测试'**
+  String get detectedTaskGradleBuildDesc;
+
+  /// No description provided for @detectedTaskMakeDefaultDesc.
+  ///
+  /// In zh, this message translates to:
+  /// **'执行默认 Makefile 构建目标'**
+  String get detectedTaskMakeDefaultDesc;
+
+  /// No description provided for @detectedTaskNpmStartDesc.
+  ///
+  /// In zh, this message translates to:
+  /// **'启动 Node 服务或前端开发环境'**
+  String get detectedTaskNpmStartDesc;
+
+  /// No description provided for @detectedTaskNpmTestDesc.
+  ///
+  /// In zh, this message translates to:
+  /// **'执行 npm test 测试套件'**
+  String get detectedTaskNpmTestDesc;
+
+  /// No description provided for @detectedTaskCargoRunDesc.
+  ///
+  /// In zh, this message translates to:
+  /// **'编译并运行 Rust 项目'**
+  String get detectedTaskCargoRunDesc;
+
+  /// No description provided for @detectedTaskCargoBuildDesc.
+  ///
+  /// In zh, this message translates to:
+  /// **'仅编译 Rust 项目'**
+  String get detectedTaskCargoBuildDesc;
+
+  /// No description provided for @detectedTaskDartRunDesc.
+  ///
+  /// In zh, this message translates to:
+  /// **'启动 Dart 应用'**
+  String get detectedTaskDartRunDesc;
+
+  /// No description provided for @detectedTaskSinglePythonDesc.
+  ///
+  /// In zh, this message translates to:
+  /// **'运行当前 Python 脚本'**
+  String get detectedTaskSinglePythonDesc;
+
+  /// No description provided for @detectedTaskSingleCDesc.
+  ///
+  /// In zh, this message translates to:
+  /// **'编译并执行当前 C 源文件'**
+  String get detectedTaskSingleCDesc;
+
+  /// No description provided for @detectedTaskSingleCppDesc.
+  ///
+  /// In zh, this message translates to:
+  /// **'编译并执行当前 C++ 源文件'**
+  String get detectedTaskSingleCppDesc;
+
+  /// No description provided for @detectedTaskSingleShDesc.
+  ///
+  /// In zh, this message translates to:
+  /// **'运行当前 Shell 脚本'**
+  String get detectedTaskSingleShDesc;
+
+  /// No description provided for @detectedTaskSingleDartDesc.
+  ///
+  /// In zh, this message translates to:
+  /// **'运行当前 Dart 文件'**
+  String get detectedTaskSingleDartDesc;
+
+  /// No description provided for @detectedTaskSingleGoDesc.
+  ///
+  /// In zh, this message translates to:
+  /// **'运行当前 Go 源文件'**
+  String get detectedTaskSingleGoDesc;
+
+  /// No description provided for @detectedTaskSingleRustDesc.
+  ///
+  /// In zh, this message translates to:
+  /// **'编译并执行当前 Rust 源文件'**
+  String get detectedTaskSingleRustDesc;
+
+  /// No description provided for @detectedTaskSingleJsDesc.
+  ///
+  /// In zh, this message translates to:
+  /// **'运行当前 JS 脚本'**
+  String get detectedTaskSingleJsDesc;
+
+  /// No description provided for @missingDistroTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'系统环境未就绪'**
+  String get missingDistroTitle;
+
+  /// No description provided for @noDistroAvailableContent.
+  ///
+  /// In zh, this message translates to:
+  /// **'未检测到可用的 Linux 执行环境。\n\n工程任务需要在 Linux 容器环境中运行。请先安装或下载 Linux 系统（如 Ubuntu 或 Alpine）。'**
+  String get noDistroAvailableContent;
+
+  /// No description provided for @distroNotInstalledContent.
+  ///
+  /// In zh, this message translates to:
+  /// **'系统 \"{distro}\" 尚未安装或已被清理。\n\n请在系统管理中安装该系统，或选择其他已就绪的系统。'**
+  String distroNotInstalledContent(String distro);
+
+  /// No description provided for @openFromApp.
+  ///
+  /// In zh, this message translates to:
+  /// **'从软件内打开'**
+  String get openFromApp;
+
+  /// No description provided for @openFromExternal.
+  ///
+  /// In zh, this message translates to:
+  /// **'从外部打开'**
+  String get openFromExternal;
+
+  /// No description provided for @projectsTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'项目'**
+  String get projectsTitle;
+
+  /// No description provided for @newProject.
+  ///
+  /// In zh, this message translates to:
+  /// **'新建项目'**
+  String get newProject;
+
+  /// No description provided for @newProjectTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'新建项目'**
+  String get newProjectTitle;
+
+  /// No description provided for @projectNameHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'请输入项目名称'**
+  String get projectNameHint;
+
+  /// No description provided for @renameProject.
+  ///
+  /// In zh, this message translates to:
+  /// **'重命名项目'**
+  String get renameProject;
+
+  /// No description provided for @deleteProject.
+  ///
+  /// In zh, this message translates to:
+  /// **'删除项目'**
+  String get deleteProject;
+
+  /// No description provided for @deleteProjectConfirmMessage.
+  ///
+  /// In zh, this message translates to:
+  /// **'确定要删除项目 \"{name}\" 吗？此操作不可逆。'**
+  String deleteProjectConfirmMessage(String name);
+
+  /// No description provided for @projectAlreadyExists.
+  ///
+  /// In zh, this message translates to:
+  /// **'已存在同名项目'**
+  String get projectAlreadyExists;
+
+  /// No description provided for @noProjects.
+  ///
+  /// In zh, this message translates to:
+  /// **'暂无项目，点击右上角新建项目'**
+  String get noProjects;
+
+  /// No description provided for @projectCreated.
+  ///
+  /// In zh, this message translates to:
+  /// **'项目创建成功'**
+  String get projectCreated;
+
+  /// No description provided for @projectRenamed.
+  ///
+  /// In zh, this message translates to:
+  /// **'项目重命名成功'**
+  String get projectRenamed;
+
+  /// No description provided for @projectDeleted.
+  ///
+  /// In zh, this message translates to:
+  /// **'项目已删除'**
+  String get projectDeleted;
+
+  /// No description provided for @importFromExternal.
+  ///
+  /// In zh, this message translates to:
+  /// **'从外部导入'**
+  String get importFromExternal;
+
+  /// No description provided for @confirmProjectNameTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'确认项目名称'**
+  String get confirmProjectNameTitle;
+
+  /// No description provided for @importingProject.
+  ///
+  /// In zh, this message translates to:
+  /// **'正在导入项目...'**
+  String get importingProject;
+
+  /// No description provided for @projectImported.
+  ///
+  /// In zh, this message translates to:
+  /// **'项目导入成功'**
+  String get projectImported;
+
+  /// No description provided for @importProjectFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'导入项目失败: {error}'**
+  String importProjectFailed(String error);
+
+  /// No description provided for @unsupportedProjectArchiveFormat.
+  ///
+  /// In zh, this message translates to:
+  /// **'不支持的文件格式，仅支持压缩包格式 (.zip, .tar.gz, .tar.xz, .tar 等)'**
+  String get unsupportedProjectArchiveFormat;
+
+  /// No description provided for @unsupportedDistroArchiveFormat.
+  ///
+  /// In zh, this message translates to:
+  /// **'不支持的文件格式，仅支持系统镜像包 (.tar.gz, .tar.xz, .tar)'**
+  String get unsupportedDistroArchiveFormat;
 }
 
 class _AppLocalizationsDelegate

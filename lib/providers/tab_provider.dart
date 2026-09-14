@@ -26,6 +26,7 @@ class TabProvider extends ChangeNotifier {
 
   String? get currentFilePath => _activeFilePath;
   bool get isModified => activeTab?.isModified ?? _isModified;
+  bool get hasUnsavedChanges => _isModified || _openTabs.any((t) => t.isModified);
 
   void bindProjectProvider(ProjectProvider projectProvider) {
     if (_projectProvider == projectProvider) return;

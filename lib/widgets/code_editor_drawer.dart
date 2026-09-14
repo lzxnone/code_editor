@@ -1,13 +1,21 @@
 import 'package:code_editor/l10n/app_localizations.dart';
 import 'package:code_editor/providers/project_provider.dart';
+import 'package:code_editor/providers/run_provider.dart';
 import 'package:code_editor/providers/tab_provider.dart';
+import 'package:code_editor/services/internal_project_service.dart';
 import 'package:code_editor/services/permission_service.dart';
 import 'package:code_editor/utils/dialog_utils.dart';
+import 'package:code_editor/views/project_management_view.dart';
 import 'package:code_editor/widgets/project_history_widget.dart';
 import 'package:code_editor/widgets/file_tree_widget.dart';
 import 'package:flutter/material.dart';
 import 'package:path/path.dart' as p;
 import 'package:provider/provider.dart';
+
+enum _OpenProjectSource {
+  fromApp,
+  fromExternal,
+}
 
 class CodeEditorDrawer extends StatelessWidget {
   const CodeEditorDrawer({super.key});
@@ -119,22 +127,62 @@ class CodeEditorDrawer extends StatelessWidget {
                         IconButton(
                           icon: const Icon(Icons.refresh),
                           tooltip: l10n.refreshDirectory,
-                          onPressed: () =>
-                              _getProjectProvider(context).refreshTree(),
+                          onPressed: () {
+                            _getProjectProvider(context).refreshTree();
+                            final runProvider = context.read<RunProvider?>();
+                            final root = _getProjectProvider(context).rootPath;
+                            if (root != null && root.isNotEmpty) {
+                              runProvider?.onProjectOpened(root);
+                            }
+                          },
                         ),
-                        IconButton(
+                        PopupMenuButton<_OpenProjectSource>(
                           icon: const Icon(Icons.folder_open),
                           tooltip: l10n.openFileDirectory,
-                          onPressed: () async {
-                            final hasPermission = await PermissionService
-                                .instance
-                                .ensureStoragePermission(context: context);
-                            if (!hasPermission || !context.mounted) return;
-                            final canProceed = await _getTabProvider(
-                              context,
-                            ).checkUnsavedChanges(context);
-                            if (!canProceed || !context.mounted) return;
-                            _getProjectProvider(context).openDirectory();
+                          itemBuilder: (popupContext) => [
+                            PopupMenuItem<_OpenProjectSource>(
+                              value: _OpenProjectSource.fromApp,
+                              child: Row(
+                                children: [
+                                  const Icon(Icons.inventory_2_outlined, size: 20),
+                                  const SizedBox(width: 8),
+                                  Text(l10n.openFromApp),
+                                ],
+                              ),
+                            ),
+                            PopupMenuItem<_OpenProjectSource>(
+                              value: _OpenProjectSource.fromExternal,
+                              child: Row(
+                                children: [
+                                  const Icon(Icons.folder_open_outlined, size: 20),
+                                  const SizedBox(width: 8),
+                                  Text(l10n.openFromExternal),
+                                ],
+                              ),
+                            ),
+                          ],
+                          onSelected: (source) async {
+                            switch (source) {
+                              case _OpenProjectSource.fromApp:
+                                Navigator.of(context).pop();
+                                Navigator.of(context).push(
+                                  MaterialPageRoute(
+                                    builder: (context) => const ProjectManagementView(),
+                                  ),
+                                );
+                                break;
+                              case _OpenProjectSource.fromExternal:
+                                final hasPermission = await PermissionService
+                                    .instance
+                                    .ensureStoragePermission(context: context);
+                                if (!hasPermission || !context.mounted) return;
+                                final canProceed = await _getTabProvider(
+                                  context,
+                                ).checkUnsavedChanges(context);
+                                if (!canProceed || !context.mounted) return;
+                                _getProjectProvider(context).openDirectory();
+                                break;
+                            }
                           },
                         ),
                         IconButton(
@@ -161,7 +209,12 @@ class CodeEditorDrawer extends StatelessWidget {
                       children: [
                         Expanded(
                           child: Text(
-                            rootPath ?? '',
+                            hasProject
+                                ? (InternalProjectService.instance
+                                        .isInternalProject(rootPath)
+                                    ? p.basename(rootPath)
+                                    : rootPath)
+                                : '',
                             style: theme.textTheme.bodySmall?.copyWith(
                               color: theme.colorScheme.onSurfaceVariant,
                             ),

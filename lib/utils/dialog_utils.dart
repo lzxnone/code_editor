@@ -204,6 +204,65 @@ class DialogUtils {
     );
   }
 
+  /// 同步居中转圈弹窗（任务执行过程中锁定，任务结束后自动 pop 关闭）
+  static Future<T> showSyncLoadingDialog<T>(
+    BuildContext context, {
+    required String message,
+    required Future<T> Function() task,
+  }) async {
+    final theme = Theme.of(context);
+    bool dialogPopped = false;
+
+    // 弹出不可取消的居中转圈模态框
+    showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogCtx) {
+        return PopScope(
+          canPop: false,
+          child: AlertDialog(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16.0),
+              side: BorderSide(
+                color: theme.colorScheme.outlineVariant,
+                width: 1.0,
+              ),
+            ),
+            content: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 16.0, horizontal: 8.0),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const CircularProgressIndicator(),
+                  const SizedBox(height: 20),
+                  Text(
+                    message,
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 14.0,
+                      color: theme.colorScheme.onSurface,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    ).then((_) {
+      dialogPopped = true;
+    });
+
+    try {
+      final result = await task();
+      return result;
+    } finally {
+      if (!dialogPopped && context.mounted) {
+        Navigator.of(context, rootNavigator: true).pop();
+      }
+    }
+  }
+
   // ==========================================
   // 3. 确认弹窗 (普通确认 vs 特殊/高危确认)
   // ==========================================

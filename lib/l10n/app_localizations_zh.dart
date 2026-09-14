@@ -477,7 +477,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get importNewSystem => '导入新系统';
 
   @override
-  String get importBuiltinAlpine => '从软件中导入 (Alpine)';
+  String get importFromApp => '从软件中导入';
 
   @override
   String get importExternalTarGz => '从外部导入 (.tar.gz)';
@@ -524,8 +524,76 @@ class AppLocalizationsZh extends AppLocalizations {
   String get permanentDelete => '彻底删除';
 
   @override
+  String get distroManagementTitle => '系统管理';
+
+  @override
+  String get installedStatus => '已安装';
+
+  @override
+  String get notInstalledStatus => '未安装';
+
+  @override
+  String get downloadingStatus => '下载中';
+
+  @override
+  String get downloadAction => '下载';
+
+  @override
+  String get installAction => '安装';
+
+  @override
+  String get builtinTag => '内置';
+
+  @override
+  String get cancelDownloadAction => '取消下载';
+
+  @override
+  String get cancelDownloadConfirmTitle => '取消下载';
+
+  @override
+  String get cancelDownloadConfirmMessage => '确定要取消正在下载的系统资源吗？已下载的部分将被清除。';
+
+  @override
+  String get deletingSystemProgress => '正在删除系统并清理数据，请稍候...';
+
+  @override
+  String get cannotDeleteBuiltinSystem => '内置系统受到保护，无法删除';
+
+  @override
+  String get recommendedTag => '推荐';
+
+  @override
+  String downloadFailed(String error) {
+    return '下载失败: $error';
+  }
+
+  @override
   String deleteSystemSuccess(String name) {
     return '已彻底删除系统 \"$name\" 及关联会话';
+  }
+
+  @override
+  String get deletePackageConfirmTitle => '确认删除安装包';
+
+  @override
+  String deletePackageConfirmMessage(String name) {
+    return '确定要删除 \"$name\" 的系统安装包吗？删除后可随时重新下载。';
+  }
+
+  @override
+  String get deletingPackageProgress => '正在删除安装包，请稍候...';
+
+  @override
+  String deletePackageSuccess(String name) {
+    return '已删除 \"$name\" 安装包';
+  }
+
+  @override
+  String get deletePackageTooltip => '删除已下载的系统安装包';
+
+  @override
+  String importSystemInstanceTitle(String name) {
+    return '创建 $name 系统实例';
   }
 
   @override
@@ -1029,7 +1097,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get taskDescHint => '简要说明此任务的用途';
 
   @override
-  String get clearBeforeRun => '执行前清屏 (clear)';
+  String get clearBeforeRun => '执行前清屏';
 
   @override
   String get clearBeforeRunSubtitle => '在终端输出任务结果前清理历史屏幕';
@@ -1071,4 +1139,172 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get unsavedTaskChangesMessage => '当前任务内容已被修改，是否放弃未保存的修改并返回？';
+
+  @override
+  String get downloadSection => '下载';
+
+  @override
+  String get downloadSource => '下载源';
+
+  @override
+  String get selectDownloadSource => '选择下载源';
+
+  @override
+  String mirrorName(String mirror) {
+    String _temp0 = intl.Intl.selectLogic(mirror, {
+      'tsinghua': '清华大学开源软件镜像站 (推荐)',
+      'bfsu': '北京外国语大学开源软件镜像站',
+      'iscas': '中国科学院软件研究所开源镜像站',
+      'official': 'LinuxContainers 官方镜像源',
+      'other': '$mirror',
+    });
+    return '$_temp0';
+  }
+
+  @override
+  String get unnamedTask => '未命名任务';
+
+  @override
+  String get shellCommandHelperText => '支持单行指令（如 make）或多行 Shell 脚本（自动封装执行）';
+
+  @override
+  String get detectedTaskCmakeBuildRunDesc => '配置、编译并尝试启动生成的目标程序';
+
+  @override
+  String get detectedTaskCmakeBuildDesc => '仅执行 cmake 生成与构建';
+
+  @override
+  String get detectedTaskCmakeCleanDesc => '清理构建缓存目录';
+
+  @override
+  String get detectedTaskGradleRunDesc => '执行应用程序主入口';
+
+  @override
+  String get detectedTaskGradleAssembleDesc => '构建调试输出包';
+
+  @override
+  String get detectedTaskGradleBuildDesc => '执行完整构建与测试';
+
+  @override
+  String get detectedTaskMakeDefaultDesc => '执行默认 Makefile 构建目标';
+
+  @override
+  String get detectedTaskNpmStartDesc => '启动 Node 服务或前端开发环境';
+
+  @override
+  String get detectedTaskNpmTestDesc => '执行 npm test 测试套件';
+
+  @override
+  String get detectedTaskCargoRunDesc => '编译并运行 Rust 项目';
+
+  @override
+  String get detectedTaskCargoBuildDesc => '仅编译 Rust 项目';
+
+  @override
+  String get detectedTaskDartRunDesc => '启动 Dart 应用';
+
+  @override
+  String get detectedTaskSinglePythonDesc => '运行当前 Python 脚本';
+
+  @override
+  String get detectedTaskSingleCDesc => '编译并执行当前 C 源文件';
+
+  @override
+  String get detectedTaskSingleCppDesc => '编译并执行当前 C++ 源文件';
+
+  @override
+  String get detectedTaskSingleShDesc => '运行当前 Shell 脚本';
+
+  @override
+  String get detectedTaskSingleDartDesc => '运行当前 Dart 文件';
+
+  @override
+  String get detectedTaskSingleGoDesc => '运行当前 Go 源文件';
+
+  @override
+  String get detectedTaskSingleRustDesc => '编译并执行当前 Rust 源文件';
+
+  @override
+  String get detectedTaskSingleJsDesc => '运行当前 JS 脚本';
+
+  @override
+  String get missingDistroTitle => '系统环境未就绪';
+
+  @override
+  String get noDistroAvailableContent =>
+      '未检测到可用的 Linux 执行环境。\n\n工程任务需要在 Linux 容器环境中运行。请先安装或下载 Linux 系统（如 Ubuntu 或 Alpine）。';
+
+  @override
+  String distroNotInstalledContent(String distro) {
+    return '系统 \"$distro\" 尚未安装或已被清理。\n\n请在系统管理中安装该系统，或选择其他已就绪的系统。';
+  }
+
+  @override
+  String get openFromApp => '从软件内打开';
+
+  @override
+  String get openFromExternal => '从外部打开';
+
+  @override
+  String get projectsTitle => '项目';
+
+  @override
+  String get newProject => '新建项目';
+
+  @override
+  String get newProjectTitle => '新建项目';
+
+  @override
+  String get projectNameHint => '请输入项目名称';
+
+  @override
+  String get renameProject => '重命名项目';
+
+  @override
+  String get deleteProject => '删除项目';
+
+  @override
+  String deleteProjectConfirmMessage(String name) {
+    return '确定要删除项目 \"$name\" 吗？此操作不可逆。';
+  }
+
+  @override
+  String get projectAlreadyExists => '已存在同名项目';
+
+  @override
+  String get noProjects => '暂无项目，点击右上角新建项目';
+
+  @override
+  String get projectCreated => '项目创建成功';
+
+  @override
+  String get projectRenamed => '项目重命名成功';
+
+  @override
+  String get projectDeleted => '项目已删除';
+
+  @override
+  String get importFromExternal => '从外部导入';
+
+  @override
+  String get confirmProjectNameTitle => '确认项目名称';
+
+  @override
+  String get importingProject => '正在导入项目...';
+
+  @override
+  String get projectImported => '项目导入成功';
+
+  @override
+  String importProjectFailed(String error) {
+    return '导入项目失败: $error';
+  }
+
+  @override
+  String get unsupportedProjectArchiveFormat =>
+      '不支持的文件格式，仅支持压缩包格式 (.zip, .tar.gz, .tar.xz, .tar 等)';
+
+  @override
+  String get unsupportedDistroArchiveFormat =>
+      '不支持的文件格式，仅支持系统镜像包 (.tar.gz, .tar.xz, .tar)';
 }

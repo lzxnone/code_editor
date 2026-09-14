@@ -272,14 +272,14 @@ class _RunTaskEditViewState extends State<RunTaskEditView> {
                   ),
             // 只显示：名称 + 用途（描述）
             title: Text(
-              task.name,
+              task.getLocalizedName(l10n),
               style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
             ),
-            subtitle: (task.description != null && task.description!.trim().isNotEmpty)
+            subtitle: task.getLocalizedDescription(l10n).trim().isNotEmpty
                 ? Text(
-                    task.description!.trim(),
+                    task.getLocalizedDescription(l10n).trim(),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(fontSize: 12, color: theme.colorScheme.outline),

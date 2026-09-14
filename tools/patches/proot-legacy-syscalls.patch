@@ -1,26 +1,17 @@
-warning: in the working copy of 'src/syscall/seccomp.c', LF will be replaced by CRLF the next time Git touches it
-warning: in the working copy of 'src/syscall/legacy.c', LF will be replaced by CRLF the next time Git touches it
 diff --git a/src/GNUmakefile b/src/GNUmakefile
-index 5ade279..4a85331 100644
+index 5ade279..f2a5c22 100644
 --- a/src/GNUmakefile
 +++ b/src/GNUmakefile
 @@ -46,6 +46,7 @@ OBJECTS += \
  	syscall/enter.o		\
  	syscall/exit.o		\
  	syscall/sysnum.o	\
-+	syscall/legacy.o		\
++	syscall/legacy.o	\
  	syscall/socket.o	\
  	syscall/heap.o		\
  	syscall/rlimit.o	\
-@@ -280,4 +281,4 @@ ifdef PROOT_UNBUNDLE_LOADER
- ifdef HAS_LOADER_32BIT
- 	$(INSTALL) -D loader/loader-m32 $(PROOT_UNBUNDLE_LOADER)/loader32
- endif
--endif
-+endif
-\ No newline at end of file
 diff --git a/src/syscall/enter.c b/src/syscall/enter.c
-index 93f4306..0f72da3 100644
+index 93f4306..a45d00d 100644
 --- a/src/syscall/enter.c
 +++ b/src/syscall/enter.c
 @@ -79,6 +79,7 @@
@@ -31,7 +22,7 @@ index 93f4306..0f72da3 100644
  
  /* Older kernel headers may lack these. */
  #ifndef CLONE_NEWTIME
-@@ -1837,6 +1838,9 @@ int translate_syscall_enter(Tracee *tracee)
+@@ -1837,8 +1838,11 @@ int translate_syscall_enter(Tracee *tracee)
  	if (status > 0)
  		return 0;
  
@@ -39,21 +30,17 @@ index 93f4306..0f72da3 100644
 +	translate_legacy_syscall(tracee);
 +
  	/* Translate input arguments. */
- 	syscall_number = get_sysnum(tracee, ORIGINAL);
+-	syscall_number = get_sysnum(tracee, ORIGINAL);
++	syscall_number = get_sysnum(tracee, CURRENT);
  	switch (syscall_number) {
-@@ -2869,4 +2873,4 @@ end:
- 		status = status2;
- 
- 	return status;
--}
-+}
-\ No newline at end of file
+ 	default:
+ 		/* Nothing to do. */
 diff --git a/src/syscall/legacy.c b/src/syscall/legacy.c
 new file mode 100644
-index 0000000..1e6dcf1
+index 0000000..d65f808
 --- /dev/null
 +++ b/src/syscall/legacy.c
-@@ -0,0 +1,298 @@
+@@ -0,0 +1,310 @@
 +/* -*- c-set-style: "K&R"; c-basic-offset: 8 -*- */
 +/*
 + * Legacy SysV-era syscall modernization for Android app processes.
@@ -273,15 +260,26 @@ index 0000000..1e6dcf1
 +
 +	/* With CLONE_PIDFD the pidfd is written through the parent_tid slot.  */
 +	parent_tid = (flags & CLONE_PIDFD) != 0 ? (word_t) a.pidfd
-warning: in the working copy of 'src/syscall/legacy.h', LF will be replaced by CRLF the next time Git touches it
 +						: (word_t) a.parent_tid;
 +
 +	poke_reg(tracee, SYSARG_1, (word_t) flags);
 +	/* classic clone() wants the *top* of the child stack */
 +	poke_reg(tracee, SYSARG_2, (word_t)(a.stack + a.stack_size));
 +	poke_reg(tracee, SYSARG_3, parent_tid);
++
++	/* Linux sys_clone ABI:
++	 *   x86_64: sys_clone(flags, newsp, parent_tid, child_tid, tls)
++	 *           SYSARG_4 = child_tid, SYSARG_5 = tls
++	 *   arm/arm64: sys_clone(flags, newsp, parent_tid, tls, child_tid)
++	 *           SYSARG_4 = tls, SYSARG_5 = child_tid
++	 */
++#if defined(ARCH_ARM64) || defined(ARCH_ARM_EABI) || defined(__aarch64__) || defined(__arm__)
++	poke_reg(tracee, SYSARG_4, (word_t) a.tls);
++	poke_reg(tracee, SYSARG_5, (word_t) a.child_tid);
++#else
 +	poke_reg(tracee, SYSARG_4, (word_t) a.child_tid);
 +	poke_reg(tracee, SYSARG_5, (word_t) a.tls);
++#endif
 +
 +	set_sysnum(tracee, PR_clone);
 +}

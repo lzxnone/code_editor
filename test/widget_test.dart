@@ -2103,9 +2103,6 @@ void main() {
       await tester.scrollUntilVisible(find.text('终端小键盘'), 200);
       expect(find.text('终端小键盘'), findsOneWidget);
 
-      await tester.scrollUntilVisible(find.text('编辑终端键盘配置'), 200);
-      expect(find.text('编辑终端键盘配置'), findsOneWidget);
-
       // 关闭终端小键盘后，配置入口被禁用但编辑区的仍可用
       final terminalSwitch = find.descendant(
         of: find.widgetWithText(SwitchListTile, '终端小键盘'),
@@ -2118,6 +2115,9 @@ void main() {
       await tester.tap(terminalSwitch);
       await tester.pumpAndSettle();
       expect(settingsProvider.keyboardEnabledFor(KeyboardScope.terminal), isTrue);
+
+      await tester.scrollUntilVisible(find.text('编辑终端键盘配置'), 200);
+      expect(find.text('编辑终端键盘配置'), findsOneWidget);
 
       // 进入终端键盘配置页：副标题显示“终端”
       final editorJsonBefore = settingsProvider.keyboardConfigJsonFor(KeyboardScope.editor);

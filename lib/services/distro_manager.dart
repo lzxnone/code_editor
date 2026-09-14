@@ -4,7 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 
-import '../models/distro_info.dart';
+import '../models/distro_manifest.dart';
 import 'distro_installer.dart';
 
 /// 容器启动配置数据
@@ -33,6 +33,16 @@ class ProotLaunchConfig {
     final argsStr = arguments.map((a) => a.contains(' ') ? '"$a"' : a).join(' ');
     return '$executable $argsStr';
   }
+}
+
+/// Linux 发行版家族分类（用于包管理器与工具链自动适配）
+enum DistroFamily {
+  alpine,
+  ubuntu,
+  debian,
+  arch,
+  fedora,
+  unknown,
 }
 
 /// Linux 发行版与多系统实例管理器服务（单例模式，易扩展）
@@ -104,6 +114,55 @@ class DistroManager {
     return hasEtc && hasBin;
   }
 
+  /// 自动探测指定已安装系统所属的发行版家族（Alpine / Ubuntu / Debian / Arch / Fedora / Unknown）
+  Future<DistroFamily> detectDistroFamily(String systemName) async {
+    if (systemName == 'host') return DistroFamily.unknown;
+
+    final rootDir = await getSystemRootDir(systemName);
+    if (!rootDir.existsSync()) return DistroFamily.unknown;
+
+    final etcDir = Directory(p.join(rootDir.path, 'etc'));
+    if (!etcDir.existsSync()) return DistroFamily.unknown;
+
+    // 1. Alpine Linux (apk / alpine-release)
+    if (Directory(p.join(etcDir.path, 'apk')).existsSync() ||
+        File(p.join(etcDir.path, 'alpine-release')).existsSync() ||
+        File(p.join(rootDir.path, 'sbin', 'apk')).existsSync()) {
+      return DistroFamily.alpine;
+    }
+
+    // 2. Ubuntu 与 Debian (apt / dpkg)
+    final aptDir = Directory(p.join(etcDir.path, 'apt'));
+    if (aptDir.existsSync() || File(p.join(rootDir.path, 'usr', 'bin', 'apt-get')).existsSync()) {
+      final ubuntuSources = File(p.join(aptDir.path, 'sources.list.d', 'ubuntu.sources'));
+      final osRelease = File(p.join(etcDir.path, 'os-release'));
+      var isUbuntu = ubuntuSources.existsSync();
+      if (!isUbuntu && osRelease.existsSync()) {
+        try {
+          isUbuntu = osRelease.readAsStringSync().toLowerCase().contains('ubuntu');
+        } catch (_) {}
+      }
+      return isUbuntu ? DistroFamily.ubuntu : DistroFamily.debian;
+    }
+
+    // 3. Arch Linux (pacman)
+    if (Directory(p.join(etcDir.path, 'pacman.d')).existsSync() ||
+        File(p.join(etcDir.path, 'arch-release')).existsSync() ||
+        File(p.join(rootDir.path, 'usr', 'bin', 'pacman')).existsSync()) {
+      return DistroFamily.arch;
+    }
+
+    // 4. Fedora (dnf / yum / fedora-release)
+    if (Directory(p.join(etcDir.path, 'yum.repos.d')).existsSync() ||
+        File(p.join(etcDir.path, 'fedora-release')).existsSync() ||
+        File(p.join(rootDir.path, 'usr', 'bin', 'dnf')).existsSync()) {
+      return DistroFamily.fedora;
+    }
+
+    // 5. 其他未识别的自定义系统
+    return DistroFamily.unknown;
+  }
+
   /// 校验系统名称是否合法且未被占用
   Future<void> validateSystemName(String systemName) async {
     final trimmed = systemName.trim();
@@ -122,18 +181,18 @@ class DistroManager {
     }
   }
 
-  /// 从应用内置资源导入 Alpine Linux 系统实例
+  /// 从应用内置资源导入 Ubuntu 24.04 Linux 系统实例
   ///
-  /// [systemName] 系统名称（默认为 'alpine'，同一个 rootfs 包可创建多个系统）
-  Future<void> importBuiltinAlpine({
+  /// [systemName] 系统名称（默认为 'ubuntu'，同一个 rootfs 包可创建多个系统）
+  Future<void> importBuiltinUbuntu({
     required String systemName,
     InstallProgressCallback? onProgress,
     bool Function()? isCancelled,
   }) async {
     await validateSystemName(systemName);
 
-    final assetPath = DistroInfo.builtinAlpineAssetPath;
-    onProgress?.call(0.02, '正在读取应用内置系统资源包...');
+    final assetPath = DistroRepository.builtinUbuntuAssetPath;
+    onProgress?.call(0.02, '正在读取应用内置 Ubuntu 系统资源包...');
     final byteData = await rootBundle.load(assetPath);
     final bytes = byteData.buffer.asUint8List();
 
@@ -147,7 +206,32 @@ class DistroManager {
     );
   }
 
-  /// 从用户本地指定的 .tar.gz 压缩包导入外部系统实例
+  /// 从应用内置资源导入 Alpine Linux 系统实例（保留备用）
+  ///
+  /// [systemName] 系统名称（默认为 'alpine'，同一个 rootfs 包可创建多个系统）
+  Future<void> importBuiltinAlpine({
+    required String systemName,
+    InstallProgressCallback? onProgress,
+    bool Function()? isCancelled,
+  }) async {
+    await validateSystemName(systemName);
+
+    final assetPath = DistroRepository.builtinAlpineAssetPath;
+    onProgress?.call(0.02, '正在读取应用内置 Alpine 系统资源包...');
+    final byteData = await rootBundle.load(assetPath);
+    final bytes = byteData.buffer.asUint8List();
+
+    final targetDir = await getSystemRootDir(systemName);
+
+    await DistroInstaller.installFromBytes(
+      tarGzBytes: bytes,
+      targetDir: targetDir,
+      onProgress: onProgress,
+      isCancelled: isCancelled,
+    );
+  }
+
+  /// 从用户本地指定的 .tar.gz / .tar.xz 压缩包导入外部系统实例
   Future<void> importFromCustomTarGz({
     required String systemName,
     required File tarGzFile,
@@ -160,13 +244,10 @@ class DistroManager {
       throw ArgumentError('所选压缩包文件不存在: ${tarGzFile.path}');
     }
 
-    onProgress?.call(0.02, '正在读取外部系统压缩包...');
-    final bytes = await tarGzFile.readAsBytes();
-
     final targetDir = await getSystemRootDir(systemName);
 
-    await DistroInstaller.installFromBytes(
-      tarGzBytes: bytes,
+    await DistroInstaller.installFromFile(
+      archiveFile: tarGzFile,
       targetDir: targetDir,
       onProgress: onProgress,
       isCancelled: isCancelled,
@@ -261,12 +342,13 @@ class DistroManager {
           ? workspacePath
           : Directory.current.path;
 
-      final args = customCommand != null ? ['-c', customCommand] : <String>[];
+      final args = customCommand != null ? ['-c', customCommand] : <String>['-i'];
       return ProotLaunchConfig(
         executable: '/system/bin/sh',
         arguments: args,
         environment: {
           'TERM': 'xterm-256color',
+          'SHELL': '/system/bin/sh',
         },
         workingDirectory: initialDir,
       );
@@ -276,10 +358,22 @@ class DistroManager {
     final rootDir = await getSystemRootDir(systemName);
     final nativeDir = await getNativeLibraryDir();
     final effectiveProot = (prootPath == 'proot') ? await getProotExecutablePath() : prootPath;
-    const targetShell = '/bin/sh';
+    final targetShell = _resolveTargetShell(rootDir);
 
     // 确保容器内 DNS 配置存在（对标 proot-distro，保证网络连通与 apk/curl 正常解析）
     await _ensureGuestDns(rootDir);
+
+    // 清理此前异常中断留下的陈旧锁文件（如 /etc/group.lock，防止 groupadd/useradd 报错）
+    _cleanStaleLocks(rootDir);
+
+    // 确保 Android 宿主特权/辅助组映射与 .hushlogin 存在（解决 groups: cannot find name for group ID 警告）
+    await _ensureHostGroups(rootDir);
+
+    // 确保容器内具备标准 SSL CA 证书（解决 APT/Git/Curl 访问 HTTPS 时的证书校验失败）
+    await DistroInstaller.ensureCaCertificates(rootDir);
+
+    // 确保 Java 运行时动态链接配置就绪（解决 /usr/bin/java 符号链接找不到 libjli.so）
+    await DistroInstaller.ensureJavaConfiguration(rootDir);
 
     // 确保独立的 /dev/shm 目录存在（对标 proot-distro shm.py，解决 POSIX 共享内存缺失）
     final shmDir = await _ensureShmDir(systemName);
@@ -341,14 +435,42 @@ class DistroManager {
     final shimFile = File(p.join(rootDir.path, 'lib', 'libfix_seccomp.so'));
     final hasShim = shimFile.existsSync();
 
+    // 自动检测并注入 JAVA_HOME
+    String? guestJavaHome;
+    final jvmDir = Directory(p.join(rootDir.path, 'usr', 'lib', 'jvm'));
+    if (jvmDir.existsSync()) {
+      try {
+        final defaultJava = Directory(p.join(jvmDir.path, 'default-java'));
+        if (defaultJava.existsSync()) {
+          guestJavaHome = '/usr/lib/jvm/default-java';
+        } else {
+          final entries = jvmDir.listSync().whereType<Directory>().toList();
+          if (entries.isNotEmpty) {
+            entries.sort((a, b) => p.basename(b.path).compareTo(p.basename(a.path)));
+            final selected = entries.firstWhere(
+              (d) => p.basename(d.path).startsWith('java-'),
+              orElse: () => entries.first,
+            );
+            guestJavaHome = '/usr/lib/jvm/${p.basename(selected.path)}';
+          }
+        }
+      } catch (_) {}
+    }
+
     final guestEnvArgs = <String>[
       '/usr/bin/env',
       '-i',
       'HOME=/root',
       'USER=root',
+      'SHELL=$targetShell',
       'TERM=xterm-256color',
+      'COLORTERM=truecolor',
       'LANG=C.UTF-8',
-      'PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin',
+      if (guestJavaHome != null) 'JAVA_HOME=$guestJavaHome',
+      if (guestJavaHome != null)
+        'PATH=$guestJavaHome/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin'
+      else
+        'PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin',
       if (hasShim) 'LD_PRELOAD=/lib/libfix_seccomp.so',
     ];
 
@@ -358,15 +480,21 @@ class DistroManager {
     if (customCommand != null && customCommand.isNotEmpty) {
       args.addAll([targetShell, '-c', customCommand]);
     } else {
-      args.addAll([targetShell, '-l']);
+      args.addAll([targetShell, '-l', '-i']);
     }
 
     final env = <String, String>{
       'HOME': '/root',
       'USER': 'root',
+      'SHELL': targetShell,
       'TERM': 'xterm-256color',
+      'COLORTERM': 'truecolor',
       'LANG': 'C.UTF-8',
-      'PATH': '/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin',
+      if (guestJavaHome != null) 'JAVA_HOME': guestJavaHome,
+      if (guestJavaHome != null)
+        'PATH': '$guestJavaHome/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin'
+      else
+        'PATH': '/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin',
       'TMPDIR': tmpPath,
       'PROOT_TMP_DIR': tmpPath,
       if (l2sDir != null) 'PROOT_L2S_DIR': l2sDir.path,
@@ -467,6 +595,202 @@ class DistroManager {
     } catch (e) {
       debugPrint('创建容器 sysdata 目录失败 (非阻塞): $e');
       return null;
+    }
+  }
+
+  /// 智能选择不同 Linux 发行版最适配的交互式 Shell：
+  /// 1. 优先读取 /etc/passwd 中 root 用户指定的默认登录 Shell（如用户自行切换了 zsh/fish）；
+  /// 2. 若配置为 /bin/sh，但在存在 GNU Readline 支持的更好交互 Shell（如 /bin/bash）时优先升级至 bash，
+  ///    彻底解决 Ubuntu/Debian 等发行版 /bin/sh (dash) 缺少行编辑与 Readline 支持的问题；
+  /// 3. 若系统中无 bash（如原版最小化 Alpine），则使用 /bin/ash 或 /bin/sh；
+  /// 4. 支持 /usr/bin/bash、/usr/bin/zsh 等现代 Linux UsrMerge 单一根目录结构。
+  String _resolveTargetShell(Directory rootDir) {
+    String? rootPasswdShell;
+    final passwdFile = File(p.join(rootDir.path, 'etc', 'passwd'));
+    if (passwdFile.existsSync()) {
+      try {
+        final lines = passwdFile.readAsLinesSync();
+        for (final line in lines) {
+          if (line.startsWith('root:')) {
+            final parts = line.split(':');
+            if (parts.length >= 7) {
+              final sh = parts[6].trim();
+              if (sh.isNotEmpty) {
+                rootPasswdShell = sh;
+                break;
+              }
+            }
+          }
+        }
+      } catch (_) {}
+    }
+
+    final hasBash = File(p.join(rootDir.path, 'bin', 'bash')).existsSync() ||
+        File(p.join(rootDir.path, 'usr', 'bin', 'bash')).existsSync();
+    final hasZsh = File(p.join(rootDir.path, 'bin', 'zsh')).existsSync() ||
+        File(p.join(rootDir.path, 'usr', 'bin', 'zsh')).existsSync();
+    final hasAsh = File(p.join(rootDir.path, 'bin', 'ash')).existsSync() ||
+        File(p.join(rootDir.path, 'usr', 'bin', 'ash')).existsSync();
+
+    // 如果 passwd 里配置了非 /bin/sh 的具体 shell（如 /bin/bash, /bin/zsh, /bin/ash, /usr/bin/fish）且物理文件存在，遵从系统配置
+    if (rootPasswdShell != null &&
+        rootPasswdShell != '/bin/sh' &&
+        rootPasswdShell != '/usr/bin/sh') {
+      final shellRel = rootPasswdShell.startsWith('/') ? rootPasswdShell.substring(1) : rootPasswdShell;
+      if (File(p.join(rootDir.path, shellRel)).existsSync()) {
+        return rootPasswdShell;
+      }
+    }
+
+    // 默认回退链：bash (Ubuntu/Debian/Arch/Fedora) -> zsh -> ash (Alpine) -> sh
+    if (hasBash) {
+      return '/bin/bash';
+    } else if (hasZsh) {
+      return '/bin/zsh';
+    } else if (hasAsh) {
+      return '/bin/ash';
+    }
+    return '/bin/sh';
+  }
+
+  /// 保证 Android 宿主分配给当前 App 进程的所有辅助 GID 在容器 /etc/group 中均有注册，
+  /// 并在 /root 下创建 .hushlogin，彻底消除 login 时输出
+  /// "groups: cannot find name for group ID XXX" 等警告。
+  Future<void> _ensureHostGroups(Directory rootDir) async {
+    try {
+      if (!rootDir.existsSync()) return;
+      final etcDir = Directory(p.join(rootDir.path, 'etc'));
+      if (!etcDir.existsSync()) {
+        try {
+          etcDir.createSync(recursive: true);
+        } catch (_) {}
+      }
+
+      final groupFile = File(p.join(etcDir.path, 'group'));
+      final existingGids = <int>{};
+      String existingContent = '';
+      if (groupFile.existsSync()) {
+        existingContent = groupFile.readAsStringSync();
+        for (final line in existingContent.split('\n')) {
+          final parts = line.split(':');
+          if (parts.length >= 3) {
+            final gid = int.tryParse(parts[2].trim());
+            if (gid != null) existingGids.add(gid);
+          }
+        }
+      }
+
+      // 获取宿主当前进程拥有的所有 GID
+      final targetGids = <int>{
+        // 常见 Android 特权/网络与存储辅助 GID
+        1015, // sdcard_rw
+        1028, // sdcard_r
+        1077, // ext_data_rw
+        3003, // inet
+        3004, // net_raw
+        3005, // net_admin
+        9997, // everybody
+      };
+
+      // 从 /proc/self/status 动态提取当前真实附加的 Groups
+      final procStatus = File('/proc/self/status');
+      if (procStatus.existsSync()) {
+        try {
+          final lines = procStatus.readAsLinesSync();
+          for (final line in lines) {
+            if (line.startsWith('Groups:')) {
+              final gids = line.substring(7).trim().split(RegExp(r'\s+'));
+              for (final s in gids) {
+                final val = int.tryParse(s);
+                if (val != null) targetGids.add(val);
+              }
+            }
+          }
+        } catch (_) {}
+      }
+
+      final buffer = StringBuffer();
+      for (final gid in targetGids) {
+        if (!existingGids.contains(gid)) {
+          final groupName = _androidAidGroupName(gid);
+          buffer.writeln('$groupName:x:$gid:');
+        }
+      }
+
+      // 保证常见系统服务所需的用户组存在（如 dbus 所需的 messagebus GID 101）
+      if (!existingGids.contains(101) && !existingContent.contains('messagebus:')) {
+        buffer.writeln('messagebus:x:101:');
+      }
+
+      if (buffer.isNotEmpty) {
+        if (!groupFile.existsSync()) {
+          groupFile.writeAsStringSync(buffer.toString());
+        } else {
+          final separator = existingContent.endsWith('\n') || existingContent.isEmpty ? '' : '\n';
+          groupFile.writeAsStringSync('$separator${buffer.toString()}', mode: FileMode.append);
+        }
+      }
+
+      // 静默模式：创建 /root/.hushlogin 屏蔽 motd / 登录杂乱信息
+      final rootHome = Directory(p.join(rootDir.path, 'root'));
+      if (!rootHome.existsSync()) {
+        try {
+          rootHome.createSync(recursive: true);
+        } catch (_) {}
+      }
+      final hushFile = File(p.join(rootHome.path, '.hushlogin'));
+      if (!hushFile.existsSync()) {
+        try {
+          hushFile.createSync();
+        } catch (_) {}
+      }
+    } catch (e) {
+      debugPrint('配置容器辅助用户组失败 (非阻塞): $e');
+    }
+  }
+
+  /// 清理此前异常崩溃或中断留下的陈旧锁文件（防止 groupadd/useradd 等报 /etc/*.lock 锁占用或找不到）
+  void _cleanStaleLocks(Directory rootDir) {
+    try {
+      final etcDir = Directory(p.join(rootDir.path, 'etc'));
+      if (etcDir.existsSync()) {
+        for (final entry in etcDir.listSync(followLinks: false)) {
+          final name = p.basename(entry.path);
+          if (name.endsWith('.lock') ||
+              name.startsWith('group.') ||
+              name.startsWith('passwd.') ||
+              name.startsWith('shadow.') ||
+              name.startsWith('gshadow.')) {
+            try {
+              entry.deleteSync(recursive: true);
+              debugPrint('[DistroManager] 清理陈旧锁文件: ${entry.path}');
+            } catch (_) {}
+          }
+        }
+      }
+    } catch (e) {
+      debugPrint('[DistroManager] 清理陈旧锁文件异常 (非阻塞): $e');
+    }
+  }
+
+  static String _androidAidGroupName(int gid) {
+    switch (gid) {
+      case 1015:
+        return 'aid_sdcard_rw';
+      case 1028:
+        return 'aid_sdcard_r';
+      case 1077:
+        return 'aid_ext_data_rw';
+      case 3003:
+        return 'aid_inet';
+      case 3004:
+        return 'aid_net_raw';
+      case 3005:
+        return 'aid_net_admin';
+      case 9997:
+        return 'aid_everybody';
+      default:
+        return 'aid_$gid';
     }
   }
 }

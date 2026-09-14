@@ -47,7 +47,7 @@ class ProjectTaskDetector {
           name: 'CMake: Build & Run',
           command: 'cmake -B build && cmake --build build && ./build/$projectName',
           source: TaskSource.detected,
-          description: '配置、编译并尝试启动生成的目标程序',
+          description: 'Configure, build, and try launching the target executable',
           icon: Icons.play_circle_outline,
         ),
         RunTask(
@@ -55,7 +55,7 @@ class ProjectTaskDetector {
           name: 'CMake: Build Only',
           command: 'cmake -B build && cmake --build build',
           source: TaskSource.detected,
-          description: '仅执行 cmake 生成与构建',
+          description: 'Only execute cmake generation and build',
           icon: Icons.build_outlined,
         ),
         RunTask(
@@ -63,7 +63,7 @@ class ProjectTaskDetector {
           name: 'CMake: Clean',
           command: 'rm -rf build',
           source: TaskSource.detected,
-          description: '清理构建缓存目录',
+          description: 'Clean build cache directory',
           icon: Icons.cleaning_services_outlined,
         ),
       ]);
@@ -74,14 +74,14 @@ class ProjectTaskDetector {
     final gradleFile = File(p.join(projectRoot, 'build.gradle'));
     final gradleKtsFile = File(p.join(projectRoot, 'build.gradle.kts'));
     if (gradlewFile.existsSync() || gradleFile.existsSync() || gradleKtsFile.existsSync()) {
-      final exec = gradlewFile.existsSync() ? './gradlew' : 'gradle';
+      final exec = gradlewFile.existsSync() ? 'sh ./gradlew' : 'gradle';
       buildTasks.addAll([
         RunTask(
           id: 'detected_gradle_run',
           name: 'Gradle: Run',
           command: '$exec run',
           source: TaskSource.detected,
-          description: '执行应用程序主入口',
+          description: 'Execute application main entrypoint',
           icon: Icons.play_circle_outline,
         ),
         RunTask(
@@ -89,7 +89,7 @@ class ProjectTaskDetector {
           name: 'Gradle: Assemble Debug',
           command: '$exec assembleDebug',
           source: TaskSource.detected,
-          description: '构建调试输出包',
+          description: 'Build debug output package',
           icon: Icons.build_outlined,
         ),
         RunTask(
@@ -97,7 +97,7 @@ class ProjectTaskDetector {
           name: 'Gradle: Build',
           command: '$exec build',
           source: TaskSource.detected,
-          description: '执行完整构建与测试',
+          description: 'Execute full build and tests',
           icon: Icons.done_all_outlined,
         ),
       ]);
@@ -112,7 +112,7 @@ class ProjectTaskDetector {
           name: 'Make: Default',
           command: 'make',
           source: TaskSource.detected,
-          description: '执行默认 Makefile 构建目标',
+          description: 'Execute default Makefile build target',
           icon: Icons.build_circle_outlined,
         ),
       );
@@ -127,7 +127,7 @@ class ProjectTaskDetector {
           name: 'NPM: Start',
           command: 'npm start',
           source: TaskSource.detected,
-          description: '启动 Node 服务或前端开发环境',
+          description: 'Start Node service or frontend development environment',
           icon: Icons.rocket_launch_outlined,
         ),
         const RunTask(
@@ -135,7 +135,7 @@ class ProjectTaskDetector {
           name: 'NPM: Test',
           command: 'npm test',
           source: TaskSource.detected,
-          description: '执行 npm test 测试套件',
+          description: 'Execute npm test suite',
           icon: Icons.checklist_outlined,
         ),
       ]);
@@ -150,7 +150,7 @@ class ProjectTaskDetector {
           name: 'Cargo: Run',
           command: 'cargo run',
           source: TaskSource.detected,
-          description: '编译并运行 Rust 项目',
+          description: 'Compile and run Rust project',
           icon: Icons.play_circle_outline,
         ),
         const RunTask(
@@ -158,7 +158,7 @@ class ProjectTaskDetector {
           name: 'Cargo: Build',
           command: 'cargo build',
           source: TaskSource.detected,
-          description: '仅编译 Rust 项目',
+          description: 'Compile Rust project only',
           icon: Icons.build_outlined,
         ),
       ]);
@@ -173,7 +173,7 @@ class ProjectTaskDetector {
           name: 'Dart: Run',
           command: 'dart run',
           source: TaskSource.detected,
-          description: '启动 Dart 应用',
+          description: 'Launch Dart application',
           icon: Icons.play_circle_outline,
         ),
       );
@@ -203,7 +203,7 @@ class ProjectTaskDetector {
           name: 'Python: $fileName',
           command: 'python3 "$relPath"',
           source: TaskSource.detected,
-          description: '运行当前 Python 脚本',
+          description: 'Run current Python script',
           icon: Icons.code,
         );
       case '.c':
@@ -212,7 +212,7 @@ class ProjectTaskDetector {
           name: 'GCC: $fileName',
           command: 'gcc "$relPath" -o /tmp/a.out && /tmp/a.out',
           source: TaskSource.detected,
-          description: '编译并执行当前 C 源文件',
+          description: 'Compile and execute current C source file',
           icon: Icons.terminal,
         );
       case '.cpp':
@@ -223,7 +223,7 @@ class ProjectTaskDetector {
           name: 'G++: $fileName',
           command: 'g++ "$relPath" -o /tmp/a.out && /tmp/a.out',
           source: TaskSource.detected,
-          description: '编译并执行当前 C++ 源文件',
+          description: 'Compile and execute current C++ source file',
           icon: Icons.terminal,
         );
       case '.sh':
@@ -233,7 +233,7 @@ class ProjectTaskDetector {
           name: 'Shell: $fileName',
           command: 'sh "$relPath"',
           source: TaskSource.detected,
-          description: '运行当前 Shell 脚本',
+          description: 'Run current Shell script',
           icon: Icons.terminal,
         );
       case '.dart':
@@ -242,7 +242,7 @@ class ProjectTaskDetector {
           name: 'Dart: $fileName',
           command: 'dart run "$relPath"',
           source: TaskSource.detected,
-          description: '运行当前 Dart 文件',
+          description: 'Run current Dart file',
           icon: Icons.code,
         );
       case '.go':
@@ -251,7 +251,7 @@ class ProjectTaskDetector {
           name: 'Go: $fileName',
           command: 'go run "$relPath"',
           source: TaskSource.detected,
-          description: '运行当前 Go 源文件',
+          description: 'Run current Go source file',
           icon: Icons.code,
         );
       case '.rs':
@@ -260,7 +260,7 @@ class ProjectTaskDetector {
           name: 'Rust: $fileName',
           command: 'rustc "$relPath" -o /tmp/a.out && /tmp/a.out',
           source: TaskSource.detected,
-          description: '编译并执行当前 Rust 源文件',
+          description: 'Compile and execute current Rust source file',
           icon: Icons.code,
         );
       case '.js':
@@ -269,7 +269,7 @@ class ProjectTaskDetector {
           name: 'Node: $fileName',
           command: 'node "$relPath"',
           source: TaskSource.detected,
-          description: '运行当前 JS 脚本',
+          description: 'Run current JavaScript script',
           icon: Icons.javascript,
         );
       default:

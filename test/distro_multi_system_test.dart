@@ -7,11 +7,46 @@ import 'package:code_editor/providers/terminal_provider.dart';
 import 'package:code_editor/services/distro_installer.dart';
 import 'package:code_editor/services/distro_manager.dart';
 import 'package:code_editor/widgets/distro_selector_dialog.dart';
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+
+class MockDistroFilePicker extends FilePicker {
+  String? pickedPath;
+
+  @override
+  Future<FilePickerResult?> pickFiles({
+    String? dialogTitle,
+    String? initialDirectory,
+    FileType type = FileType.any,
+    List<String>? allowedExtensions,
+    Function(FilePickerStatus)? onFileLoading,
+    bool allowCompression = false,
+    int compressionQuality = 30,
+    bool allowMultiple = false,
+    bool withData = false,
+    bool withReadStream = false,
+    bool lockParentWindow = false,
+    bool readSequential = false,
+  }) async {
+    if (pickedPath == null) return null;
+    return FilePickerResult([
+      PlatformFile(name: p.basename(pickedPath!), size: 10, path: pickedPath),
+    ]);
+  }
+
+  @override
+  Future<bool?> clearTemporaryFiles() async => true;
+
+  @override
+  Future<String?> getDirectoryPath({String? dialogTitle, bool lockParentWindow = false, String? initialDirectory}) async => null;
+
+  @override
+  Future<String?> saveFile({String? dialogTitle, String? fileName, String? initialDirectory, FileType type = FileType.any, List<String>? allowedExtensions, Uint8List? bytes, bool lockParentWindow = false}) async => null;
+}
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -171,6 +206,92 @@ void main() {
       expect(launchConfig.arguments, contains('-k'));
       expect(launchConfig.arguments, contains('5.4.0-proot'));
       expect(launchConfig.environment['PROOT_L2S_DIR'], isNotNull);
+      expect(launchConfig.environment['SHELL'], equals('/bin/sh'));
+      expect(launchConfig.arguments, contains('SHELL=/bin/sh'));
+      expect(launchConfig.arguments, contains('-l'));
+      expect(launchConfig.arguments, contains('-i'));
+    });
+
+    test('buildLaunchConfig 自动检测 rootfs 中的 /bin/bash 并设置为交互式登录 Shell', () async {
+      final gzBytes = createMockRootfsTarGz();
+      final tempGzFile = File(p.join(tempBaseDir.path, 'bash_cfg.tar.gz'))..writeAsBytesSync(gzBytes);
+
+      await manager.importFromCustomTarGz(systemName: 'ubuntu_env', tarGzFile: tempGzFile);
+      final rootDir = await manager.getSystemRootDir('ubuntu_env');
+
+      // 模拟 Ubuntu 根文件系统中自带的 bash
+      final bashFile = File(p.join(rootDir.path, 'bin', 'bash'));
+      await bashFile.create(recursive: true);
+
+      final launchConfig = await manager.buildLaunchConfig(
+        systemName: 'ubuntu_env',
+        workspacePath: tempBaseDir.path,
+      );
+
+      expect(launchConfig.environment['SHELL'], equals('/bin/bash'));
+      expect(launchConfig.arguments, contains('SHELL=/bin/bash'));
+      expect(launchConfig.arguments, contains('/bin/bash'));
+      expect(launchConfig.arguments, contains('-l'));
+      expect(launchConfig.arguments, contains('-i'));
+
+      // 验证 Android 宿主特权/辅助组自动写入 /etc/group 与 .hushlogin 生成
+      final groupFile = File(p.join(rootDir.path, 'etc', 'group'));
+      expect(groupFile.existsSync(), isTrue);
+      final groupContent = groupFile.readAsStringSync();
+      expect(groupContent, contains('aid_inet:x:3003:'));
+      expect(groupContent, contains('aid_ext_data_rw:x:1077:'));
+      expect(groupContent, contains('aid_everybody:x:9997:'));
+
+      final hushFile = File(p.join(rootDir.path, 'root', '.hushlogin'));
+      expect(hushFile.existsSync(), isTrue);
+    });
+
+    test('buildLaunchConfig 针对不同发行版（Alpine ash vs passwd 自定义 shell）自适应启动参数', () async {
+      final gzBytes = createMockRootfsTarGz();
+      final tempGzFile = File(p.join(tempBaseDir.path, 'alpine_cfg.tar.gz'))..writeAsBytesSync(gzBytes);
+
+      await manager.importFromCustomTarGz(systemName: 'alpine_env', tarGzFile: tempGzFile);
+      final rootDir = await manager.getSystemRootDir('alpine_env');
+
+      // 1. 模拟 Alpine（无 bash，自带 ash，/etc/passwd 中 root 为 /bin/ash）
+      final ashFile = File(p.join(rootDir.path, 'bin', 'ash'));
+      await ashFile.create(recursive: true);
+      final passwdFile = File(p.join(rootDir.path, 'etc', 'passwd'));
+      await passwdFile.writeAsString('root:x:0:0:root:/root:/bin/ash\n');
+
+      final alpineConfig = await manager.buildLaunchConfig(
+        systemName: 'alpine_env',
+        workspacePath: tempBaseDir.path,
+      );
+      expect(alpineConfig.environment['SHELL'], equals('/bin/ash'));
+      expect(alpineConfig.arguments, contains('/bin/ash'));
+      expect(alpineConfig.arguments, contains('-l'));
+      expect(alpineConfig.arguments, contains('-i'));
+
+      // 2. 模拟用户安装并切换为 /bin/zsh
+      final zshFile = File(p.join(rootDir.path, 'bin', 'zsh'));
+      await zshFile.create(recursive: true);
+      await passwdFile.writeAsString('root:x:0:0:root:/root:/bin/zsh\n');
+
+      final zshConfig = await manager.buildLaunchConfig(
+        systemName: 'alpine_env',
+        workspacePath: tempBaseDir.path,
+      );
+      expect(zshConfig.environment['SHELL'], equals('/bin/zsh'));
+      expect(zshConfig.arguments, contains('/bin/zsh'));
+      expect(zshConfig.arguments, contains('-l'));
+      expect(zshConfig.arguments, contains('-i'));
+    });
+
+    test('buildLaunchConfig 在 host 模式下正确配置 SHELL 与 -i 交互模式', () async {
+      final hostConfig = await manager.buildLaunchConfig(
+        systemName: 'host',
+        workspacePath: tempBaseDir.path,
+      );
+
+      expect(hostConfig.executable, equals('/system/bin/sh'));
+      expect(hostConfig.arguments, contains('-i'));
+      expect(hostConfig.environment['SHELL'], equals('/system/bin/sh'));
     });
   });
 
@@ -293,6 +414,60 @@ void main() {
 
       // 验证存在高危删除按钮
       expect(find.byIcon(Icons.delete_outline), findsOneWidget);
+    });
+
+    testWidgets('DistroSelectorDialog 导入外部系统选择不支持的格式时显示错误 Toast 并中止流程', (tester) async {
+      final mockPicker = MockDistroFilePicker();
+      FilePicker.platform = mockPicker;
+
+      // 设置选中的文件为不受支持的格式（如 .zip 或 .txt）
+      final unsupportedFile = File(p.join(tempBaseDir.path, 'rootfs_image.zip'))..writeAsStringSync('zip content');
+      mockPicker.pickedPath = unsupportedFile.path;
+
+      final distroProvider = DistroProvider();
+      await tester.runAsync(() async {
+        await distroProvider.init();
+      });
+
+      await tester.pumpWidget(
+        MultiProvider(
+          providers: [
+            ChangeNotifierProvider<DistroProvider>.value(value: distroProvider),
+            ChangeNotifierProvider<TerminalProvider>(create: (_) => TerminalProvider()),
+          ],
+          child: MaterialApp(
+            locale: const Locale('zh'),
+            localizationsDelegates: AppLocalizations.localizationsDelegates,
+            supportedLocales: AppLocalizations.supportedLocales,
+            home: const Scaffold(
+              body: DistroSelectorDialog(),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // 点击导入按钮打开 PopupMenu
+      final importButton = find.byIcon(Icons.add_circle_outline);
+      expect(importButton, findsOneWidget);
+      await tester.tap(importButton);
+      await tester.pumpAndSettle();
+
+      // 点击“从外部导入 (.tar.gz)”
+      final externalItem = find.text('从外部导入 (.tar.gz)');
+      expect(externalItem, findsOneWidget);
+      await tester.tap(externalItem);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 100));
+
+      // 验证不应弹出系统名称输入弹窗
+      expect(find.text('导入外部系统'), findsNothing);
+
+      // 验证弹出指定格式错误 Toast
+      expect(find.text('不支持的文件格式，仅支持系统镜像包 (.tar.gz, .tar.xz, .tar)'), findsOneWidget);
+
+      // 等待 Toast 定时器安全结束
+      await tester.pump(const Duration(seconds: 3));
     });
   });
 }

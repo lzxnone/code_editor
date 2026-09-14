@@ -175,11 +175,13 @@ class _RunTaskDetailViewState extends State<RunTaskDetailView> {
                 const SizedBox(height: 16),
                 TextFormField(
                   controller: _commandController,
-                  maxLines: 4,
+                  minLines: 3,
+                  maxLines: 8,
                   style: const TextStyle(fontFamily: 'monospace', fontSize: 13),
                   decoration: InputDecoration(
                     labelText: l10n.shellCommandRequired,
                     hintText: l10n.shellCommandHint,
+                    helperText: l10n.shellCommandHelperText,
                     border: const OutlineInputBorder(),
                     alignLabelWithHint: true,
                     isDense: true,

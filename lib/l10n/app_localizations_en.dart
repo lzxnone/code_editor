@@ -486,7 +486,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get importNewSystem => 'Import New System';
 
   @override
-  String get importBuiltinAlpine => 'Import from App (Alpine)';
+  String get importFromApp => 'Import from App';
 
   @override
   String get importExternalTarGz => 'Import from External (.tar.gz)';
@@ -535,8 +535,79 @@ class AppLocalizationsEn extends AppLocalizations {
   String get permanentDelete => 'Permanently Delete';
 
   @override
+  String get distroManagementTitle => 'System Management';
+
+  @override
+  String get installedStatus => 'Installed';
+
+  @override
+  String get notInstalledStatus => 'Not Installed';
+
+  @override
+  String get downloadingStatus => 'Downloading';
+
+  @override
+  String get downloadAction => 'Download';
+
+  @override
+  String get installAction => 'Install';
+
+  @override
+  String get builtinTag => 'Built-in';
+
+  @override
+  String get cancelDownloadAction => 'Cancel Download';
+
+  @override
+  String get cancelDownloadConfirmTitle => 'Cancel Download';
+
+  @override
+  String get cancelDownloadConfirmMessage =>
+      'Are you sure you want to cancel the downloading system package? The downloaded parts will be discarded.';
+
+  @override
+  String get deletingSystemProgress =>
+      'Deleting system and cleaning storage, please wait...';
+
+  @override
+  String get cannotDeleteBuiltinSystem =>
+      'Built-in system is protected and cannot be deleted';
+
+  @override
+  String get recommendedTag => 'Recommended';
+
+  @override
+  String downloadFailed(String error) {
+    return 'Download failed: $error';
+  }
+
+  @override
   String deleteSystemSuccess(String name) {
     return 'System \"$name\" and associated sessions deleted';
+  }
+
+  @override
+  String get deletePackageConfirmTitle => 'Confirm Delete Package';
+
+  @override
+  String deletePackageConfirmMessage(String name) {
+    return 'Are you sure you want to delete the package for \"$name\"? You can download it again at any time.';
+  }
+
+  @override
+  String get deletingPackageProgress => 'Deleting package, please wait...';
+
+  @override
+  String deletePackageSuccess(String name) {
+    return 'Deleted \"$name\" package';
+  }
+
+  @override
+  String get deletePackageTooltip => 'Delete downloaded system package';
+
+  @override
+  String importSystemInstanceTitle(String name) {
+    return 'Create $name System Instance';
   }
 
   @override
@@ -1053,7 +1124,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get taskDescHint => 'Briefly describe the task purpose';
 
   @override
-  String get clearBeforeRun => 'Clear Screen (clear)';
+  String get clearBeforeRun => 'Clear Screen';
 
   @override
   String get clearBeforeRunSubtitle =>
@@ -1097,4 +1168,180 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get unsavedTaskChangesMessage =>
       'The task has been modified. Do you want to discard unsaved changes and leave?';
+
+  @override
+  String get downloadSection => 'Download';
+
+  @override
+  String get downloadSource => 'Download Source';
+
+  @override
+  String get selectDownloadSource => 'Select Download Source';
+
+  @override
+  String mirrorName(String mirror) {
+    String _temp0 = intl.Intl.selectLogic(mirror, {
+      'tsinghua': 'Tsinghua TUNA Mirror (Recommended)',
+      'bfsu': 'BFSU Open Source Mirror',
+      'iscas': 'ISCAS Open Source Mirror',
+      'official': 'LinuxContainers Official Mirror',
+      'other': '$mirror',
+    });
+    return '$_temp0';
+  }
+
+  @override
+  String get unnamedTask => 'Unnamed Task';
+
+  @override
+  String get shellCommandHelperText =>
+      'Supports single-line commands (e.g. make) or multi-line Shell scripts (packaged and executed automatically)';
+
+  @override
+  String get detectedTaskCmakeBuildRunDesc =>
+      'Configure, build, and try launching the target executable';
+
+  @override
+  String get detectedTaskCmakeBuildDesc =>
+      'Only execute cmake generation and build';
+
+  @override
+  String get detectedTaskCmakeCleanDesc => 'Clean build cache directory';
+
+  @override
+  String get detectedTaskGradleRunDesc => 'Execute application main entrypoint';
+
+  @override
+  String get detectedTaskGradleAssembleDesc => 'Build debug output package';
+
+  @override
+  String get detectedTaskGradleBuildDesc => 'Execute full build and tests';
+
+  @override
+  String get detectedTaskMakeDefaultDesc =>
+      'Execute default Makefile build target';
+
+  @override
+  String get detectedTaskNpmStartDesc =>
+      'Start Node service or frontend development environment';
+
+  @override
+  String get detectedTaskNpmTestDesc => 'Execute npm test suite';
+
+  @override
+  String get detectedTaskCargoRunDesc => 'Compile and run Rust project';
+
+  @override
+  String get detectedTaskCargoBuildDesc => 'Compile Rust project only';
+
+  @override
+  String get detectedTaskDartRunDesc => 'Launch Dart application';
+
+  @override
+  String get detectedTaskSinglePythonDesc => 'Run current Python script';
+
+  @override
+  String get detectedTaskSingleCDesc =>
+      'Compile and execute current C source file';
+
+  @override
+  String get detectedTaskSingleCppDesc =>
+      'Compile and execute current C++ source file';
+
+  @override
+  String get detectedTaskSingleShDesc => 'Run current Shell script';
+
+  @override
+  String get detectedTaskSingleDartDesc => 'Run current Dart file';
+
+  @override
+  String get detectedTaskSingleGoDesc => 'Run current Go source file';
+
+  @override
+  String get detectedTaskSingleRustDesc =>
+      'Compile and execute current Rust source file';
+
+  @override
+  String get detectedTaskSingleJsDesc => 'Run current JavaScript script';
+
+  @override
+  String get missingDistroTitle => 'System Environment Not Ready';
+
+  @override
+  String get noDistroAvailableContent =>
+      'No available Linux execution environment detected.\n\nProject tasks need to run inside a Linux container. Please install or download a Linux system first (e.g. Ubuntu or Alpine).';
+
+  @override
+  String distroNotInstalledContent(String distro) {
+    return 'System \"$distro\" is not installed or has been removed.\n\nPlease install it in System Management or select another available system.';
+  }
+
+  @override
+  String get openFromApp => 'Open from App';
+
+  @override
+  String get openFromExternal => 'Open from External';
+
+  @override
+  String get projectsTitle => 'Projects';
+
+  @override
+  String get newProject => 'New Project';
+
+  @override
+  String get newProjectTitle => 'New Project';
+
+  @override
+  String get projectNameHint => 'Enter project name';
+
+  @override
+  String get renameProject => 'Rename Project';
+
+  @override
+  String get deleteProject => 'Delete Project';
+
+  @override
+  String deleteProjectConfirmMessage(String name) {
+    return 'Are you sure you want to delete project \"$name\"? This action cannot be undone.';
+  }
+
+  @override
+  String get projectAlreadyExists => 'A project with this name already exists';
+
+  @override
+  String get noProjects => 'No projects yet, click top right to create one';
+
+  @override
+  String get projectCreated => 'Project created successfully';
+
+  @override
+  String get projectRenamed => 'Project renamed successfully';
+
+  @override
+  String get projectDeleted => 'Project deleted';
+
+  @override
+  String get importFromExternal => 'Import from External';
+
+  @override
+  String get confirmProjectNameTitle => 'Confirm Project Name';
+
+  @override
+  String get importingProject => 'Importing project...';
+
+  @override
+  String get projectImported => 'Project imported successfully';
+
+  @override
+  String importProjectFailed(String error) {
+    return 'Failed to import project: $error';
+  }
+
+  @override
+  String get unsupportedProjectArchiveFormat =>
+      'Unsupported file format. Only archive files (.zip, .tar.gz, .tar.xz, .tar, etc.) are supported';
+
+  @override
+  String get unsupportedDistroArchiveFormat =>
+      'Unsupported file format. Only system archives (.tar.gz, .tar.xz, .tar) are supported';
 }

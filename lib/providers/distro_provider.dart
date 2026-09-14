@@ -70,7 +70,24 @@ class DistroProvider with ChangeNotifier {
     }
   }
 
-  /// 从应用内置资源导入 Alpine 系统实例
+  /// 从应用内置资源导入 Ubuntu 24.04 系统实例
+  Future<void> importBuiltinUbuntu({
+    required String systemName,
+    InstallProgressCallback? onProgress,
+    bool Function()? isCancelled,
+  }) async {
+    await _manager.importBuiltinUbuntu(
+      systemName: systemName,
+      onProgress: onProgress,
+      isCancelled: isCancelled,
+    );
+
+    // 导入成功后刷新列表并自动选为当前系统
+    await refreshSystems();
+    await selectSystem(systemName);
+  }
+
+  /// 从应用内置资源导入 Alpine 系统实例（保留备用）
   Future<void> importBuiltinAlpine({
     required String systemName,
     InstallProgressCallback? onProgress,

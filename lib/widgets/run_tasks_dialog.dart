@@ -63,10 +63,13 @@ class _RunTasksDialogState extends State<RunTasksDialog> {
     super.dispose();
   }
 
-  bool _matchesQuery(RunTask task) {
+  bool _matchesQuery(RunTask task, AppLocalizations l10n) {
     if (_searchQuery.isEmpty) return true;
-    return task.name.toLowerCase().contains(_searchQuery) ||
+    final name = task.getLocalizedName(l10n);
+    final desc = task.getLocalizedDescription(l10n);
+    return name.toLowerCase().contains(_searchQuery) ||
         task.command.toLowerCase().contains(_searchQuery) ||
+        desc.toLowerCase().contains(_searchQuery) ||
         (task.description?.toLowerCase().contains(_searchQuery) ?? false);
   }
 
@@ -74,8 +77,8 @@ class _RunTasksDialogState extends State<RunTasksDialog> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final l10n = AppLocalizations.of(context)!;
-    final filteredCustom = widget.customTasks.where(_matchesQuery).toList();
-    final filteredDetected = widget.detectedTasks.where(_matchesQuery).toList();
+    final filteredCustom = widget.customTasks.where((t) => _matchesQuery(t, l10n)).toList();
+    final filteredDetected = widget.detectedTasks.where((t) => _matchesQuery(t, l10n)).toList();
     final hasAny = filteredCustom.isNotEmpty || filteredDetected.isNotEmpty;
 
     return Dialog(
@@ -146,12 +149,12 @@ class _RunTasksDialogState extends State<RunTasksDialog> {
                         children: [
                           if (filteredDetected.isNotEmpty) ...[
                             _buildSectionHeader(context, l10n.systemDetectedTasks, Icons.radar_outlined),
-                            ...filteredDetected.map((task) => _buildTaskItem(context, task)),
+                            ...filteredDetected.map((task) => _buildTaskItem(context, task, l10n)),
                             const SizedBox(height: 8),
                           ],
                           if (filteredCustom.isNotEmpty) ...[
                             _buildSectionHeader(context, l10n.userCustomTasks, Icons.person_outline),
-                            ...filteredCustom.map((task) => _buildTaskItem(context, task)),
+                            ...filteredCustom.map((task) => _buildTaskItem(context, task, l10n)),
                           ],
                         ],
                       ),
@@ -183,7 +186,7 @@ class _RunTasksDialogState extends State<RunTasksDialog> {
     );
   }
 
-  Widget _buildTaskItem(BuildContext context, RunTask task) {
+  Widget _buildTaskItem(BuildContext context, RunTask task, AppLocalizations l10n) {
     final theme = Theme.of(context);
     final isLastRun = widget.lastRunTaskId != null && widget.lastRunTaskId == task.id;
 
@@ -194,6 +197,8 @@ class _RunTasksDialogState extends State<RunTasksDialog> {
     final borderColor = isLastRun
         ? Colors.green.withValues(alpha: 0.8)
         : theme.colorScheme.outlineVariant.withValues(alpha: 0.5);
+
+    final localizedDesc = task.getLocalizedDescription(l10n).trim();
 
     return Card(
       margin: const EdgeInsets.symmetric(vertical: 4),
@@ -210,7 +215,7 @@ class _RunTasksDialogState extends State<RunTasksDialog> {
           children: [
             Expanded(
               child: Text(
-                task.name,
+                task.getLocalizedName(l10n),
                 style: TextStyle(
                   fontWeight: FontWeight.w600,
                   color: isLastRun ? Colors.green.shade700 : null,
@@ -233,9 +238,9 @@ class _RunTasksDialogState extends State<RunTasksDialog> {
               ),
           ],
         ),
-        subtitle: (task.description != null && task.description!.trim().isNotEmpty)
+        subtitle: localizedDesc.isNotEmpty
             ? Text(
-                task.description!.trim(),
+                localizedDesc,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(

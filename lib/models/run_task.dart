@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../l10n/app_localizations.dart';
 
 /// 运行任务来源类型
 enum TaskSource {
@@ -48,14 +49,19 @@ class RunTask {
 
   /// 从持久化的 JSON Map 构建自定义运行任务
   factory RunTask.fromJson(Map<String, dynamic> json) {
+    final rawClear = json['clearBeforeRun'];
+    final bool clearVal = (rawClear is bool)
+        ? rawClear
+        : (rawClear is num ? rawClear != 0 : (rawClear?.toString().toLowerCase() == 'true'));
+
     return RunTask(
-      id: json['id'] as String? ?? 'custom_${DateTime.now().microsecondsSinceEpoch}',
-      name: json['name'] as String? ?? '未命名任务',
-      command: json['command'] as String? ?? '',
+      id: json['id']?.toString() ?? 'custom_${DateTime.now().microsecondsSinceEpoch}',
+      name: json['name']?.toString() ?? '未命名任务',
+      command: json['command']?.toString() ?? '',
       source: TaskSource.custom,
-      description: json['description'] as String?,
-      workingDir: json['workingDir'] as String?,
-      clearBeforeRun: json['clearBeforeRun'] as bool? ?? false,
+      description: json['description']?.toString(),
+      workingDir: json['workingDir']?.toString(),
+      clearBeforeRun: clearVal,
     );
   }
 
@@ -69,6 +75,62 @@ class RunTask {
       if (workingDir != null && workingDir!.isNotEmpty) 'workingDir': workingDir,
       'clearBeforeRun': clearBeforeRun,
     };
+  }
+
+  /// 获取多语言本地化的任务描述/小字（自动根据系统探测任务 ID 映射，未匹配或自定义任务返回原本的 description）
+  String getLocalizedDescription(AppLocalizations l10n) {
+    switch (id) {
+      case 'detected_cmake_build_run':
+        return l10n.detectedTaskCmakeBuildRunDesc;
+      case 'detected_cmake_build':
+        return l10n.detectedTaskCmakeBuildDesc;
+      case 'detected_cmake_clean':
+        return l10n.detectedTaskCmakeCleanDesc;
+      case 'detected_gradle_run':
+        return l10n.detectedTaskGradleRunDesc;
+      case 'detected_gradle_assemble':
+        return l10n.detectedTaskGradleAssembleDesc;
+      case 'detected_gradle_build':
+        return l10n.detectedTaskGradleBuildDesc;
+      case 'detected_make_default':
+        return l10n.detectedTaskMakeDefaultDesc;
+      case 'detected_npm_start':
+        return l10n.detectedTaskNpmStartDesc;
+      case 'detected_npm_test':
+        return l10n.detectedTaskNpmTestDesc;
+      case 'detected_cargo_run':
+        return l10n.detectedTaskCargoRunDesc;
+      case 'detected_cargo_build':
+        return l10n.detectedTaskCargoBuildDesc;
+      case 'detected_dart_run':
+        return l10n.detectedTaskDartRunDesc;
+      case 'detected_single_python':
+        return l10n.detectedTaskSinglePythonDesc;
+      case 'detected_single_c':
+        return l10n.detectedTaskSingleCDesc;
+      case 'detected_single_cpp':
+        return l10n.detectedTaskSingleCppDesc;
+      case 'detected_single_sh':
+        return l10n.detectedTaskSingleShDesc;
+      case 'detected_single_dart':
+        return l10n.detectedTaskSingleDartDesc;
+      case 'detected_single_go':
+        return l10n.detectedTaskSingleGoDesc;
+      case 'detected_single_rust':
+        return l10n.detectedTaskSingleRustDesc;
+      case 'detected_single_js':
+        return l10n.detectedTaskSingleJsDesc;
+      default:
+        return description ?? '';
+    }
+  }
+
+  /// 获取多语言本地化的任务名称（自定义且为默认名时返回对应语言的“未命名任务”）
+  String getLocalizedName(AppLocalizations l10n) {
+    if (name == '未命名任务' || name == 'Unnamed Task') {
+      return l10n.unnamedTask;
+    }
+    return name;
   }
 
   RunTask copyWith({

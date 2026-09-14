@@ -1,5 +1,6 @@
 import 'package:code_editor/l10n/app_localizations.dart';
 import 'package:code_editor/models/app_font.dart';
+import 'package:code_editor/models/distro_manifest.dart';
 import 'package:code_editor/models/terminal_session.dart';
 import 'package:code_editor/models/virtual_keyboard_config.dart';
 import 'package:code_editor/providers/distro_provider.dart';
@@ -39,8 +40,13 @@ class _TerminalViewState extends State<TerminalView> {
       final l10n = AppLocalizations.of(context)!;
       final defaultSessionName = l10n.sessionDefaultName;
 
+      final projectRoot = context.read<ProjectProvider?>()?.rootPath;
+
       if (distroProvider == null) {
-        context.read<TerminalProvider>().ensureInitialized(defaultName: defaultSessionName);
+        context.read<TerminalProvider>().ensureInitialized(
+              defaultName: defaultSessionName,
+              workspacePath: projectRoot,
+            );
         return;
       }
 
@@ -48,13 +54,13 @@ class _TerminalViewState extends State<TerminalView> {
       if (!mounted) return;
 
       if (!distroProvider.hasAnySystem) {
-        // 自动从软件内置资源导入 alpine，名称即为 alpine
+        // 自动从软件内置资源导入 Ubuntu 24.04（推荐主力开发环境），名称为 ubuntu
         final success = await DistroExtractDialog.show(
           context: context,
-          systemName: 'alpine',
+          systemName: DistroRepository.defaultSystemName,
           task: (onProgress, isCancelled) {
-            return distroProvider.importBuiltinAlpine(
-              systemName: 'alpine',
+            return distroProvider.importBuiltinUbuntu(
+              systemName: DistroRepository.defaultSystemName,
               onProgress: onProgress,
               isCancelled: isCancelled,
             );
@@ -66,7 +72,8 @@ class _TerminalViewState extends State<TerminalView> {
           if (termProvider.isEmpty) {
             termProvider.createSession(
               name: defaultSessionName,
-              distroId: 'alpine',
+              distroId: DistroRepository.defaultSystemName,
+              workspacePath: projectRoot,
               activate: true,
             );
           }
@@ -75,10 +82,11 @@ class _TerminalViewState extends State<TerminalView> {
         // 已有系统，确保初始化首个会话
         final termProvider = context.read<TerminalProvider>();
         if (termProvider.isEmpty) {
-          final system = distroProvider.selectedSystem ?? 'alpine';
+          final system = distroProvider.selectedSystem ?? DistroRepository.defaultSystemName;
           termProvider.createSession(
             name: defaultSessionName,
             distroId: system,
+            workspacePath: projectRoot,
             activate: true,
           );
         }
@@ -91,16 +99,16 @@ class _TerminalViewState extends State<TerminalView> {
     final theme = Theme.of(context);
     final l10n = AppLocalizations.of(context)!;
     final provider = context.watch<TerminalProvider>();
-    final projectProvider = context.watch<ProjectProvider?>();
 
     final activeSession = provider.activeSession;
     final sessions = provider.sessions;
     final activeIndex = provider.activeIndex;
 
     final titleText = activeSession?.name ?? l10n.sessionDefaultName;
-    final projectRoot = activeSession?.workspacePath ?? projectProvider?.rootPath;
-    final String? subtitleText = (projectRoot != null && projectRoot.trim().isNotEmpty)
-        ? projectRoot.trim()
+    // 副标题严格取自当前会话绑定的工作目录根路径
+    final sessionWorkspace = activeSession?.workspacePath;
+    final String? subtitleText = (sessionWorkspace != null && sessionWorkspace.trim().isNotEmpty)
+        ? sessionWorkspace.trim()
         : null;
 
     return Scaffold(

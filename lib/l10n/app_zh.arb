@@ -164,7 +164,7 @@
   "terminalInputHint": "输入命令...",
   "sendCommandTooltip": "发送命令",
   "importNewSystem": "导入新系统",
-  "importBuiltinAlpine": "从软件中导入 (Alpine)",
+  "importFromApp": "从软件中导入",
   "importExternalTarGz": "从外部导入 (.tar.gz)",
   "selectSystemDefaultPrompt": "选择系统将设为默认系统，新建终端时从该系统中启动：",
   "noSystemsPrompt": "暂无系统，请点击右上角 \"+\" 导入",
@@ -205,8 +205,56 @@
     }
   },
   "permanentDelete": "彻底删除",
+  "distroManagementTitle": "系统管理",
+  "installedStatus": "已安装",
+  "notInstalledStatus": "未安装",
+  "downloadingStatus": "下载中",
+  "downloadAction": "下载",
+  "installAction": "安装",
+  "builtinTag": "内置",
+  "cancelDownloadAction": "取消下载",
+  "cancelDownloadConfirmTitle": "取消下载",
+  "cancelDownloadConfirmMessage": "确定要取消正在下载的系统资源吗？已下载的部分将被清除。",
+  "deletingSystemProgress": "正在删除系统并清理数据，请稍候...",
+  "cannotDeleteBuiltinSystem": "内置系统受到保护，无法删除",
+  "recommendedTag": "推荐",
+  "downloadFailed": "下载失败: {error}",
+  "@downloadFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
   "deleteSystemSuccess": "已彻底删除系统 \"{name}\" 及关联会话",
   "@deleteSystemSuccess": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "deletePackageConfirmTitle": "确认删除安装包",
+  "deletePackageConfirmMessage": "确定要删除 \"{name}\" 的系统安装包吗？删除后可随时重新下载。",
+  "@deletePackageConfirmMessage": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "deletingPackageProgress": "正在删除安装包，请稍候...",
+  "deletePackageSuccess": "已删除 \"{name}\" 安装包",
+  "@deletePackageSuccess": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "deletePackageTooltip": "删除已下载的系统安装包",
+  "importSystemInstanceTitle": "创建 {name} 系统实例",
+  "@importSystemInstanceTitle": {
     "placeholders": {
       "name": {
         "type": "String"
@@ -481,7 +529,7 @@
   "shellCommandEmptyError": "请输入执行指令",
   "taskDescOptional": "任务描述（选填）",
   "taskDescHint": "简要说明此任务的用途",
-  "clearBeforeRun": "执行前清屏 (clear)",
+  "clearBeforeRun": "执行前清屏",
   "clearBeforeRunSubtitle": "在终端输出任务结果前清理历史屏幕",
   "runTasksUpdated": "运行任务配置已更新",
   "detectCompletedMessage": "探测完成，发现 {count} 个可用任务",
@@ -520,5 +568,83 @@
     }
   },
   "unsavedTaskChangesTitle": "未保存的任务更改",
-  "unsavedTaskChangesMessage": "当前任务内容已被修改，是否放弃未保存的修改并返回？"
+  "unsavedTaskChangesMessage": "当前任务内容已被修改，是否放弃未保存的修改并返回？",
+  "downloadSection": "下载",
+  "downloadSource": "下载源",
+  "selectDownloadSource": "选择下载源",
+  "mirrorName": "{mirror, select, tsinghua{清华大学开源软件镜像站 (推荐)} bfsu{北京外国语大学开源软件镜像站} iscas{中国科学院软件研究所开源镜像站} official{LinuxContainers 官方镜像源} other{{mirror}}}",
+  "@mirrorName": {
+    "placeholders": {
+      "mirror": {
+        "type": "String"
+      }
+    }
+  },
+  "unnamedTask": "未命名任务",
+  "shellCommandHelperText": "支持单行指令（如 make）或多行 Shell 脚本（自动封装执行）",
+  "detectedTaskCmakeBuildRunDesc": "配置、编译并尝试启动生成的目标程序",
+  "detectedTaskCmakeBuildDesc": "仅执行 cmake 生成与构建",
+  "detectedTaskCmakeCleanDesc": "清理构建缓存目录",
+  "detectedTaskGradleRunDesc": "执行应用程序主入口",
+  "detectedTaskGradleAssembleDesc": "构建调试输出包",
+  "detectedTaskGradleBuildDesc": "执行完整构建与测试",
+  "detectedTaskMakeDefaultDesc": "执行默认 Makefile 构建目标",
+  "detectedTaskNpmStartDesc": "启动 Node 服务或前端开发环境",
+  "detectedTaskNpmTestDesc": "执行 npm test 测试套件",
+  "detectedTaskCargoRunDesc": "编译并运行 Rust 项目",
+  "detectedTaskCargoBuildDesc": "仅编译 Rust 项目",
+  "detectedTaskDartRunDesc": "启动 Dart 应用",
+  "detectedTaskSinglePythonDesc": "运行当前 Python 脚本",
+  "detectedTaskSingleCDesc": "编译并执行当前 C 源文件",
+  "detectedTaskSingleCppDesc": "编译并执行当前 C++ 源文件",
+  "detectedTaskSingleShDesc": "运行当前 Shell 脚本",
+  "detectedTaskSingleDartDesc": "运行当前 Dart 文件",
+  "detectedTaskSingleGoDesc": "运行当前 Go 源文件",
+  "detectedTaskSingleRustDesc": "编译并执行当前 Rust 源文件",
+  "detectedTaskSingleJsDesc": "运行当前 JS 脚本",
+  "missingDistroTitle": "系统环境未就绪",
+  "noDistroAvailableContent": "未检测到可用的 Linux 执行环境。\n\n工程任务需要在 Linux 容器环境中运行。请先安装或下载 Linux 系统（如 Ubuntu 或 Alpine）。",
+  "distroNotInstalledContent": "系统 \"{distro}\" 尚未安装或已被清理。\n\n请在系统管理中安装该系统，或选择其他已就绪的系统。",
+  "@distroNotInstalledContent": {
+    "placeholders": {
+      "distro": {
+        "type": "String"
+      }
+    }
+  },
+  "openFromApp": "从软件内打开",
+  "openFromExternal": "从外部打开",
+  "projectsTitle": "项目",
+  "newProject": "新建项目",
+  "newProjectTitle": "新建项目",
+  "projectNameHint": "请输入项目名称",
+  "renameProject": "重命名项目",
+  "deleteProject": "删除项目",
+  "deleteProjectConfirmMessage": "确定要删除项目 \"{name}\" 吗？此操作不可逆。",
+  "@deleteProjectConfirmMessage": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "projectAlreadyExists": "已存在同名项目",
+  "noProjects": "暂无项目，点击右上角新建项目",
+  "projectCreated": "项目创建成功",
+  "projectRenamed": "项目重命名成功",
+  "projectDeleted": "项目已删除",
+  "importFromExternal": "从外部导入",
+  "confirmProjectNameTitle": "确认项目名称",
+  "importingProject": "正在导入项目...",
+  "projectImported": "项目导入成功",
+  "importProjectFailed": "导入项目失败: {error}",
+  "@importProjectFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "unsupportedProjectArchiveFormat": "不支持的文件格式，仅支持压缩包格式 (.zip, .tar.gz, .tar.xz, .tar 等)",
+  "unsupportedDistroArchiveFormat": "不支持的文件格式，仅支持系统镜像包 (.tar.gz, .tar.xz, .tar)"
 }
