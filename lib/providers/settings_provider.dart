@@ -50,7 +50,7 @@ class SettingsProvider extends ChangeNotifier {
   int _indentSize = 4;
   bool _wordWrap = false;
   bool _showLineNumbers = true;
-  bool _pinLineNumbers = true;
+  bool _pinLineNumbers = false;
   bool _enableVirtualKeyboard = defaultTargetPlatform == TargetPlatform.android || defaultTargetPlatform == TargetPlatform.iOS;
   String _virtualKeyboardConfigJson = VirtualKeyboardConfig.defaultJsonPretty();
   VirtualKeyboardConfig _virtualKeyboardConfig = VirtualKeyboardConfig.defaultConfiguration();

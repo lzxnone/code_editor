@@ -44,7 +44,11 @@ void main() {
       focusNode.dispose();
     });
 
-    Widget buildTestWidget({Locale locale = const Locale('zh')}) {
+    Widget buildTestWidget({
+      Locale locale = const Locale('zh'),
+      ScrollController? scrollController,
+      double height = 600,
+    }) {
       return MaterialApp(
         locale: locale,
         localizationsDelegates: AppLocalizations.localizationsDelegates,
@@ -52,17 +56,19 @@ void main() {
         home: Scaffold(
           body: SizedBox(
             width: 400,
-            height: 600,
+            height: height,
             child: TerminalSelectionOverlay(
               terminal: terminal,
               controller: controller,
               terminalViewKey: terminalViewKey,
               focusNode: focusNode,
+              scrollController: scrollController,
               child: xterm.TerminalView(
                 terminal,
                 key: terminalViewKey,
                 controller: controller,
                 focusNode: focusNode,
+                scrollController: scrollController,
               ),
             ),
           ),
@@ -255,6 +261,228 @@ void main() {
       expect(controller.selection, isNotNull);
       expect(controller.selection!.isCollapsed, isFalse);
       // 验证菜单是否弹出
+      expect(find.text('复制'), findsOneWidget);
+    });
+
+    testWidgets('弹出菜单不包含任何图标，仅保留纯文本且带有分割线', (tester) async {
+      terminal.write('Hello Clean Menu\r\n');
+      await tester.pumpWidget(buildTestWidget());
+      await tester.pumpAndSettle();
+
+      controller.setSelection(
+        terminal.buffer.createAnchor(0, 0),
+        terminal.buffer.createAnchor(5, 0),
+      );
+      await tester.pumpAndSettle();
+
+      // 菜单已弹出
+      expect(find.text('复制'), findsOneWidget);
+      expect(find.text('粘贴'), findsOneWidget);
+      expect(find.text('全选'), findsOneWidget);
+
+      // 验证菜单中无任何 Icon 组件，保持与代码编辑区一致的纯文本清爽风格
+      final copyItemFinder = find.ancestor(
+        of: find.text('复制'),
+        matching: find.byType(Row),
+      );
+      expect(copyItemFinder, findsOneWidget);
+      expect(
+        find.descendant(of: copyItemFinder, matching: find.byType(Icon)),
+        findsNothing,
+      );
+      expect(
+        find.descendant(of: copyItemFinder, matching: find.byType(VerticalDivider)),
+        findsWidgets,
+      );
+    });
+
+    testWidgets('多行选区时弹出菜单显示在顶部安全区，绝不遮挡多行文本', (tester) async {
+      terminal.write('Line 1\r\nLine 2\r\nLine 3\r\nLine 4\r\n');
+      await tester.pumpWidget(buildTestWidget());
+      await tester.pumpAndSettle();
+
+      // 跨越 3 行的选区
+      controller.setSelection(
+        terminal.buffer.createAnchor(0, 0),
+        terminal.buffer.createAnchor(5, 3),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('复制'), findsOneWidget);
+
+      // 菜单顶部位置应位于顶部（screenTop，y <= 50）
+      final menuTop = tester.getTopLeft(find.text('复制')).dy;
+      expect(menuTop, lessThanOrEqualTo(50.0));
+    });
+
+    testWidgets('边界框选时弹出菜单被安全夹紧在屏幕安全边界内，绝不超出屏幕', (tester) async {
+      terminal.write('1234567890123456789012345678901234567890\r\n');
+      await tester.pumpWidget(buildTestWidget());
+      await tester.pumpAndSettle();
+
+      // 靠右侧的选区
+      controller.setSelection(
+        terminal.buffer.createAnchor(25, 0),
+        terminal.buffer.createAnchor(35, 0),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('复制'), findsOneWidget);
+      final copyFinder = find.text('复制');
+      final selectAllFinder = find.text('全选');
+
+      final copyRect = tester.getRect(copyFinder);
+      final selectAllRect = tester.getRect(selectAllFinder);
+
+      // 整个菜单的 x 坐标都在 0 到 400（测试容器宽度）之间
+      expect(copyRect.left, greaterThanOrEqualTo(0.0));
+      expect(selectAllRect.right, lessThanOrEqualTo(400.0));
+    });
+
+    testWidgets('拖动结束手柄至终端底部边缘时自动向下滚动并扩展选区', (tester) async {
+      for (int i = 0; i < 60; i++) {
+        terminal.write('Terminal Line $i\r\n');
+      }
+      final scrollController = ScrollController();
+      addTearDown(scrollController.dispose);
+
+      await tester.pumpWidget(buildTestWidget(scrollController: scrollController, height: 300));
+      await tester.pumpAndSettle();
+
+      scrollController.jumpTo(0.0);
+      await tester.pumpAndSettle();
+      expect(scrollController.position.pixels, equals(0.0));
+
+      final render = terminalViewKey.currentState!.renderTerminal;
+      final startCell = render.getCellOffset(const Offset(30, 40));
+      final endCell = render.getCellOffset(const Offset(100, 60));
+      controller.setSelection(
+        terminal.buffer.createAnchorFromOffset(startCell),
+        terminal.buffer.createAnchorFromOffset(endCell),
+      );
+      await tester.pumpAndSettle();
+
+      final handleFinder = find.byWidgetPredicate(
+        (w) => w.runtimeType.toString() == '_TerminalSelectionHandle',
+      );
+      expect(handleFinder, findsNWidgets(2));
+
+      // 拖拽结束手柄移动到终端底部边缘（y = 295）
+      final gesture = await tester.startGesture(tester.getCenter(handleFinder.last));
+      await tester.pump();
+      await gesture.moveTo(const Offset(200, 295));
+      await tester.pump();
+
+      await tester.pump(const Duration(milliseconds: 100));
+      await tester.pump(const Duration(milliseconds: 100));
+      await tester.pump(const Duration(milliseconds: 100));
+
+      // 验证终端已经自动向下滚动，pixels 大于 0
+      expect(scrollController.position.pixels, greaterThan(0.0));
+      // 验证选区向下扩展
+      expect(controller.selection!.end.y, greaterThan(endCell.y));
+
+      // 松手后停止自动滚动并展示菜单
+      await gesture.up();
+      await tester.pumpAndSettle();
+      expect(find.text('复制'), findsOneWidget);
+    });
+
+    testWidgets('拖动起始手柄至终端顶部边缘时自动向上滚动', (tester) async {
+      for (int i = 0; i < 60; i++) {
+        terminal.write('Terminal History Line $i\r\n');
+      }
+      final scrollController = ScrollController();
+      addTearDown(scrollController.dispose);
+
+      await tester.pumpWidget(buildTestWidget(scrollController: scrollController, height: 300));
+      await tester.pumpAndSettle();
+
+      // 滚动到中间位置
+      scrollController.jumpTo(250.0);
+      await tester.pumpAndSettle();
+      final initialPixels = scrollController.position.pixels;
+      expect(initialPixels, equals(250.0));
+
+      // 在视口内精准设置可见选区
+      final render = terminalViewKey.currentState!.renderTerminal;
+      final startCell = render.getCellOffset(const Offset(30, 100));
+      final endCell = render.getCellOffset(const Offset(100, 180));
+      controller.setSelection(
+        terminal.buffer.createAnchorFromOffset(startCell),
+        terminal.buffer.createAnchorFromOffset(endCell),
+      );
+      await tester.pumpAndSettle();
+
+      final handleFinder = find.byWidgetPredicate(
+        (w) => w.runtimeType.toString() == '_TerminalSelectionHandle',
+      );
+      expect(handleFinder, findsNWidgets(2));
+
+      // 拖拽起始手柄至终端顶部边缘（y = 10）
+      final gesture = await tester.startGesture(tester.getCenter(handleFinder.first));
+      await tester.pump();
+      await gesture.moveTo(const Offset(200, 10));
+      await tester.pump();
+
+      await tester.pump(const Duration(milliseconds: 100));
+      await tester.pump(const Duration(milliseconds: 100));
+      await tester.pump(const Duration(milliseconds: 100));
+
+      // 验证终端已经自动向上滚动，当前 pixels 小于初始 pixels
+      expect(scrollController.position.pixels, lessThan(initialPixels));
+
+      await gesture.up();
+      await tester.pumpAndSettle();
+      expect(find.text('复制'), findsOneWidget);
+    });
+
+    testWidgets('自动滚动中途手指松开时立即停止滚动，后续不会继续发生任何自动滚动', (tester) async {
+      for (int i = 0; i < 60; i++) {
+        terminal.write('Terminal Stop Test Line $i\r\n');
+      }
+      final scrollController = ScrollController();
+      addTearDown(scrollController.dispose);
+
+      await tester.pumpWidget(buildTestWidget(scrollController: scrollController, height: 300));
+      await tester.pumpAndSettle();
+
+      scrollController.jumpTo(0.0);
+      await tester.pumpAndSettle();
+
+      final render = terminalViewKey.currentState!.renderTerminal;
+      final startCell = render.getCellOffset(const Offset(30, 40));
+      final endCell = render.getCellOffset(const Offset(100, 60));
+      controller.setSelection(
+        terminal.buffer.createAnchorFromOffset(startCell),
+        terminal.buffer.createAnchorFromOffset(endCell),
+      );
+      await tester.pumpAndSettle();
+
+      final handleFinder = find.byWidgetPredicate(
+        (w) => w.runtimeType.toString() == '_TerminalSelectionHandle',
+      );
+      expect(handleFinder, findsNWidgets(2));
+
+      // 拖拽结束手柄至底部边缘触发自动滚动
+      final gesture = await tester.startGesture(tester.getCenter(handleFinder.last));
+      await tester.pump();
+      await gesture.moveTo(const Offset(200, 295));
+      await tester.pump(const Duration(milliseconds: 100));
+
+      final scrollPixelsBeforeRelease = scrollController.position.pixels;
+      expect(scrollPixelsBeforeRelease, greaterThan(0.0));
+
+      // 手指松开
+      await gesture.up();
+      await tester.pump();
+
+      // 在松手之后经过 200ms，验证滚动位置保持绝对静止，绝不继续自动滚动！
+      await tester.pump(const Duration(milliseconds: 200));
+      expect(scrollController.position.pixels, equals(scrollPixelsBeforeRelease));
+
+      await tester.pumpAndSettle();
+      expect(scrollController.position.pixels, equals(scrollPixelsBeforeRelease));
       expect(find.text('复制'), findsOneWidget);
     });
   });

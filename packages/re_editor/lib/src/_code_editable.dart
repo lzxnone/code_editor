@@ -28,6 +28,8 @@ class _CodeEditable extends StatefulWidget {
   final EdgeInsetsGeometry margin;
   final Widget? leadingDivider;
   final bool pinLineNumbers;
+  final double extraHorizontalScroll;
+  final double? extraVerticalScroll;
   final Border? border;
   final BorderRadius? borderRadius;
   final Clip clipBehavior;
@@ -69,7 +71,9 @@ class _CodeEditable extends StatefulWidget {
     required this.padding,
     required this.margin,
     required this.leadingDivider,
-    this.pinLineNumbers = true,
+    this.pinLineNumbers = false,
+    this.extraHorizontalScroll = 160.0,
+    this.extraVerticalScroll,
     this.border,
     this.borderRadius,
     this.clipBehavior = Clip.none,
@@ -313,10 +317,15 @@ class _CodeEditableState extends State<_CodeEditable> with AutomaticKeepAliveCli
       onTapOutside: (_) {
         widget.focusNode.unfocus();
       },
-      child: NotificationListener(
+      child: NotificationListener<ScrollNotification>(
         onNotification: (notification) {
           if (notification is ScrollStartNotification) {
             widget.selectionOverlayController.hideToolbar();
+            if (notification.metrics.axis == Axis.horizontal) {
+              _stopScroller(widget.scrollController.verticalScroller);
+            } else if (notification.metrics.axis == Axis.vertical) {
+              _stopScroller(widget.scrollController.horizontalScroller);
+            }
           } else if (notification is ScrollEndNotification) {
             if (!widget.controller.selection.isCollapsed && widget.controller.selection.baseOffset != -1) {
               WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -333,6 +342,17 @@ class _CodeEditableState extends State<_CodeEditable> with AutomaticKeepAliveCli
         child: child
       )
     );
+  }
+
+  void _stopScroller(ScrollController scroller) {
+    if (!scroller.hasClients) return;
+    for (final position in scroller.positions) {
+      if (position is CodeEditorScrollPosition) {
+        position.stopScrolling();
+      } else if (position.activity?.isScrolling == true) {
+        position.hold(() {});
+      }
+    }
   }
 
   Widget _buildCodeField(ViewportOffset vertical, ViewportOffset? horizontal) {
@@ -364,6 +384,8 @@ class _CodeEditableState extends State<_CodeEditable> with AutomaticKeepAliveCli
       cursorWidth: widget.cursorWidth,
       padding: widget.padding,
       readOnly: widget.readOnly,
+      extraHorizontalScroll: widget.extraHorizontalScroll,
+      extraVerticalScroll: widget.extraVerticalScroll,
       // Enable long text rendering when the find is on.
       maxLengthSingleLineRendering: widget.findController.value != null ? null : widget.maxLengthSingleLineRendering,
       startHandleLayerLink: widget.startHandleLayerLink,

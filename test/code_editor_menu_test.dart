@@ -302,7 +302,7 @@ void main() {
       final flippedAbovePos = tester.getTopLeft(find.byType(Material).last);
       expect(flippedAbovePos.dy, lessThan(530));
 
-      // 5. center: 居中显示
+      // 5. center: 改为在屏幕最上方贴边显示（避免在中间遮挡文本，允许覆盖 TabBar/AppBar）
       controller.show(
         context: buildCtx,
         controller: codeController,
@@ -317,10 +317,11 @@ void main() {
         visibility: visibility,
       );
       await tester.pumpAndSettle();
-      final centerPos = tester.getCenter(find.byType(Material).last);
-      expect((centerPos.dy - 300).abs(), lessThan(30));
+      final centerPos = tester.getTopLeft(find.byType(Material).last);
+      // 位于屏幕最上方（screenTop = mediaQuery.padding.top + 6.0，在测试默认环境下为 6.0）
+      expect(centerPos.dy, closeTo(6.0, 1.0));
 
-      // 6. top: 顶部贴边
+      // 6. top: 同样在屏幕最上方贴边显示
       controller.show(
         context: buildCtx,
         controller: codeController,
@@ -336,7 +337,7 @@ void main() {
       );
       await tester.pumpAndSettle();
       final topPos = tester.getTopLeft(find.byType(Material).last);
-      expect(topPos.dy, closeTo(110, 10));
+      expect(topPos.dy, closeTo(6.0, 1.0));
 
       // 7. bottom: 底部贴边
       controller.show(

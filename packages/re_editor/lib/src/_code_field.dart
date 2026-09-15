@@ -25,6 +25,8 @@ class _CodeField extends SingleChildRenderObjectWidget {
   final double floatingCursorWidth;
   final EdgeInsetsGeometry padding;
   final bool readOnly;
+  final double extraHorizontalScroll;
+  final double? extraVerticalScroll;
   final int? maxLengthSingleLineRendering;
   final LayerLink startHandleLayerLink;
   final LayerLink endHandleLayerLink;
@@ -54,6 +56,8 @@ class _CodeField extends SingleChildRenderObjectWidget {
     floatingCursorWidth,
     required this.padding,
     required this.readOnly,
+    this.extraHorizontalScroll = 160.0,
+    this.extraVerticalScroll,
     this.maxLengthSingleLineRendering,
     required this.startHandleLayerLink,
     required this.endHandleLayerLink,
@@ -87,6 +91,8 @@ class _CodeField extends SingleChildRenderObjectWidget {
     floatingCursorWidth: floatingCursorWidth,
     padding: padding,
     readOnly: readOnly,
+    extraHorizontalScroll: extraHorizontalScroll,
+    extraVerticalScroll: extraVerticalScroll,
     maxLengthSingleLineRendering: maxLengthSingleLineRendering,
     startHandleLayerLink: startHandleLayerLink,
     endHandleLayerLink: endHandleLayerLink,
@@ -118,6 +124,8 @@ class _CodeField extends SingleChildRenderObjectWidget {
       ..floatingCursorWidth = floatingCursorWidth
       ..padding = padding
       ..readOnly = readOnly
+      ..extraHorizontalScroll = extraHorizontalScroll
+      ..extraVerticalScroll = extraVerticalScroll
       ..maxLengthSingleLineRendering = maxLengthSingleLineRendering
       ..startHandleLayerLink = startHandleLayerLink
       ..endHandleLayerLink = endHandleLayerLink;
@@ -143,6 +151,8 @@ class _CodeFieldRender extends RenderBox implements MouseTrackerAnnotation {
   ValueChanged<List<CodeLineRenderParagraph>> _onRenderParagraphsChanged;
   EdgeInsetsGeometry _padding;
   bool _readOnly;
+  double _extraHorizontalScroll;
+  double? _extraVerticalScroll;
   int? _maxLengthSingleLineRendering;
   Color? _chunkIndicatorColor;
 
@@ -184,6 +194,8 @@ class _CodeFieldRender extends RenderBox implements MouseTrackerAnnotation {
     required double floatingCursorWidth,
     required EdgeInsetsGeometry padding,
     required bool readOnly,
+    double extraHorizontalScroll = 160.0,
+    double? extraVerticalScroll,
     int? maxLengthSingleLineRendering,
     required LayerLink startHandleLayerLink,
     required LayerLink endHandleLayerLink,
@@ -201,6 +213,8 @@ class _CodeFieldRender extends RenderBox implements MouseTrackerAnnotation {
     _onRenderParagraphsChanged = onRenderParagraphsChanged,
     _padding = padding,
     _readOnly = readOnly,
+    _extraHorizontalScroll = extraHorizontalScroll,
+    _extraVerticalScroll = extraVerticalScroll,
     _maxLengthSingleLineRendering = maxLengthSingleLineRendering,
     _chunkIndicatorColor = chunkIndicatorColor,
     _paint = Paint(),
@@ -528,6 +542,22 @@ class _CodeFieldRender extends RenderBox implements MouseTrackerAnnotation {
       return;
     }
     _maxLengthSingleLineRendering = value;
+    markNeedsLayout();
+  }
+
+  double get extraHorizontalScroll => _extraHorizontalScroll;
+
+  set extraHorizontalScroll(double value) {
+    if (_extraHorizontalScroll == value) return;
+    _extraHorizontalScroll = value;
+    markNeedsLayout();
+  }
+
+  double? get extraVerticalScroll => _extraVerticalScroll;
+
+  set extraVerticalScroll(double? value) {
+    if (_extraVerticalScroll == value) return;
+    _extraVerticalScroll = value;
     markNeedsLayout();
   }
 
@@ -1312,7 +1342,7 @@ class _CodeFieldRender extends RenderBox implements MouseTrackerAnnotation {
       if (target <= paddingTop) {
         startIndex = 0;
       } else {
-        startIndex = min(((target - paddingTop) / _preferredLineHeight).ceil(), _codes.length - 1);
+        startIndex = min(((target - paddingTop) / _preferredLineHeight).ceil(), max(0, _codes.length - 1));
       }
       _displayParagraphs.addAll(_buildDisplayRenderParagraphs(startIndex, effectiveWidth));
     } else {
@@ -1342,7 +1372,7 @@ class _CodeFieldRender extends RenderBox implements MouseTrackerAnnotation {
         if (target <= paddingTop) {
           startIndex = 0;
         } else {
-          startIndex = (target / _preferredLineHeight).floor();
+          startIndex = min((target / _preferredLineHeight).floor(), max(0, _codes.length - 1));
         }
         _displayParagraphs.clear();
         _displayParagraphs.addAll(_buildDisplayRenderParagraphs(startIndex, effectiveWidth));
@@ -1364,18 +1394,27 @@ class _CodeFieldRender extends RenderBox implements MouseTrackerAnnotation {
     }
     // The codes length maybe changed, this will make the displayParagraphs empty.
     if (_displayParagraphs.isEmpty) {
-      _updateDisplayRenderParagraphs();
-      return;
+      if (_codes.isNotEmpty) {
+        _displayParagraphs.addAll(_buildDisplayRenderParagraphs(max(0, _codes.length - 1), effectiveWidth));
+      }
+      if (_displayParagraphs.isEmpty) {
+        return;
+      }
     }
     final double totalHeight = _displayParagraphs.last.bottom + (_codes.length - (_displayParagraphs.last.index + 1)) * _preferredLineHeight + paddingBottom;
-    _verticalViewportSize = max(0, totalHeight - size.height);
+    final double extraBottom = _extraVerticalScroll ?? max(0.0, size.height * 0.5);
+    _verticalViewportSize = max(0, totalHeight - size.height + extraBottom);
     if (_verticalViewport.pixels > _verticalViewportSize!) {
       _verticalViewport.correctBy(_verticalViewportSize! - _verticalViewport.pixels);
     }
     _verticalViewport.applyContentDimensions(0, _verticalViewportSize!);
     if (_horizontalViewport != null) {
       final double maxWidth = _displayParagraphs.map((e) => e.width).reduce(max);
-      _horizontalViewportSize = max(0, maxWidth + _padding.horizontal - size.width);
+      if (maxWidth + _padding.horizontal > size.width) {
+        _horizontalViewportSize = max(0, maxWidth + _padding.horizontal - size.width + _extraHorizontalScroll);
+      } else {
+        _horizontalViewportSize = 0;
+      }
       _horizontalViewport!.applyContentDimensions(0, _horizontalViewportSize!);
     }
     // applyContentDimensions will change the _verticalViewport.pixels, we should rebuild.
@@ -1578,6 +1617,7 @@ class _CodeFieldRender extends RenderBox implements MouseTrackerAnnotation {
   }
 
   List<CodeLineRenderParagraph> _buildDisplayRenderParagraphs(int startIndex, double maxWidth) {
+    startIndex = min(max(0, startIndex), max(0, _codes.length - 1));
     double offset = startIndex * _preferredLineHeight;
     final List<CodeLineRenderParagraph> paragraphs = [];
     for (int i = startIndex; i < _codes.length; i++) {

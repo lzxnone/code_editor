@@ -37,12 +37,15 @@ class _CodeSelectionGestureDetectorState extends State<_CodeSelectionGestureDete
 
   _CodeFieldRender? get render => widget.editorKey.currentContext?.findRenderObject() as _CodeFieldRender?;
 
+  int _activePointers = 0;
+  bool _isMultiTouch = false;
   bool _tapping = false;
 
   @override
   Widget build(BuildContext context) {
+    final Widget detector;
     if (_isMobile) {
-      return GestureDetector(
+      detector = GestureDetector(
         onLongPressMoveUpdate: (details) {
           if (_longPressOnSelection == true) {
             return;
@@ -80,8 +83,10 @@ class _CodeSelectionGestureDetectorState extends State<_CodeSelectionGestureDete
           _longPressOnSelection = false;
           _dragging = false;
           render?.stopAutoScroll();
-          widget.selectionOverlayController.hideToolbar();
-          widget.selectionOverlayController.hideHandle();
+          if (!_isMultiTouch) {
+            widget.selectionOverlayController.hideToolbar();
+            widget.selectionOverlayController.hideHandle();
+          }
         },
         onLongPressUp: () {
           _dragPosition = null;
@@ -167,6 +172,37 @@ class _CodeSelectionGestureDetectorState extends State<_CodeSelectionGestureDete
         ),
       );
     }
+
+    return Listener(
+      behavior: HitTestBehavior.translucent,
+      onPointerDown: (event) {
+        _activePointers++;
+        if (_activePointers >= 2) {
+          _isMultiTouch = true;
+        }
+      },
+      onPointerUp: (event) {
+        _activePointers = max(0, _activePointers - 1);
+        if (_activePointers == 0) {
+          SchedulerBinding.instance.addPostFrameCallback((_) {
+            if (mounted && _activePointers == 0) {
+              _isMultiTouch = false;
+            }
+          });
+        }
+      },
+      onPointerCancel: (event) {
+        _activePointers = max(0, _activePointers - 1);
+        if (_activePointers == 0) {
+          SchedulerBinding.instance.addPostFrameCallback((_) {
+            if (mounted && _activePointers == 0) {
+              _isMultiTouch = false;
+            }
+          });
+        }
+      },
+      child: detector,
+    );
   }
 
   bool get _isMobile => kIsAndroid || kIsIOS;
@@ -178,6 +214,9 @@ class _CodeSelectionGestureDetectorState extends State<_CodeSelectionGestureDete
     }.contains);
 
   void _onMobileTapDown(Offset position) {
+    if (_isMultiTouch) {
+      return;
+    }
     if (!widget.controller.selection.isCollapsed && _isPositionOnSelection(position)) {
       return;
     }
@@ -187,6 +226,12 @@ class _CodeSelectionGestureDetectorState extends State<_CodeSelectionGestureDete
   }
 
   void _onMobileTapUp(Offset position) {
+    if (_isMultiTouch) {
+      if (!widget.controller.selection.isCollapsed) {
+        widget.selectionOverlayController.showHandle(context);
+      }
+      return;
+    }
     final DateTime now = DateTime.now();
     if (_pointerTapTimestamp != null && (now.millisecondsSinceEpoch - _pointerTapTimestamp!.millisecondsSinceEpoch) <
       kDoubleTapTimeout.inMilliseconds && _pointerTapPosition != null && _pointerTapPosition!.isSamePosition(position)) {
@@ -662,9 +707,9 @@ class _MobileSelectionOverlayController implements _SelectionOverlayController {
               : 0;
 
           if (selection.startIndex <= firstVisibleLine && selection.endIndex >= lastVisibleLine) {
-            // 框选文本完全占据当前屏幕：在中间显示
-            placement = EditorToolbarPlacement.center;
-            targetOffset = editingRegion.center;
+            // 框选文本完全占据当前屏幕：显示在上方（避免在中间遮挡文本）
+            placement = EditorToolbarPlacement.top;
+            targetOffset = Offset(editingRegion.center.dx, editingRegion.top);
           } else if (selection.endIndex < firstVisibleLine) {
             // 选区整体在屏幕上方：在上面显示
             placement = EditorToolbarPlacement.top;
@@ -674,9 +719,9 @@ class _MobileSelectionOverlayController implements _SelectionOverlayController {
             placement = EditorToolbarPlacement.bottom;
             targetOffset = Offset(editingRegion.center.dx, editingRegion.bottom);
           } else {
-            // 兜底（水平滚动偏离等异常情况）：在中间显示
-            placement = EditorToolbarPlacement.center;
-            targetOffset = editingRegion.center;
+            // 兜底（水平滚动偏离等异常情况）：显示在上方（避免在中间遮挡文本）
+            placement = EditorToolbarPlacement.top;
+            targetOffset = Offset(editingRegion.center.dx, editingRegion.top);
           }
         }
       }
@@ -757,6 +802,10 @@ class _MobileSelectionOverlayController implements _SelectionOverlayController {
   void _buildHandles(BuildContext context) {
     final bool isCollapsed = controller.selection.isCollapsed;
     if (_handleCollapsed == isCollapsed) {
+      if (_handles != null) {
+        _handles![0].markNeedsBuild();
+        _handles![1].markNeedsBuild();
+      }
       return;
     }
     _handleCollapsed = isCollapsed;

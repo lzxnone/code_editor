@@ -199,7 +199,7 @@ class CodeEditor extends StatefulWidget {
     this.shortcutsActivatorsBuilder,
     this.shortcutOverrideActions,
     this.leadingDivider,
-    this.pinLineNumbers = true,
+    this.pinLineNumbers = false,
     this.border,
     this.borderRadius,
     this.clipBehavior = Clip.none,
@@ -212,6 +212,8 @@ class CodeEditor extends StatefulWidget {
     this.maxLengthSingleLineRendering,
     this.chunkAnalyzer,
     this.commentFormatter,
+    this.extraHorizontalScroll = 160.0,
+    this.extraVerticalScroll,
   }) : assert(indicatorBuilder != null || (indicatorBuilder == null && leadingDivider == null));
 
   /// Similar to [TextField], editor uses [CodeLineEditingController] as the content controller.
@@ -272,6 +274,14 @@ class CodeEditor extends StatefulWidget {
 
   /// Whether line numbers and indicator are pinned to the left during horizontal scroll.
   final bool pinLineNumbers;
+
+  /// Extra horizontal scrollable distance (overscroll beyond the longest line).
+  final double extraHorizontalScroll;
+
+  /// Extra vertical scrollable distance (overscroll beyond the last line).
+  /// If null, defaults to half of the viewport height (size.height * 0.5), allowing
+  /// the last line to scroll up to the center of the viewport.
+  final double? extraVerticalScroll;
 
   /// The border of the editor.
   final Border? border;
@@ -528,6 +538,8 @@ class _CodeEditorState extends State<CodeEditor> {
       showCursorWhenReadOnly: widget.showCursorWhenReadOnly ?? true,
       leadingDivider: widget.leadingDivider,
       pinLineNumbers: widget.pinLineNumbers,
+      extraHorizontalScroll: widget.extraHorizontalScroll,
+      extraVerticalScroll: widget.extraVerticalScroll,
       border: widget.border,
       borderRadius: widget.borderRadius,
       clipBehavior: widget.clipBehavior,

@@ -2766,6 +2766,163 @@ void main() {
         tempDir.deleteSync(recursive: true);
       } catch (_) {}
     });
+
+    testWidgets('CodeEditorWidget pinch-to-zoom preserves text selection and handles', (tester) async {
+      final tempDir = Directory.systemTemp.createTempSync('editor_zoom_selection_test');
+      final testFile = File('${tempDir.path}/test.dart')..writeAsStringSync('void main() {\n  print("hello");\n}');
+
+      final settingsProvider = SettingsProvider();
+      await settingsProvider.init();
+      await settingsProvider.setFontSize(14.0);
+
+      final tabProvider = TabProvider();
+      await tabProvider.init();
+      tabProvider.openTabs.add(
+        EditorTabItem(
+          path: testFile.path,
+          content: 'void main() {\n  print("hello");\n}',
+          originalContent: 'void main() {\n  print("hello");\n}',
+          isLoaded: true,
+          isModified: false,
+        ),
+      );
+
+      await tester.pumpWidget(
+        MultiProvider(
+          providers: [
+            ChangeNotifierProvider.value(value: settingsProvider),
+            ChangeNotifierProvider.value(value: tabProvider),
+          ],
+          child: MaterialApp(
+            home: Scaffold(
+              body: CodeEditorWidget(
+                rootPath: tempDir.path,
+                filePath: testFile.path,
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final codeEditor = tester.widget<CodeEditor>(find.byType(CodeEditor));
+      final controller = codeEditor.controller!;
+
+      // Select 'void' (0..4 on line 0)
+      controller.selection = const CodeLineSelection(
+        baseIndex: 0,
+        baseOffset: 0,
+        extentIndex: 0,
+        extentOffset: 4,
+      );
+      await tester.pumpAndSettle();
+      expect(controller.selection.isCollapsed, isFalse);
+
+      // Simulate 2-pointer pinch gesture
+      final gesture1 = await tester.createGesture();
+      final gesture2 = await tester.createGesture();
+
+      await gesture1.down(const Offset(200, 300));
+      await gesture2.down(const Offset(200, 350));
+      await tester.pump();
+
+      await gesture2.moveTo(const Offset(200, 400));
+      await tester.pump();
+
+      await gesture1.up();
+      await gesture2.up();
+      await tester.pumpAndSettle();
+
+      // Selection must NOT be collapsed or lost!
+      expect(controller.selection.isCollapsed, isFalse);
+      expect(controller.selection.baseOffset, 0);
+      expect(controller.selection.extentOffset, 4);
+      expect(settingsProvider.fontSize, 28.0);
+
+      try {
+        tempDir.deleteSync(recursive: true);
+      } catch (_) {}
+    });
+
+    testWidgets('CodeEditorWidget pinch-to-zoom anchors zoom to focal point (compensates scroll offset)', (tester) async {
+      final tempDir = Directory.systemTemp.createTempSync('editor_zoom_focal_test');
+      final lines = List.generate(100, (i) => 'Line $i: abcdefghijklmnopqrstuvwxyz').join('\n');
+      final testFile = File('${tempDir.path}/test.dart')..writeAsStringSync(lines);
+
+      final settingsProvider = SettingsProvider();
+      await settingsProvider.init();
+      await settingsProvider.setFontSize(14.0);
+
+      final tabProvider = TabProvider();
+      await tabProvider.init();
+      tabProvider.openTabs.add(
+        EditorTabItem(
+          path: testFile.path,
+          content: lines,
+          originalContent: lines,
+          isLoaded: true,
+          isModified: false,
+        ),
+      );
+
+      await tester.pumpWidget(
+        MultiProvider(
+          providers: [
+            ChangeNotifierProvider.value(value: settingsProvider),
+            ChangeNotifierProvider.value(value: tabProvider),
+          ],
+          child: MaterialApp(
+            home: Scaffold(
+              body: SizedBox(
+                width: 400,
+                height: 500,
+                child: CodeEditorWidget(
+                  rootPath: tempDir.path,
+                  filePath: testFile.path,
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final codeEditor = tester.widget<CodeEditor>(find.byType(CodeEditor));
+      final scrollController = codeEditor.scrollController!;
+      final vScroller = scrollController.verticalScroller;
+
+      expect(vScroller.offset, 0.0);
+
+      // Simulate 2-pointer pinch gesture near the bottom of the editor viewport
+      // Focal point dy = (350 + 450) / 2 = 400.0
+      final gesture1 = await tester.createGesture();
+      final gesture2 = await tester.createGesture();
+
+      await gesture1.down(const Offset(200, 350));
+      await gesture2.down(const Offset(200, 450)); // Initial distance: 100.0
+      await tester.pump();
+
+      // Zoom in by increasing distance to 150.0 (1.5x scale) -> target font size: 14 * 1.5 = 21.0
+      // Focal point moves from 400.0 to (350 + 500) / 2 = 425.0
+      // Target scrollV = (0 + 400.0) * 1.5 - 425.0 = 600.0 - 425.0 = 175.0
+      await gesture2.moveTo(const Offset(200, 500));
+      await tester.pump();
+
+      // Without focal anchor, vScroller.offset would remain 0.0, causing bottom text to fly down.
+      // With focal anchor, vScroller.offset is compensated to keep the focal point steady.
+      expect(vScroller.offset, greaterThan(100.0));
+
+      await gesture1.up();
+      await gesture2.up();
+      await tester.pumpAndSettle();
+
+      expect(settingsProvider.fontSize, 21.0);
+      expect(vScroller.offset, greaterThan(100.0));
+
+      try {
+        tempDir.deleteSync(recursive: true);
+      } catch (_) {}
+    });
   });
 
   // ============================================================
@@ -3223,7 +3380,7 @@ void main() {
 
       // Defaults
       expect(provider.showLineNumbers, isTrue);
-      expect(provider.pinLineNumbers, isTrue);
+      expect(provider.pinLineNumbers, isFalse);
 
       // Setters
       bool notified = false;
@@ -3234,15 +3391,15 @@ void main() {
       expect(notified, isTrue);
 
       notified = false;
-      await provider.setPinLineNumbers(false);
-      expect(provider.pinLineNumbers, isFalse);
+      await provider.setPinLineNumbers(true);
+      expect(provider.pinLineNumbers, isTrue);
       expect(notified, isTrue);
 
       // Verify loaded from SharedPreferences
       final provider2 = SettingsProvider();
       await provider2.init();
       expect(provider2.showLineNumbers, isFalse);
-      expect(provider2.pinLineNumbers, isFalse);
+      expect(provider2.pinLineNumbers, isTrue);
     });
 
     test('Localization strings exist in both zh and en without hardcoding', () {
@@ -3290,13 +3447,13 @@ void main() {
       expect(find.text('固定行号'), findsOneWidget);
       expect(find.text('水平滚动代码时行号固定在左侧'), findsOneWidget);
 
-      // Both switches should initially be enabled and true
+      // showSwitch should be true, pinSwitch should initially be enabled and false
       final switchesBefore = tester.widgetList<SwitchListTile>(find.byType(SwitchListTile));
       final showSwitchBefore = switchesBefore.firstWhere((s) => (s.title as Text).data == '显示行号');
       final pinSwitchBefore = switchesBefore.firstWhere((s) => (s.title as Text).data == '固定行号');
       expect(showSwitchBefore.value, isTrue);
       expect(showSwitchBefore.onChanged, isNotNull);
-      expect(pinSwitchBefore.value, isTrue);
+      expect(pinSwitchBefore.value, isFalse);
       expect(pinSwitchBefore.onChanged, isNotNull);
 
       // Turn off showLineNumbers
@@ -3313,7 +3470,7 @@ void main() {
       // Tapping disabled pinLineNumbers does nothing
       await tester.tap(find.text('固定行号'));
       await tester.pumpAndSettle();
-      expect(provider.pinLineNumbers, isTrue); // unchanged
+      expect(provider.pinLineNumbers, isFalse); // unchanged
 
       // Re-enabling showLineNumbers re-enables pinLineNumbers
       await tester.tap(find.text('显示行号'));

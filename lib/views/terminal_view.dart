@@ -208,6 +208,7 @@ class _TerminalSessionBodyState extends State<_TerminalSessionBody> {
 
   /// 终端控制器与 View GlobalKey（用于选区、手柄与上下文菜单定位）
   late final xterm.TerminalController _terminalController = xterm.TerminalController();
+  final ScrollController _terminalScrollController = ScrollController();
   final GlobalKey<xterm.TerminalViewState> _terminalViewKey = GlobalKey<xterm.TerminalViewState>();
 
   /// 终端原有的输入处理器与输出出口（用于串联，而不是替换）
@@ -244,6 +245,7 @@ class _TerminalSessionBodyState extends State<_TerminalSessionBody> {
     }
     terminal.onOutput = _delegateOnOutput;
     _modifiers.dispose();
+    _terminalScrollController.dispose();
     _terminalController.dispose();
     super.dispose();
   }
@@ -278,11 +280,13 @@ class _TerminalSessionBodyState extends State<_TerminalSessionBody> {
                 terminal: session.terminal,
                 controller: _terminalController,
                 terminalViewKey: _terminalViewKey,
+                scrollController: _terminalScrollController,
                 focusNode: session.focusNode,
                 child: xterm.TerminalView(
                   session.terminal,
                   key: _terminalViewKey,
                   controller: _terminalController,
+                  scrollController: _terminalScrollController,
                   focusNode: session.focusNode,
                   autofocus: true,
                   theme: terminalThemeWithBackground(backgroundColor),

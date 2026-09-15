@@ -1,3 +1,4 @@
+import 'dart:math';
 import 'package:code_editor/l10n/app_localizations.dart';
 import 'package:code_editor/models/app_font.dart';
 import 'package:code_editor/models/editor_tab_item.dart';
@@ -51,12 +52,17 @@ class _CodeEditorWidgetState extends State<CodeEditorWidget> {
   int? _currentIndentSize;
   bool _isShowingConflictDialog = false;
 
-  // 双指捏合缩放字号状态
+  // 双指捏合缩放字号及中心锚定状态
+  final GlobalKey _editorContainerKey = GlobalKey();
   final Map<int, Offset> _pointerPositions = {};
   double? _initialPinchDistance;
   double? _initialPinchFontSize;
   double? _activeZoomFontSize;
   bool _isPinching = false;
+  CodeLineSelection? _pinchSelection;
+  Offset? _initialLocalFocal;
+  double _initialScrollV = 0.0;
+  double _initialScrollH = 0.0;
 
   void _handlePointerDown(PointerDownEvent event, double currentFontSize) {
     _pointerPositions[event.pointer] = event.position;
@@ -64,6 +70,36 @@ class _CodeEditorWidgetState extends State<CodeEditorWidget> {
       final points = _pointerPositions.values.toList();
       _initialPinchDistance = (points[0] - points[1]).distance;
       _initialPinchFontSize = _activeZoomFontSize ?? currentFontSize;
+
+      // 停止当前的惯性滚动，保证锚定基准平稳
+      final vScroller = _scrollController?.verticalScroller;
+      if (vScroller is CodeEditorScrollController) {
+        vScroller.stopScrolling();
+      }
+      final hScroller = _scrollController?.horizontalScroller;
+      if (hScroller is CodeEditorScrollController) {
+        hScroller.stopScrolling();
+      }
+
+      final globalFocal = (points[0] + points[1]) / 2;
+      final renderBox = _editorContainerKey.currentContext?.findRenderObject() as RenderBox?;
+      final localFocal = renderBox != null ? renderBox.globalToLocal(globalFocal) : globalFocal;
+      _initialLocalFocal = localFocal;
+
+      _initialScrollV = (_scrollController?.verticalScroller.hasClients == true)
+          ? _scrollController!.verticalScroller.offset
+          : 0.0;
+      _initialScrollH = (_scrollController?.horizontalScroller.hasClients == true)
+          ? _scrollController!.horizontalScroller.offset
+          : 0.0;
+
+      final currentController = _controller;
+      if (currentController != null &&
+          !currentController.selection.isCollapsed &&
+          currentController.selection.baseOffset != -1) {
+        _pinchSelection = currentController.selection;
+      }
+      _toolbarController.hide(context);
       setState(() {
         _isPinching = true;
       });
@@ -77,12 +113,31 @@ class _CodeEditorWidgetState extends State<CodeEditorWidget> {
     if (_pointerPositions.length >= 2 &&
         _initialPinchDistance != null &&
         _initialPinchDistance! > 10.0 &&
-        _initialPinchFontSize != null) {
+        _initialPinchFontSize != null &&
+        _initialLocalFocal != null) {
       final points = _pointerPositions.values.toList();
       final currentDistance = (points[0] - points[1]).distance;
       final scale = currentDistance / _initialPinchDistance!;
       final rawFontSize = (_initialPinchFontSize! * scale).clamp(10.0, 30.0);
       final newFontSize = (rawFontSize * 10).round() / 10.0;
+      final fontScale = newFontSize / _initialPinchFontSize!;
+
+      final currentGlobalFocal = (points[0] + points[1]) / 2;
+      final renderBox = _editorContainerKey.currentContext?.findRenderObject() as RenderBox?;
+      final currentLocalFocal = renderBox != null
+          ? renderBox.globalToLocal(currentGlobalFocal)
+          : currentGlobalFocal;
+
+      final targetScrollV = (_initialScrollV + _initialLocalFocal!.dy) * fontScale - currentLocalFocal.dy;
+      final targetScrollH = (_initialScrollH + _initialLocalFocal!.dx) * fontScale - currentLocalFocal.dx;
+
+      if (_scrollController?.verticalScroller.hasClients == true) {
+        _scrollController!.verticalScroller.jumpTo(max(0.0, targetScrollV));
+      }
+      if (_scrollController?.horizontalScroller.hasClients == true) {
+        _scrollController!.horizontalScroller.jumpTo(max(0.0, targetScrollH));
+      }
+
       if (_activeZoomFontSize != newFontSize) {
         setState(() {
           _activeZoomFontSize = newFontSize;
@@ -107,18 +162,35 @@ class _CodeEditorWidgetState extends State<CodeEditorWidget> {
 
   void _finishPinchZoom() {
     final finalSize = _activeZoomFontSize;
-    setState(() {
-      _isPinching = false;
-      _initialPinchDistance = null;
-      _initialPinchFontSize = null;
-      _activeZoomFontSize = null;
-    });
+    final savedSelection = _pinchSelection;
+    _pinchSelection = null;
 
     if (finalSize != null) {
       try {
         final settings = _getSettingsProvider(context);
         settings.setFontSize(finalSize.roundToDouble());
       } catch (_) {}
+    }
+
+    setState(() {
+      _isPinching = false;
+      _initialPinchDistance = null;
+      _initialPinchFontSize = null;
+      _activeZoomFontSize = null;
+      _initialLocalFocal = null;
+      _initialScrollV = 0.0;
+      _initialScrollH = 0.0;
+    });
+
+    if (savedSelection != null && !savedSelection.isCollapsed) {
+      final currentController = _controller;
+      if (currentController != null) {
+        currentController.selection = savedSelection;
+      }
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        _toolbarController.reshowLastToolbar(context);
+      });
     }
   }
 
@@ -151,8 +223,8 @@ class _CodeEditorWidgetState extends State<CodeEditorWidget> {
   void _restoreTabScrollState(EditorTabItem tab) {
     final oldScroll = _scrollController;
 
-    final vScroller = ScrollController(initialScrollOffset: tab.verticalScrollOffset);
-    final hScroller = ScrollController(initialScrollOffset: tab.horizontalScrollOffset);
+    final vScroller = CodeEditorScrollController(initialScrollOffset: tab.verticalScrollOffset);
+    final hScroller = CodeEditorScrollController(initialScrollOffset: tab.horizontalScrollOffset);
 
     vScroller.addListener(() {
       if (vScroller.hasClients) {
@@ -449,6 +521,7 @@ class _CodeEditorWidgetState extends State<CodeEditorWidget> {
         children: [
           Expanded(
             child: Listener(
+              key: _editorContainerKey,
               behavior: HitTestBehavior.translucent,
               onPointerDown: (event) => _handlePointerDown(event, activeFontSize),
               onPointerMove: _handlePointerMove,
@@ -464,7 +537,8 @@ class _CodeEditorWidgetState extends State<CodeEditorWidget> {
                       wordWrap: activeWordWrap,
                       pinLineNumbers: pinLineNumbers,
                       toolbarController: _toolbarController,
-                      margin: const EdgeInsets.only(left: 2.0, top: 4.0, right: 8, bottom: 8.0),
+                      margin: EdgeInsets.zero,
+                      extraHorizontalScroll: 160.0,
                       padding: const EdgeInsets.fromLTRB(6.0, 0.0, 0.0, 0.0),
                       leadingDivider: showLineNumbers
                           ? Container(

@@ -2,7 +2,7 @@ part of re_editor;
 
 const double _kScrollbarThickness = 8.0;
 
-class _CodeScrollable extends StatelessWidget {
+class _CodeScrollable extends StatefulWidget {
 
   final AxisDirection axisDirection;
   final ScrollController? controller;
@@ -10,20 +10,67 @@ class _CodeScrollable extends StatelessWidget {
   final CodeScrollbarBuilder? scrollbarBuilder;
 
   const _CodeScrollable({
+    super.key,
     required this.axisDirection,
     this.controller,
     required this.viewportBuilder,
-    this.scrollbarBuilder
+    this.scrollbarBuilder,
   });
+
+  @override
+  State<_CodeScrollable> createState() => _CodeScrollableState();
+
+}
+
+class _CodeScrollableState extends State<_CodeScrollable> {
+
+  CodeEditorScrollController? _effectiveController;
+
+  @override
+  void initState() {
+    super.initState();
+    _initController();
+  }
+
+  void _initController() {
+    if (widget.controller is CodeEditorScrollController) {
+      _effectiveController = widget.controller as CodeEditorScrollController;
+    } else {
+      _effectiveController = CodeEditorScrollController(
+        delegate: widget.controller,
+        initialScrollOffset: widget.controller?.initialScrollOffset ?? 0.0,
+        keepScrollOffset: widget.controller?.keepScrollOffset ?? true,
+      );
+    }
+  }
+
+  @override
+  void didUpdateWidget(_CodeScrollable oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.controller != oldWidget.controller) {
+      if (_effectiveController != null && _effectiveController!.delegate != null) {
+        _effectiveController!.dispose();
+      }
+      _initController();
+    }
+  }
+
+  @override
+  void dispose() {
+    if (_effectiveController != null && _effectiveController!.delegate != null) {
+      _effectiveController!.dispose();
+    }
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scrollable(
       excludeFromSemantics: true,
-      controller: controller,
-      scrollBehavior: _ScrollBehavior(scrollbarBuilder),
-      viewportBuilder: viewportBuilder,
-      axisDirection: axisDirection,
+      controller: _effectiveController,
+      scrollBehavior: _ScrollBehavior(widget.scrollbarBuilder),
+      viewportBuilder: widget.viewportBuilder,
+      axisDirection: widget.axisDirection,
       physics: const ClampingScrollPhysics(),
     );
   }

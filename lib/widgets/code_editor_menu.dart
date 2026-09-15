@@ -58,8 +58,6 @@ class _MobileToolbarLayoutDelegate extends SingleChildLayoutDelegate {
     // 1. 计算受保护的可视安全编辑区与屏幕顶界
     // 屏幕顶界：手机系统状态栏安全区（由于菜单置于 rootOverlay 顶层悬浮层，高于 TabBar 和 AppBar，因此向上可借用其空间，避免向下翻转遮挡光标）
     final double screenTop = mediaQuery.padding.top + 6.0;
-    // 编辑区顶界：排除 AppBar / TabBar (renderRect.top)，用于编辑区居中或贴顶显示
-    final double editorTop = max(renderRect?.top ?? 0.0, mediaQuery.padding.top) + 6.0;
     // 底部：排除软键盘 (viewInsets.bottom)、虚拟小键盘 (renderRect.bottom) 以及底部安全区
     final double screenBottomWithoutKeyboard = mediaQuery.size.height - mediaQuery.viewInsets.bottom - mediaQuery.padding.bottom;
     final double safeBottom = min(renderRect?.bottom ?? screenBottomWithoutKeyboard, screenBottomWithoutKeyboard) - 6.0;
@@ -68,7 +66,6 @@ class _MobileToolbarLayoutDelegate extends SingleChildLayoutDelegate {
     final double safeRight = min(renderRect?.right ?? mediaQuery.size.width, mediaQuery.size.width - mediaQuery.padding.right) - 8.0;
 
     final double availableWidth = max(0.0, safeRight - safeLeft);
-    final double editorAvailableHeight = max(0.0, safeBottom - editorTop);
 
     // 2. 根据 anchors 中的 EditorToolbarPlacement 或传统 anchors 计算位置
     EditorToolbarPlacement placement = EditorToolbarPlacement.aboveStart;
@@ -90,15 +87,10 @@ class _MobileToolbarLayoutDelegate extends SingleChildLayoutDelegate {
 
     switch (placement) {
       case EditorToolbarPlacement.center:
-        // 框选文本完全占据当前屏幕：在编辑区中间显示
-        x = safeLeft + (availableWidth - childSize.width) / 2.0;
-        y = editorTop + (editorAvailableHeight - childSize.height) / 2.0;
-        break;
-
       case EditorToolbarPlacement.top:
-        // 选区整体在视口上方：在视口顶部贴边显示
+        // 用户明确要求：改在屏幕最上方显示，即使显示在 tab 或 appbar 上面也没关系，彻底避免在屏幕中间遮挡文本
         x = safeLeft + (availableWidth - childSize.width) / 2.0;
-        y = editorTop + 4.0;
+        y = screenTop;
         break;
 
       case EditorToolbarPlacement.bottom:
