@@ -271,6 +271,16 @@ class _CodeEditableState extends State<_CodeEditable> with AutomaticKeepAliveCli
         onNotification: (notification) {
           if (notification is ScrollStartNotification) {
             widget.selectionOverlayController.hideToolbar();
+          } else if (notification is ScrollEndNotification) {
+            if (!widget.controller.selection.isCollapsed && widget.controller.selection.baseOffset != -1) {
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                if (widget.focusNode.hasFocus &&
+                    !widget.controller.selection.isCollapsed &&
+                    widget.controller.selection.baseOffset != -1) {
+                  widget.selectionOverlayController.showToolbar(context, Offset.zero);
+                }
+              });
+            }
           }
           return false;
         },

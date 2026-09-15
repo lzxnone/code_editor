@@ -457,56 +457,56 @@ class _CodeEditorWidgetState extends State<CodeEditorWidget> {
                     controller: controller,
                     focusNode: _focusNode,
                     scrollController: _scrollController,
-                    wordWrap: activeWordWrap,
-                    toolbarController: _toolbarController,
-                    margin: const EdgeInsets.only(left: 2.0, top: 4.0, right: 8, bottom: 8.0),
-                    padding: const EdgeInsets.fromLTRB(0.0, 0.0, 0.0, 0.0),
-                    style: CodeEditorStyle(
-                      fontSize: displayFontSize,
-                      textColor: activeTheme.textColor,
-                      backgroundColor: activeTheme.backgroundColor,
-                      cursorColor: activeTheme.cursorColor,
-                      cursorLineColor: activeTheme.cursorLineColor,
-                      selectionColor: activeTheme.selectionColor,
-                      fontFamily: activeEditorFont.fontFamily,
-                      fontFamilyFallback: activeEditorFont.fallback,
-                      codeTheme: CodeHighlightTheme(
-                        languages: SyntaxHighlightHelper.getLanguagesForFile(_currentLoadedPath ?? widget.filePath),
-                        theme: activeTheme.highlightTheme,
+                      wordWrap: activeWordWrap,
+                      toolbarController: _toolbarController,
+                      margin: const EdgeInsets.only(left: 2.0, top: 4.0, right: 8, bottom: 8.0),
+                      padding: const EdgeInsets.fromLTRB(0.0, 0.0, 0.0, 0.0),
+                      style: CodeEditorStyle(
+                        fontSize: displayFontSize,
+                        textColor: activeTheme.textColor,
+                        backgroundColor: activeTheme.backgroundColor,
+                        cursorColor: activeTheme.cursorColor,
+                        cursorLineColor: activeTheme.cursorLineColor,
+                        selectionColor: activeTheme.selectionColor,
+                        fontFamily: activeEditorFont.fontFamily,
+                        fontFamilyFallback: activeEditorFont.fallback,
+                        codeTheme: CodeHighlightTheme(
+                          languages: SyntaxHighlightHelper.getLanguagesForFile(_currentLoadedPath ?? widget.filePath),
+                          theme: activeTheme.highlightTheme,
+                        ),
                       ),
+                      indicatorBuilder: (context, editingController, chunkController, notifier) {
+                        return Row(
+                          children: [
+                            DefaultCodeLineNumber(
+                              controller: editingController,
+                              notifier: notifier,
+                              textStyle: TextStyle(
+                                color: activeTheme.gutterTextColor,
+                                fontSize: (displayFontSize - 1).clamp(9.0, 30.0),
+                                fontFamily: activeEditorFont.fontFamily,
+                                fontFamilyFallback: activeEditorFont.fallback,
+                              ),
+                              focusedTextStyle: TextStyle(
+                                color: activeTheme.focusedGutterTextColor,
+                                fontSize: (displayFontSize - 1).clamp(9.0, 30.0),
+                                fontWeight: FontWeight.bold,
+                                fontFamily: activeEditorFont.fontFamily,
+                                fontFamilyFallback: activeEditorFont.fallback,
+                              ),
+                            ),
+                            DefaultCodeChunkIndicator(
+                              width: 20,
+                              controller: chunkController,
+                              notifier: notifier,
+                              painter: DefaultCodeChunkIndicatorPainter(
+                                color: activeTheme.gutterTextColor,
+                              ),
+                            ),
+                          ],
+                        );
+                      },
                     ),
-                    indicatorBuilder: (context, editingController, chunkController, notifier) {
-                      return Row(
-                        children: [
-                          DefaultCodeLineNumber(
-                            controller: editingController,
-                            notifier: notifier,
-                            textStyle: TextStyle(
-                              color: activeTheme.gutterTextColor,
-                              fontSize: (displayFontSize - 1).clamp(9.0, 30.0),
-                              fontFamily: activeEditorFont.fontFamily,
-                              fontFamilyFallback: activeEditorFont.fallback,
-                            ),
-                            focusedTextStyle: TextStyle(
-                              color: activeTheme.focusedGutterTextColor,
-                              fontSize: (displayFontSize - 1).clamp(9.0, 30.0),
-                              fontWeight: FontWeight.bold,
-                              fontFamily: activeEditorFont.fontFamily,
-                              fontFamilyFallback: activeEditorFont.fallback,
-                            ),
-                          ),
-                          DefaultCodeChunkIndicator(
-                            width: 20,
-                            controller: chunkController,
-                            notifier: notifier,
-                            painter: DefaultCodeChunkIndicatorPainter(
-                              color: activeTheme.gutterTextColor,
-                            ),
-                          ),
-                        ],
-                      );
-                    },
-                  ),
                   if (_isPinching && _activeZoomFontSize != null)
                     Center(
                       child: IgnorePointer(

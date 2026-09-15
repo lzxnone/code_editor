@@ -7,6 +7,7 @@ import 'package:code_editor/providers/run_provider.dart';
 import 'package:code_editor/providers/tab_provider.dart';
 import 'package:code_editor/providers/terminal_provider.dart';
 import 'package:code_editor/services/distro_manager.dart';
+import 'package:code_editor/services/permission_service.dart';
 import 'package:code_editor/services/toolchain_service.dart';
 import 'package:code_editor/utils/dialog_utils.dart';
 import 'package:code_editor/views/settings_view.dart';
@@ -268,6 +269,8 @@ class _MainViewState extends State<MainView> {
       lastRunTaskId: isCurrentProject ? (runProvider.lastRunTaskId ?? runProvider.lastRunTask?.id) : null,
       onTaskSelected: (task) => _executeRunTask(context, task),
       onEditCustomTasks: () => _handleOpenEditRunTasks(context),
+      onSyncModule: (moduleId) => runProvider.syncModuleTasks(moduleId),
+      isSyncingModule: (moduleId) => runProvider.isModuleSyncing(moduleId),
     );
   }
 
@@ -316,6 +319,18 @@ class _MainViewState extends State<MainView> {
       DialogUtils.showSuccessToast(
         context,
         l10n.detectCompletedMessage(runProvider.detectedTasks.length),
+      );
+    }
+  }
+
+  Future<void> _handleOpenTerminal(BuildContext context) async {
+    final wentToSettings = await PermissionService.instance.promptBatteryOptimizationIfNeeded(context);
+    if (wentToSettings) return;
+    if (context.mounted) {
+      Navigator.of(context).push(
+        MaterialPageRoute<void>(
+          builder: (context) => const TerminalView(),
+        ),
       );
     }
   }
@@ -377,6 +392,7 @@ class _MainViewState extends State<MainView> {
           onCloseProject: () => _handleCloseProject(context),
           onRun: () => _handleRun(context),
           onRunTasks: () => _handleOpenRunTasksDialog(context),
+          onTerminal: () => _handleOpenTerminal(context),
           onProjectDetect: () => _handleProjectDetect(context),
           onEditRunTasks: () => _handleOpenEditRunTasks(context),
           isDetecting: runProvider?.isDetecting ?? false,

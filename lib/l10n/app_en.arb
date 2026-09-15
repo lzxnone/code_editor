@@ -513,6 +513,8 @@
   "noMatchingTasks": "No matching tasks found",
   "userCustomTasks": "User Custom Tasks",
   "systemDetectedTasks": "System Detected Tasks",
+  "resyncModuleTasks": "Resync Real Tasks",
+  "syncingTasks": "Introspecting tasks in background...",
   "editCustomTasksTooltip": "Edit Custom Tasks",
   "runTasksConfig": "Run Tasks Configuration",
   "editTask": "Edit Task",
@@ -646,5 +648,34 @@
     }
   },
   "unsupportedProjectArchiveFormat": "Unsupported file format. Only archive files (.zip, .tar.gz, .tar.xz, .tar, etc.) are supported",
-  "unsupportedDistroArchiveFormat": "Unsupported file format. Only system archives (.tar.gz, .tar.xz, .tar) are supported"
+  "unsupportedDistroArchiveFormat": "Unsupported file format. Only system archives (.tar.gz, .tar.xz, .tar) are supported",
+  "exportProject": "Export Project",
+  "exportProjectTooltip": "Export as ZIP archive",
+  "exportingProject": "Compressing and exporting project...",
+  "projectExported": "Project exported successfully",
+  "exportProjectFailed": "Failed to export project: {error}",
+  "@exportProjectFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "selectExportDirectory": "Select Export Destination Folder",
+  "targetFileAlreadyExists": "Target file \"{name}\" already exists. Overwrite?",
+  "@targetFileAlreadyExists": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "overwrite": "Overwrite",
+  "batteryOptimizationTitle": "Background Running & Battery Optimization",
+  "batteryOptimizationMessage": "To prevent terminal sessions from being killed by the system in the background, it is recommended to disable battery optimization or set it to 'Unrestricted'.\n\nWould you like to go to settings to configure it?",
+  "copy": "Copy",
+  "cut": "Cut",
+  "paste": "Paste",
+  "selectAll": "Select All",
+  "copiedToClipboard": "Copied to clipboard"
 }

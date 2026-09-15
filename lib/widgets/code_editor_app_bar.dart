@@ -1,4 +1,5 @@
 import 'package:code_editor/l10n/app_localizations.dart';
+import 'package:code_editor/services/permission_service.dart';
 import 'package:code_editor/views/terminal_view.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -133,12 +134,16 @@ class CodeEditorAppBar extends StatelessWidget implements PreferredSizeWidget {
             onSaveAll: onSaveAll,
             onRunTasks: onRunTasks,
             onTerminal: onTerminal ??
-                () {
-                  Navigator.of(context).push(
-                    MaterialPageRoute<void>(
-                      builder: (context) => const TerminalView(),
-                    ),
-                  );
+                () async {
+                  final wentToSettings = await PermissionService.instance.promptBatteryOptimizationIfNeeded(context);
+                  if (wentToSettings) return;
+                  if (context.mounted) {
+                    Navigator.of(context).push(
+                      MaterialPageRoute<void>(
+                        builder: (context) => const TerminalView(),
+                      ),
+                    );
+                  }
                 },
             onProjectDetect: onProjectDetect,
             onEditRunTasks: onEditRunTasks,

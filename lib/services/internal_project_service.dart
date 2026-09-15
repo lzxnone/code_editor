@@ -1,8 +1,9 @@
 import 'dart:io';
-import 'package:archive/archive_io.dart';
 import 'package:flutter/foundation.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
+import 'archive_compressor.dart';
+import 'archive_extractor.dart';
 
 /// 软件内部私有存储项目管理服务 (files/projects)
 class InternalProjectService {
@@ -146,7 +147,13 @@ class InternalProjectService {
   }
 
   /// 从外部压缩文件解压导入为内部项目 (`files/projects/<projectName>`)
-  Future<Directory> importProjectFromArchive(String archivePath, String projectName) async {
+  /// （采用底层 Isolate 流式分块直写落盘引擎，避免大项目解压内存溢出 OOM）
+  Future<Directory> importProjectFromArchive(
+    String archivePath,
+    String projectName, {
+    ArchiveProgressCallback? onProgress,
+    bool Function()? isCancelled,
+  }) async {
     final trimmedName = projectName.trim();
     if (trimmedName.isEmpty) {
       throw const FileSystemException('项目名称不能为空');
@@ -165,7 +172,12 @@ class InternalProjectService {
 
     projectDir.createSync(recursive: true);
     try {
-      await extractFileToDisk(archivePath, projectDir.path);
+      await ArchiveExtractor.extract(
+        archiveFile: archiveFile,
+        targetDir: projectDir,
+        onProgress: onProgress,
+        isCancelled: isCancelled,
+      );
       return projectDir;
     } catch (e) {
       if (projectDir.existsSync()) {
@@ -175,5 +187,27 @@ class InternalProjectService {
       }
       rethrow;
     }
+  }
+
+  /// 将内部项目文件夹流式打包压缩为 ZIP 文件并导出到指定路径
+  /// （采用自研后台 Isolate 流式分块直写引擎，避免大项目压缩 OOM）
+  Future<File> exportProjectToZip(
+    Directory projectDir,
+    String targetZipPath, {
+    ArchiveProgressCallback? onProgress,
+    bool Function()? isCancelled,
+  }) async {
+    if (!projectDir.existsSync()) {
+      throw FileSystemException('项目目录不存在', projectDir.path);
+    }
+
+    final targetFile = File(targetZipPath);
+    await ArchiveCompressor.zipDirectory(
+      sourceDir: projectDir,
+      targetZipFile: targetFile,
+      onProgress: onProgress,
+      isCancelled: isCancelled,
+    );
+    return targetFile;
   }
 }

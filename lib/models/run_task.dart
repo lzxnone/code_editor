@@ -33,6 +33,12 @@ class RunTask {
   /// 是否在执行该命令前清屏（发送 clear）
   final bool clearBeforeRun;
 
+  /// 任务所属分组（如 Gradle 的 'build', 'verification', 'application', 'other' 等）
+  final String? group;
+
+  /// 归属的项目探测模块ID（如 'gradle', 'cmake' 等）
+  final String? moduleId;
+
   /// UI 展示图标（可选）
   final IconData? icon;
 
@@ -44,35 +50,45 @@ class RunTask {
     this.description,
     this.workingDir,
     this.clearBeforeRun = false,
+    this.group,
+    this.moduleId,
     this.icon,
   });
 
-  /// 从持久化的 JSON Map 构建自定义运行任务
+  /// 从持久化的 JSON Map 构建运行任务
   factory RunTask.fromJson(Map<String, dynamic> json) {
     final rawClear = json['clearBeforeRun'];
     final bool clearVal = (rawClear is bool)
         ? rawClear
         : (rawClear is num ? rawClear != 0 : (rawClear?.toString().toLowerCase() == 'true'));
 
+    final rawSource = json['source']?.toString();
+    final TaskSource source = rawSource == 'detected' ? TaskSource.detected : TaskSource.custom;
+
     return RunTask(
       id: json['id']?.toString() ?? 'custom_${DateTime.now().microsecondsSinceEpoch}',
       name: json['name']?.toString() ?? '未命名任务',
       command: json['command']?.toString() ?? '',
-      source: TaskSource.custom,
+      source: source,
       description: json['description']?.toString(),
       workingDir: json['workingDir']?.toString(),
       clearBeforeRun: clearVal,
+      group: json['group']?.toString(),
+      moduleId: json['moduleId']?.toString(),
     );
   }
 
-  /// 序列化为持久化 JSON Map（仅针对用户自定义任务保存）
+  /// 序列化为持久化 JSON Map
   Map<String, dynamic> toJson() {
     return {
       'id': id,
       'name': name,
       'command': command,
+      'source': source.name,
       if (description != null && description!.isNotEmpty) 'description': description,
       if (workingDir != null && workingDir!.isNotEmpty) 'workingDir': workingDir,
+      if (group != null && group!.isNotEmpty) 'group': group,
+      if (moduleId != null && moduleId!.isNotEmpty) 'moduleId': moduleId,
       'clearBeforeRun': clearBeforeRun,
     };
   }
@@ -87,10 +103,13 @@ class RunTask {
       case 'detected_cmake_clean':
         return l10n.detectedTaskCmakeCleanDesc;
       case 'detected_gradle_run':
+      case 'gradle_run':
         return l10n.detectedTaskGradleRunDesc;
       case 'detected_gradle_assemble':
+      case 'gradle_assembleDebug':
         return l10n.detectedTaskGradleAssembleDesc;
       case 'detected_gradle_build':
+      case 'gradle_build':
         return l10n.detectedTaskGradleBuildDesc;
       case 'detected_make_default':
         return l10n.detectedTaskMakeDefaultDesc;
@@ -141,6 +160,8 @@ class RunTask {
     String? description,
     String? workingDir,
     bool? clearBeforeRun,
+    String? group,
+    String? moduleId,
     IconData? icon,
   }) {
     return RunTask(
@@ -151,6 +172,8 @@ class RunTask {
       description: description ?? this.description,
       workingDir: workingDir ?? this.workingDir,
       clearBeforeRun: clearBeforeRun ?? this.clearBeforeRun,
+      group: group ?? this.group,
+      moduleId: moduleId ?? this.moduleId,
       icon: icon ?? this.icon,
     );
   }

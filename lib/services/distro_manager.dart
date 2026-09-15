@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
@@ -54,6 +55,10 @@ class DistroManager {
   /// 自定义覆盖根目录（主要用于测试）
   @visibleForTesting
   Directory? customBaseDir;
+
+  /// 自定义手机外部存储 sdcard 路径（主要用于测试）
+  @visibleForTesting
+  String? customSdcardPath;
 
   /// 获取发行版存储基础目录: `<app_dir>/distros`
   Future<Directory> getBaseDistrosDir() async {
@@ -418,6 +423,38 @@ class DistroManager {
       args.addAll(['-b', '$tmpPath:/tmp']);
     }
 
+    // 挂载手机外部存储 (sdcard) 到容器 /sdcard 与 root 主目录 (/root/sdcard)
+    final effectiveSdcard = customSdcardPath ?? '/sdcard';
+    if (Directory(effectiveSdcard).existsSync()) {
+      // 1. 确保目标挂载目录存在，挂载到 /sdcard
+      final guestSdcard = Directory(p.join(rootDir.path, 'sdcard'));
+      if (!guestSdcard.existsSync()) {
+        try {
+          guestSdcard.createSync(recursive: true);
+        } catch (_) {}
+      }
+      args.addAll(['-b', '$effectiveSdcard:/sdcard']);
+
+      // 2. 挂载到容器内 root 用户主目录 (/root/sdcard)，方便在主目录直接访问
+      final guestRootSdcard = Directory(p.join(rootDir.path, 'root', 'sdcard'));
+      if (!guestRootSdcard.existsSync()) {
+        try {
+          guestRootSdcard.createSync(recursive: true);
+        } catch (_) {}
+      }
+      args.addAll(['-b', '$effectiveSdcard:/root/sdcard']);
+    }
+
+    if (Directory('/storage').existsSync()) {
+      final guestStorage = Directory(p.join(rootDir.path, 'storage'));
+      if (!guestStorage.existsSync()) {
+        try {
+          guestStorage.createSync(recursive: true);
+        } catch (_) {}
+      }
+      args.addAll(['-b', '/storage']);
+    }
+
     // 挂载工作区
     String containerWorkDir = '/root';
     if (workspacePath != null && Directory(workspacePath).existsSync()) {
@@ -770,6 +807,62 @@ class DistroManager {
       }
     } catch (e) {
       debugPrint('[DistroManager] 清理陈旧锁文件异常 (非阻塞): $e');
+    }
+  }
+
+  /// 在容器（或宿主）后台静默执行指定命令（不打开终端、不绑定 PTY、纯管道捕获输出）
+  /// [systemName] 运行的系统名称（如 'ubuntu' 或 'host'）
+  /// [workspacePath] 工程挂载目录（挂载到 /workspace）
+  /// [command] 执行的 Shell 脚本命令
+  /// [timeout] 超时时长（默认 120 秒）
+  Future<ProcessResult?> runHeadlessCommand({
+    required String systemName,
+    String? workspacePath,
+    required String command,
+    Duration timeout = const Duration(seconds: 120),
+  }) async {
+    try {
+      final config = await buildLaunchConfig(
+        systemName: systemName,
+        workspacePath: workspacePath,
+        customCommand: command,
+      );
+
+      final process = await Process.start(
+        config.executable,
+        config.arguments,
+        environment: config.environment,
+        workingDirectory: config.workingDirectory,
+      );
+
+      final stdoutBytes = <int>[];
+      final stderrBytes = <int>[];
+
+      final stdoutFuture = process.stdout.listen(stdoutBytes.addAll).asFuture<void>();
+      final stderrFuture = process.stderr.listen(stderrBytes.addAll).asFuture<void>();
+
+      final exitCode = await process.exitCode.timeout(
+        timeout,
+        onTimeout: () {
+          try {
+            process.kill(ProcessSignal.sigkill);
+          } catch (_) {}
+          return -1;
+        },
+      );
+
+      await Future.wait([stdoutFuture, stderrFuture]).timeout(
+        const Duration(seconds: 2),
+        onTimeout: () => [],
+      );
+
+      final stdoutStr = utf8.decode(stdoutBytes, allowMalformed: true);
+      final stderrStr = utf8.decode(stderrBytes, allowMalformed: true);
+
+      return ProcessResult(process.pid, exitCode, stdoutStr, stderrStr);
+    } catch (e) {
+      debugPrint('[DistroManager] runHeadlessCommand 异常: $e');
+      return null;
     }
   }
 

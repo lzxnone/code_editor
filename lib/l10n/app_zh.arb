@@ -513,6 +513,8 @@
   "noMatchingTasks": "无匹配的任务",
   "userCustomTasks": "用户自定义任务",
   "systemDetectedTasks": "系统动态探测任务",
+  "resyncModuleTasks": "重新同步真实任务",
+  "syncingTasks": "正在后台自省任务...",
   "editCustomTasksTooltip": "编辑自定义任务",
   "runTasksConfig": "运行任务配置",
   "editTask": "编辑任务",
@@ -646,5 +648,34 @@
     }
   },
   "unsupportedProjectArchiveFormat": "不支持的文件格式，仅支持压缩包格式 (.zip, .tar.gz, .tar.xz, .tar 等)",
-  "unsupportedDistroArchiveFormat": "不支持的文件格式，仅支持系统镜像包 (.tar.gz, .tar.xz, .tar)"
+  "unsupportedDistroArchiveFormat": "不支持的文件格式，仅支持系统镜像包 (.tar.gz, .tar.xz, .tar)",
+  "exportProject": "导出项目",
+  "exportProjectTooltip": "导出为 ZIP 压缩包",
+  "exportingProject": "正在压缩并导出项目...",
+  "projectExported": "项目导出成功",
+  "exportProjectFailed": "导出项目失败: {error}",
+  "@exportProjectFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "selectExportDirectory": "选择导出目标文件夹",
+  "targetFileAlreadyExists": "目标文件 \"{name}\" 已存在，是否覆盖？",
+  "@targetFileAlreadyExists": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "overwrite": "覆盖",
+  "batteryOptimizationTitle": "后台运行与电池优化",
+  "batteryOptimizationMessage": "为了保证终端会话在后台不被系统强行终止，建议将本应用的电池优化设置为“无限制”或关闭电池优化。\n\n是否前往系统设置进行配置？",
+  "copy": "复制",
+  "cut": "剪切",
+  "paste": "粘贴",
+  "selectAll": "全选",
+  "copiedToClipboard": "已复制到剪贴板"
 }

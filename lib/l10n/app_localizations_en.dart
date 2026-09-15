@@ -1075,6 +1075,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get systemDetectedTasks => 'System Detected Tasks';
 
   @override
+  String get resyncModuleTasks => 'Resync Real Tasks';
+
+  @override
+  String get syncingTasks => 'Introspecting tasks in background...';
+
+  @override
   String get editCustomTasksTooltip => 'Edit Custom Tasks';
 
   @override
@@ -1344,4 +1350,43 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get unsupportedDistroArchiveFormat =>
       'Unsupported file format. Only system archives (.tar.gz, .tar.xz, .tar) are supported';
+
+  @override
+  String get exportProject => 'Export Project';
+
+  @override
+  String get exportProjectTooltip => 'Export as ZIP archive';
+
+  @override
+  String get exportingProject => 'Compressing and exporting project...';
+
+  @override
+  String get projectExported => 'Project exported successfully';
+
+  @override
+  String exportProjectFailed(String error) {
+    return 'Failed to export project: $error';
+  }
+
+  @override
+  String get selectExportDirectory => 'Select Export Destination Folder';
+
+  @override
+  String targetFileAlreadyExists(String name) {
+    return 'Target file \"$name\" already exists. Overwrite?';
+  }
+
+  @override
+  String get overwrite => 'Overwrite';
+
+  @override
+  String get batteryOptimizationTitle =>
+      'Background Running & Battery Optimization';
+
+  @override
+  String get batteryOptimizationMessage =>
+      'To prevent terminal sessions from being killed by the system in the background, it is recommended to disable battery optimization or set it to \'Unrestricted\'.\n\nWould you like to go to settings to configure it?';
+
+  @override
+  String get copiedToClipboard => 'Copied to clipboard';
 }

@@ -1772,6 +1772,18 @@ abstract class AppLocalizations {
   /// **'系统动态探测任务'**
   String get systemDetectedTasks;
 
+  /// No description provided for @resyncModuleTasks.
+  ///
+  /// In zh, this message translates to:
+  /// **'重新同步真实任务'**
+  String get resyncModuleTasks;
+
+  /// No description provided for @syncingTasks.
+  ///
+  /// In zh, this message translates to:
+  /// **'正在后台自省任务...'**
+  String get syncingTasks;
+
   /// No description provided for @editCustomTasksTooltip.
   ///
   /// In zh, this message translates to:
@@ -2239,6 +2251,72 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'不支持的文件格式，仅支持系统镜像包 (.tar.gz, .tar.xz, .tar)'**
   String get unsupportedDistroArchiveFormat;
+
+  /// No description provided for @exportProject.
+  ///
+  /// In zh, this message translates to:
+  /// **'导出项目'**
+  String get exportProject;
+
+  /// No description provided for @exportProjectTooltip.
+  ///
+  /// In zh, this message translates to:
+  /// **'导出为 ZIP 压缩包'**
+  String get exportProjectTooltip;
+
+  /// No description provided for @exportingProject.
+  ///
+  /// In zh, this message translates to:
+  /// **'正在压缩并导出项目...'**
+  String get exportingProject;
+
+  /// No description provided for @projectExported.
+  ///
+  /// In zh, this message translates to:
+  /// **'项目导出成功'**
+  String get projectExported;
+
+  /// No description provided for @exportProjectFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'导出项目失败: {error}'**
+  String exportProjectFailed(String error);
+
+  /// No description provided for @selectExportDirectory.
+  ///
+  /// In zh, this message translates to:
+  /// **'选择导出目标文件夹'**
+  String get selectExportDirectory;
+
+  /// No description provided for @targetFileAlreadyExists.
+  ///
+  /// In zh, this message translates to:
+  /// **'目标文件 \"{name}\" 已存在，是否覆盖？'**
+  String targetFileAlreadyExists(String name);
+
+  /// No description provided for @overwrite.
+  ///
+  /// In zh, this message translates to:
+  /// **'覆盖'**
+  String get overwrite;
+
+  /// No description provided for @batteryOptimizationTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'后台运行与电池优化'**
+  String get batteryOptimizationTitle;
+
+  /// No description provided for @batteryOptimizationMessage.
+  ///
+  /// In zh, this message translates to:
+  /// **'为了保证终端会话在后台不被系统强行终止，建议将本应用的电池优化设置为“无限制”或关闭电池优化。\n\n是否前往系统设置进行配置？'**
+  String get batteryOptimizationMessage;
+
+  /// No description provided for @copiedToClipboard.
+  ///
+  /// In zh, this message translates to:
+  /// **'已复制到剪贴板'**
+  String get copiedToClipboard;
 }
 
 class _AppLocalizationsDelegate

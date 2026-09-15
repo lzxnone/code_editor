@@ -4,11 +4,14 @@ import 'package:code_editor/utils/dialog_utils.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 /// 文件存储权限管理服务
 class PermissionService {
   static final PermissionService instance = PermissionService._();
   PermissionService._();
+
+  static const String _keyBatteryOptimizationPrompted = 'battery_optimization_prompted';
 
   /// 检查并确保拥有存储/工作区访问权限
   ///
@@ -89,5 +92,68 @@ class PermissionService {
     } catch (_) {
       return false;
     }
+  }
+
+  /// 检查电池优化状态（是否已忽略后台电池优化）。
+  /// 若未关闭后台优化且尚未提示过，弹出提示对话框引导前往设置。
+  /// [forcePrompt] 为 true 时忽略已提示过的记录强制检查。
+  /// 返回 true 表示用户点击了“去设置”并触发了跳转；
+  /// 返回 false 表示无需配置或用户点击了“取消”或已提示过。
+  Future<bool> promptBatteryOptimizationIfNeeded(
+    BuildContext context, {
+    bool forcePrompt = false,
+  }) async {
+    if (kIsWeb || !Platform.isAndroid) return false;
+
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final hasPrompted = prefs.getBool(_keyBatteryOptimizationPrompted) ?? false;
+      if (!forcePrompt && hasPrompted) {
+        return false;
+      }
+
+      final isIgnored = await Permission.ignoreBatteryOptimizations.isGranted;
+      if (isIgnored) return false;
+
+      if (!context.mounted) return false;
+      final l10n = AppLocalizations.of(context);
+      final title = l10n?.batteryOptimizationTitle ?? '后台运行与电池优化';
+      final message = l10n?.batteryOptimizationMessage ??
+          '为了保证终端会话在后台不被系统强行终止，建议将本应用的电池优化设置为“无限制”或关闭电池优化。\n\n是否前往系统设置进行配置？';
+      final confirmText = l10n?.goToSettings ?? '去设置';
+      final cancelText = l10n?.cancel ?? '取消';
+
+      final shouldGoToSettings = await DialogUtils.showConfirmDialog(
+        context,
+        title: title,
+        message: message,
+        confirmText: confirmText,
+        cancelText: cancelText,
+        icon: const Icon(Icons.battery_alert_outlined, size: 28),
+      );
+
+      // 用户选择“去设置”或“取消”后，记录已提示，避免每次进入终端重复弹窗
+      await prefs.setBool(_keyBatteryOptimizationPrompted, true);
+
+      if (shouldGoToSettings) {
+        final status = await Permission.ignoreBatteryOptimizations.request();
+        if (!status.isGranted) {
+          await openAppSettings();
+        }
+        return true;
+      }
+      return false;
+    } catch (e) {
+      debugPrint('电池优化检测发生异常: $e');
+      return false;
+    }
+  }
+
+  /// 重置电池优化提示状态（供设置界面重新触发检测使用）
+  Future<void> resetBatteryOptimizationPrompt() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove(_keyBatteryOptimizationPrompted);
+    } catch (_) {}
   }
 }

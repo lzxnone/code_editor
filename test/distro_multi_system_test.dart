@@ -62,9 +62,12 @@ void main() {
   });
 
   tearDown(() {
-    if (tempBaseDir.existsSync()) {
-      tempBaseDir.deleteSync(recursive: true);
-    }
+    manager.customSdcardPath = null;
+    try {
+      if (tempBaseDir.existsSync()) {
+        tempBaseDir.deleteSync(recursive: true);
+      }
+    } catch (_) {}
   });
 
   Uint8List createMockRootfsTarGz() {
@@ -244,6 +247,28 @@ void main() {
 
       final hushFile = File(p.join(rootDir.path, 'root', '.hushlogin'));
       expect(hushFile.existsSync(), isTrue);
+    });
+
+    test('buildLaunchConfig 自动挂载 sdcard 目录到 /sdcard 与 /root/sdcard', () async {
+      final gzBytes = createMockRootfsTarGz();
+      final tempGzFile = File(p.join(tempBaseDir.path, 'sdcard_cfg.tar.gz'))..writeAsBytesSync(gzBytes);
+
+      await manager.importFromCustomTarGz(systemName: 'sdcard_env', tarGzFile: tempGzFile);
+
+      final fakeSdcard = Directory(p.join(tempBaseDir.path, 'fake_sdcard'))..createSync();
+      manager.customSdcardPath = fakeSdcard.path;
+
+      final launchConfig = await manager.buildLaunchConfig(
+        systemName: 'sdcard_env',
+        workspacePath: tempBaseDir.path,
+      );
+
+      expect(launchConfig.arguments, contains('${fakeSdcard.path}:/sdcard'));
+      expect(launchConfig.arguments, contains('${fakeSdcard.path}:/root/sdcard'));
+
+      final rootDir = await manager.getSystemRootDir('sdcard_env');
+      expect(Directory(p.join(rootDir.path, 'sdcard')).existsSync(), isTrue);
+      expect(Directory(p.join(rootDir.path, 'root', 'sdcard')).existsSync(), isTrue);
     });
 
     test('buildLaunchConfig 针对不同发行版（Alpine ash vs passwd 自定义 shell）自适应启动参数', () async {

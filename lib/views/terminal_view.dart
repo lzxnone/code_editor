@@ -13,8 +13,11 @@ import 'package:code_editor/widgets/distro_selector_dialog.dart';
 import 'package:code_editor/widgets/terminal_drawer.dart';
 import 'package:code_editor/widgets/terminal_keyboard_sink.dart';
 import 'package:code_editor/widgets/terminal_modifier_state.dart';
+import 'package:code_editor/services/internal_project_service.dart';
 import 'package:code_editor/widgets/virtual_keyboard_widget.dart';
+import 'package:code_editor/widgets/terminal_selection_overlay.dart';
 import 'package:flutter/material.dart';
+import 'package:path/path.dart' as p;
 import 'package:provider/provider.dart';
 import 'package:xterm/xterm.dart' as xterm;
 import 'package:xterm/xterm.dart' show TerminalInputHandler, defaultInputHandler;
@@ -105,10 +108,12 @@ class _TerminalViewState extends State<TerminalView> {
     final activeIndex = provider.activeIndex;
 
     final titleText = activeSession?.name ?? l10n.sessionDefaultName;
-    // 副标题严格取自当前会话绑定的工作目录根路径
-    final sessionWorkspace = activeSession?.workspacePath;
-    final String? subtitleText = (sessionWorkspace != null && sessionWorkspace.trim().isNotEmpty)
-        ? sessionWorkspace.trim()
+    // 副标题取自当前会话绑定的工作目录：若是内部项目则展示项目名，外部项目展示完整绝对路径
+    final sessionWorkspace = activeSession?.workspacePath?.trim();
+    final String? subtitleText = (sessionWorkspace != null && sessionWorkspace.isNotEmpty)
+        ? (InternalProjectService.instance.isInternalProject(sessionWorkspace)
+            ? p.basename(sessionWorkspace)
+            : sessionWorkspace)
         : null;
 
     return Scaffold(
@@ -201,6 +206,10 @@ class _TerminalSessionBodyState extends State<_TerminalSessionBody> {
   /// 小键盘修饰键的运行时状态：键盘组件与终端共用同一份
   late final TerminalModifierState _modifiers = TerminalModifierState();
 
+  /// 终端控制器与 View GlobalKey（用于选区、手柄与上下文菜单定位）
+  late final xterm.TerminalController _terminalController = xterm.TerminalController();
+  final GlobalKey<xterm.TerminalViewState> _terminalViewKey = GlobalKey<xterm.TerminalViewState>();
+
   /// 终端原有的输入处理器与输出出口（用于串联，而不是替换）
   TerminalInputHandler? _delegateInputHandler;
   void Function(String)? _delegateOnOutput;
@@ -235,6 +244,7 @@ class _TerminalSessionBodyState extends State<_TerminalSessionBody> {
     }
     terminal.onOutput = _delegateOnOutput;
     _modifiers.dispose();
+    _terminalController.dispose();
     super.dispose();
   }
 
@@ -264,14 +274,22 @@ class _TerminalSessionBodyState extends State<_TerminalSessionBody> {
         child: Column(
           children: [
             Expanded(
-              child: xterm.TerminalView(
-                session.terminal,
+              child: TerminalSelectionOverlay(
+                terminal: session.terminal,
+                controller: _terminalController,
+                terminalViewKey: _terminalViewKey,
                 focusNode: session.focusNode,
-                autofocus: true,
-                theme: terminalThemeWithBackground(backgroundColor),
-                textStyle: terminalStyle,
-                cursorType: xterm.TerminalCursorType.block,
-                padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 8.0),
+                child: xterm.TerminalView(
+                  session.terminal,
+                  key: _terminalViewKey,
+                  controller: _terminalController,
+                  focusNode: session.focusNode,
+                  autofocus: true,
+                  theme: terminalThemeWithBackground(backgroundColor),
+                  textStyle: terminalStyle,
+                  cursorType: xterm.TerminalCursorType.block,
+                  padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 8.0),
+                ),
               ),
             ),
             if (keyboardEnabled && keyboardConfig != null && keyboardConfig.hasKeys)

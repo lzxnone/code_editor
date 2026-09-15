@@ -20,6 +20,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 class MockFilePicker extends FilePicker {
   String? pickedPath;
+  String? pickedDirectory;
 
   @override
   Future<FilePickerResult?> pickFiles({
@@ -50,7 +51,7 @@ class MockFilePicker extends FilePicker {
     String? dialogTitle,
     bool lockParentWindow = false,
     String? initialDirectory,
-  }) async => null;
+  }) async => pickedDirectory;
 
   @override
   Future<String?> saveFile({
@@ -528,6 +529,110 @@ void main() {
       // Verify no project created
       final projects = await projectService.listProjects();
       expect(projects, isEmpty);
+    });
+
+    testWidgets('Export button is placed next to edit button and exports project as zip', (tester) async {
+      final projDir = await projectService.createProject('my_export_app');
+      File(p.join(projDir.path, 'main.dart')).writeAsStringSync('void main() {}');
+
+      final exportDir = Directory(p.join(tempBaseDir.path, 'exports'))..createSync();
+      mockFilePicker.pickedDirectory = exportDir.path;
+
+      await tester.pumpWidget(buildTestWidget(
+        child: const ProjectManagementView(),
+        locale: const Locale('zh'),
+      ));
+      await tester.pumpAndSettle();
+
+      expect(find.text('my_export_app'), findsOneWidget);
+
+      // Verify buttons in order: Edit, Export, Delete
+      expect(find.byIcon(Icons.edit_outlined), findsOneWidget);
+      expect(find.byIcon(Icons.drive_folder_upload_outlined), findsOneWidget);
+      expect(find.byTooltip('导出为 ZIP 压缩包'), findsOneWidget);
+      expect(find.byIcon(Icons.delete_outline), findsOneWidget);
+
+      final targetZip = File(p.join(exportDir.path, 'my_export_app.zip'));
+
+      // Tap export button inside runAsync so Isolate compression can complete
+      await tester.runAsync(() async {
+        await tester.tap(find.byIcon(Icons.drive_folder_upload_outlined));
+        for (var i = 0; i < 50; i++) {
+          await Future.delayed(const Duration(milliseconds: 100));
+          if (targetZip.existsSync()) break;
+        }
+      });
+      await tester.pump();
+      await tester.pump(const Duration(seconds: 4));
+
+      // Verify exported file exists on disk
+      expect(targetZip.existsSync(), isTrue);
+      expect(targetZip.lengthSync(), greaterThan(0));
+    });
+
+    testWidgets('Exporting when target zip exists prompts for overwrite confirmation', (tester) async {
+      final projDir = await projectService.createProject('app_conflict');
+      File(p.join(projDir.path, 'code.dart')).writeAsStringSync('int a = 1;');
+
+      final exportDir = Directory(p.join(tempBaseDir.path, 'exports_conflict'))..createSync();
+      final existingZip = File(p.join(exportDir.path, 'app_conflict.zip'))..writeAsStringSync('old zip content');
+      mockFilePicker.pickedDirectory = exportDir.path;
+
+      await tester.pumpWidget(buildTestWidget(
+        child: const ProjectManagementView(),
+        locale: const Locale('zh'),
+      ));
+      await tester.pumpAndSettle();
+
+      // Tap export button
+      await tester.tap(find.byIcon(Icons.drive_folder_upload_outlined));
+      await tester.pumpAndSettle();
+
+      // Overwrite confirmation dialog should appear
+      expect(find.text('目标文件 "app_conflict.zip" 已存在，是否覆盖？'), findsOneWidget);
+      expect(find.text('覆盖'), findsOneWidget);
+      expect(find.text('取消'), findsOneWidget);
+
+      // Cancel first
+      await tester.tap(find.text('取消'));
+      await tester.pumpAndSettle();
+      expect(existingZip.readAsStringSync(), equals('old zip content'));
+
+      // Tap export again and confirm overwrite
+      await tester.tap(find.byIcon(Icons.drive_folder_upload_outlined));
+      await tester.pumpAndSettle();
+
+      await tester.runAsync(() async {
+        await tester.tap(find.text('覆盖'));
+        for (var i = 0; i < 50; i++) {
+          await Future.delayed(const Duration(milliseconds: 100));
+          if (existingZip.existsSync() && existingZip.lengthSync() > 15) {
+            break;
+          }
+        }
+      });
+      await tester.pump();
+      await tester.pump(const Duration(seconds: 4));
+
+      expect(existingZip.existsSync(), isTrue);
+      expect(existingZip.lengthSync(), greaterThan(15));
+      final bytes = existingZip.readAsBytesSync();
+      expect(bytes[0], equals(0x50));
+      expect(bytes[1], equals(0x4B));
+    });
+
+    testWidgets('Export button tooltips follow English locale', (tester) async {
+      await projectService.createProject('en_project');
+
+      await tester.pumpWidget(buildTestWidget(
+        child: const ProjectManagementView(),
+        locale: const Locale('en'),
+      ));
+      await tester.pumpAndSettle();
+
+      expect(find.byTooltip('Export as ZIP archive'), findsOneWidget);
+      expect(find.byTooltip('Rename Project'), findsOneWidget);
+      expect(find.byTooltip('Delete Project'), findsOneWidget);
     });
   });
 }

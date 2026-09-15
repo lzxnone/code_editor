@@ -1,4 +1,5 @@
 import 'dart:math';
+
 import 'package:code_editor/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -34,18 +35,130 @@ class _EditorContextMenuItem extends PopupMenuItem<void> implements PreferredSiz
   Size get preferredSize => const Size(140, 36);
 }
 
+/// 移动端选区悬浮工具栏布局代理：
+/// 负责根据 EditorToolbarPlacement 与 safeEditorRect（精准剔除 AppBar/TabBar/虚拟小键盘/软键盘）精确定位
+class _MobileToolbarLayoutDelegate extends SingleChildLayoutDelegate {
+  final TextSelectionToolbarAnchors anchors;
+  final Rect? renderRect;
+  final MediaQueryData mediaQuery;
+
+  _MobileToolbarLayoutDelegate({
+    required this.anchors,
+    required this.renderRect,
+    required this.mediaQuery,
+  });
+
+  @override
+  BoxConstraints getConstraintsForChild(BoxConstraints constraints) {
+    return constraints.loosen();
+  }
+
+  @override
+  Offset getPositionForChild(Size size, Size childSize) {
+    // 1. 计算受保护的可视安全编辑区 safeEditorRect
+    // 顶部：排除 AppBar, TabBar (renderRect.top) 以及系统状态栏
+    final double safeTop = max(renderRect?.top ?? 0.0, mediaQuery.padding.top) + 6.0;
+    // 底部：排除软键盘 (viewInsets.bottom)、虚拟小键盘 (renderRect.bottom) 以及底部安全区
+    final double screenBottomWithoutKeyboard = mediaQuery.size.height - mediaQuery.viewInsets.bottom - mediaQuery.padding.bottom;
+    final double safeBottom = min(renderRect?.bottom ?? screenBottomWithoutKeyboard, screenBottomWithoutKeyboard) - 6.0;
+    // 左右：留出安全内边距
+    final double safeLeft = max(renderRect?.left ?? 0.0, mediaQuery.padding.left) + 8.0;
+    final double safeRight = min(renderRect?.right ?? mediaQuery.size.width, mediaQuery.size.width - mediaQuery.padding.right) - 8.0;
+
+    final double availableWidth = max(0.0, safeRight - safeLeft);
+    final double availableHeight = max(0.0, safeBottom - safeTop);
+
+    // 2. 根据 anchors 中的 EditorToolbarPlacement 或传统 anchors 计算位置
+    EditorToolbarPlacement placement = EditorToolbarPlacement.aboveStart;
+    Offset targetOffset = anchors.primaryAnchor;
+
+    if (anchors is EditorSelectionToolbarAnchors) {
+      final customAnchors = anchors as EditorSelectionToolbarAnchors;
+      placement = customAnchors.placement;
+      targetOffset = customAnchors.targetOffset;
+    }
+
+    double x;
+    double y;
+
+    switch (placement) {
+      case EditorToolbarPlacement.center:
+        // 框选文本完全占据当前屏幕：在中间显示
+        x = safeLeft + (availableWidth - childSize.width) / 2.0;
+        y = safeTop + (availableHeight - childSize.height) / 2.0;
+        break;
+
+      case EditorToolbarPlacement.top:
+        // 选区整体在视口上方：在视口顶部贴边显示
+        x = safeLeft + (availableWidth - childSize.width) / 2.0;
+        y = safeTop + 4.0;
+        break;
+
+      case EditorToolbarPlacement.bottom:
+        // 选区整体在视口下方：在视口底部贴边显示（紧贴软键盘/小键盘上方）
+        x = safeLeft + (availableWidth - childSize.width) / 2.0;
+        y = max(safeTop, safeBottom - childSize.height - 4.0);
+        break;
+
+      case EditorToolbarPlacement.aboveStart:
+        // 在左端点上方弹出，若上方空间不足则翻转至下方
+        x = targetOffset.dx - childSize.width / 2.0;
+        final double yAbove = targetOffset.dy - childSize.height - 8.0;
+        if (yAbove >= safeTop) {
+          y = yAbove;
+        } else {
+          // 上方空间不足，翻转到左端点下方（行高约为 24）
+          y = targetOffset.dy + 24.0 + 8.0;
+        }
+        break;
+
+      case EditorToolbarPlacement.belowEnd:
+        // 在右端点下方弹出，若下方空间不足则翻转至上方
+        x = targetOffset.dx - childSize.width / 2.0;
+        // 右端点手柄下挂高度约 28px，避免遮挡光标水滴手柄
+        final double yBelow = targetOffset.dy + 24.0 + 26.0;
+        if (yBelow + childSize.height <= safeBottom) {
+          y = yBelow;
+        } else {
+          // 下方空间不足（被软键盘或小键盘限制），翻转到右端点上方
+          y = targetOffset.dy - childSize.height - 8.0;
+        }
+        break;
+    }
+
+    // 3. 水平与垂直安全夹紧，防止任何溢出
+    final double clampedX = (availableWidth >= childSize.width)
+        ? x.clamp(safeLeft, safeRight - childSize.width)
+        : safeLeft;
+    final double clampedY = (availableHeight >= childSize.height)
+        ? y.clamp(safeTop, safeBottom - childSize.height)
+        : safeTop;
+
+    return Offset(clampedX, clampedY);
+  }
+
+  @override
+  bool shouldRelayout(covariant _MobileToolbarLayoutDelegate oldDelegate) {
+    return anchors != oldDelegate.anchors ||
+        renderRect != oldDelegate.renderRect ||
+        mediaQuery != oldDelegate.mediaQuery;
+  }
+}
+
 /// 移动端选区悬浮工具栏（基于 OverlayEntry，绝不压入 Route，软键盘保持弹起）
 class _MobileSelectionToolbarWidget extends StatefulWidget {
   final TextSelectionToolbarAnchors anchors;
   final CodeLineEditingController controller;
   final VoidCallback onDismiss;
   final FocusNode? focusNode;
+  final Rect? renderRect;
 
   const _MobileSelectionToolbarWidget({
     required this.anchors,
     required this.controller,
     required this.onDismiss,
     this.focusNode,
+    this.renderRect,
   });
 
   @override
@@ -79,76 +192,130 @@ class _MobileSelectionToolbarWidgetState extends State<_MobileSelectionToolbarWi
         widget.controller.selection.extentOffset != -1 &&
         !widget.controller.selection.isCollapsed;
 
-    final mediaQuery = MediaQuery.of(context);
-    final availableBottom = mediaQuery.size.height - mediaQuery.viewInsets.bottom;
-    TextSelectionToolbarAnchors effectiveAnchors = widget.anchors;
+    final cutLabel = l10n?.cut ?? 'Cut';
+    final copyLabel = l10n?.copy ?? 'Copy';
+    final pasteLabel = l10n?.paste ?? 'Paste';
+    final selectAllLabel = l10n?.selectAll ?? 'Select All';
 
-    final primary = effectiveAnchors.primaryAnchor;
-    final secondary = effectiveAnchors.secondaryAnchor;
+    final theme = Theme.of(context);
 
-    // 针对虚拟键盘或底栏的全局安全高度校准：
-    if (secondary != null && secondary.dy + 65.0 > availableBottom) {
-      effectiveAnchors = TextSelectionToolbarAnchors(
-        primaryAnchor: Offset(
-          secondary.dx.clamp(120.0, max(120.0, mediaQuery.size.width - 120.0)),
-          (availableBottom - 12.0).clamp(mediaQuery.padding.top + 48.0, availableBottom),
+    final toolbarContent = Material(
+      elevation: 6.0,
+      shadowColor: Colors.black45,
+      color: theme.colorScheme.surfaceContainerHighest,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(8.0),
+        side: BorderSide(
+          color: theme.colorScheme.outlineVariant.withValues(alpha: 0.6),
+          width: 0.8,
         ),
-        secondaryAnchor: null,
-      );
-    } else if (primary.dy + 60.0 > availableBottom && primary.dx >= 0) {
-      effectiveAnchors = TextSelectionToolbarAnchors(
-        primaryAnchor: Offset(
-          primary.dx.clamp(120.0, max(120.0, mediaQuery.size.width - 120.0)),
-          (availableBottom - 12.0).clamp(mediaQuery.padding.top + 48.0, availableBottom),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: IntrinsicHeight(
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (hasSelection) ...[
+              _buildItem(
+                context,
+                icon: Icons.content_cut,
+                label: cutLabel,
+                onTap: () {
+                  widget.controller.cut();
+                  widget.onDismiss();
+                  widget.focusNode?.requestFocus();
+                },
+              ),
+              _buildDivider(context),
+              _buildItem(
+                context,
+                icon: Icons.copy,
+                label: copyLabel,
+                onTap: () {
+                  widget.controller.copy();
+                  widget.onDismiss();
+                  widget.focusNode?.requestFocus();
+                },
+              ),
+            ],
+            if (_canPaste) ...[
+              if (hasSelection) _buildDivider(context),
+              _buildItem(
+                context,
+                icon: Icons.paste,
+                label: pasteLabel,
+                onTap: () {
+                  widget.controller.paste();
+                  widget.onDismiss();
+                  widget.focusNode?.requestFocus();
+                },
+              ),
+            ],
+            if (!widget.controller.isEmpty) ...[
+              _buildDivider(context),
+              _buildItem(
+                context,
+                icon: Icons.select_all,
+                label: selectAllLabel,
+                onTap: () {
+                  widget.controller.selectAll();
+                  widget.onDismiss();
+                  widget.focusNode?.requestFocus();
+                },
+              ),
+            ],
+          ],
         ),
-        secondaryAnchor: null,
-      );
-    }
+      ),
+    );
 
-    return AdaptiveTextSelectionToolbar.buttonItems(
-      anchors: effectiveAnchors,
-      buttonItems: [
-        if (hasSelection)
-          ContextMenuButtonItem(
-            label: l10n?.cut ?? '剪切',
-            type: ContextMenuButtonType.cut,
-            onPressed: () {
-              widget.controller.cut();
-              widget.onDismiss();
-              widget.focusNode?.requestFocus();
-            },
-          ),
-        if (hasSelection)
-          ContextMenuButtonItem(
-            label: l10n?.copy ?? '复制',
-            type: ContextMenuButtonType.copy,
-            onPressed: () {
-              widget.controller.copy();
-              widget.onDismiss();
-              widget.focusNode?.requestFocus();
-            },
-          ),
-        if (_canPaste)
-          ContextMenuButtonItem(
-            label: l10n?.paste ?? '粘贴',
-            type: ContextMenuButtonType.paste,
-            onPressed: () {
-              widget.controller.paste();
-              widget.onDismiss();
-              widget.focusNode?.requestFocus();
-            },
-          ),
-        if (!widget.controller.isEmpty)
-          ContextMenuButtonItem(
-            label: l10n?.selectAll ?? '全选',
-            type: ContextMenuButtonType.selectAll,
-            onPressed: () {
-              widget.controller.selectAll();
-              widget.onDismiss();
-              widget.focusNode?.requestFocus();
-            },
-          ),
-      ],
+    return CustomSingleChildLayout(
+      delegate: _MobileToolbarLayoutDelegate(
+        anchors: widget.anchors,
+        renderRect: widget.renderRect,
+        mediaQuery: MediaQuery.of(context),
+      ),
+      child: toolbarContent,
+    );
+  }
+
+  Widget _buildItem(
+    BuildContext context, {
+    required IconData icon,
+    required String label,
+    required VoidCallback onTap,
+  }) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return InkWell(
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 8.0),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 16, color: colorScheme.onSurface),
+            const SizedBox(width: 4),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w500,
+                color: colorScheme.onSurface,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDivider(BuildContext context) {
+    return VerticalDivider(
+      width: 1,
+      thickness: 0.8,
+      indent: 6,
+      endIndent: 6,
+      color: Theme.of(context).colorScheme.outlineVariant.withValues(alpha: 0.5),
     );
   }
 }
@@ -158,6 +325,12 @@ class CodeEditorToolbarController implements SelectionToolbarController {
   final FocusNode? focusNode;
   late final SelectionToolbarController _mobileController;
 
+  CodeLineEditingController? _lastController;
+  TextSelectionToolbarAnchors? _lastAnchors;
+  Rect? _lastRenderRect;
+  LayerLink? _lastLayerLink;
+  ValueNotifier<bool>? _lastVisibility;
+
   CodeEditorToolbarController({this.focusNode}) {
     _mobileController = MobileSelectionToolbarController(
       builder: ({
@@ -166,12 +339,14 @@ class CodeEditorToolbarController implements SelectionToolbarController {
         required CodeLineEditingController controller,
         required VoidCallback onDismiss,
         required VoidCallback onRefresh,
+        Rect? renderRect,
       }) {
         return _MobileSelectionToolbarWidget(
           anchors: anchors,
           controller: controller,
           onDismiss: onDismiss,
           focusNode: focusNode,
+          renderRect: renderRect,
         );
       },
     );
@@ -191,6 +366,12 @@ class CodeEditorToolbarController implements SelectionToolbarController {
     required LayerLink layerLink,
     required ValueNotifier<bool> visibility,
   }) {
+    _lastController = controller;
+    _lastAnchors = anchors;
+    _lastRenderRect = renderRect;
+    _lastLayerLink = layerLink;
+    _lastVisibility = visibility;
+
     if (renderRect == null) {
       _showDesktopMenu(
         context: context,
@@ -198,11 +379,10 @@ class CodeEditorToolbarController implements SelectionToolbarController {
         anchors: anchors,
       );
     } else {
-      final safeAnchors = _sanitizeMobileAnchors(anchors, renderRect);
       _mobileController.show(
         context: context,
         controller: controller,
-        anchors: safeAnchors,
+        anchors: anchors,
         renderRect: renderRect,
         layerLink: layerLink,
         visibility: visibility,
@@ -210,56 +390,22 @@ class CodeEditorToolbarController implements SelectionToolbarController {
     }
   }
 
-  /// 智能校准移动端选区工具栏锚点：
-  /// 1. 优先展示在选区上方（primaryAnchor），避免遮挡当前选中的代码内容及下方代码；
-  /// 2. 当选区位于视口顶部（上方空间不足 54px 时），智能翻转至选区下方（secondaryAnchor）；
-  /// 3. 当选区靠近视口底部或键盘时，保护次锚点不落入键盘/底栏区域，坚决保持在上方；
-  /// 4. 水平坐标智能居中并进行安全边缘约束（左右各留出 120px 缓冲），防止菜单按钮溢出屏幕。
-  static TextSelectionToolbarAnchors _sanitizeMobileAnchors(
-    TextSelectionToolbarAnchors anchors,
-    Rect renderRect,
-  ) {
-    final primary = anchors.primaryAnchor;
-    final secondary = anchors.secondaryAnchor;
-
-    // 确定水平基准坐标并进行安全边距夹取（左右两端预留充足空间以保证多个操作按钮完整可见）
-    final double rawX = (primary.dx > 0) ? primary.dx : (secondary?.dx ?? renderRect.center.dx);
-    final double safeX = (renderRect.width > 240.0)
-        ? rawX.clamp(renderRect.left + 120.0, renderRect.right - 120.0)
-        : renderRect.center.dx;
-
-    // 计算选区上方与下方的垂直可用净空间
-    final double topY = (primary.dy > 0) ? primary.dy : (secondary?.dy ?? renderRect.top + 60.0);
-    final double bottomY = (secondary != null && secondary.dy > 0) ? secondary.dy : (topY + 30.0);
-
-    final double spaceAbove = topY - renderRect.top;
-    final double spaceBelow = renderRect.bottom - bottomY;
-
-    // 规则 1：选区上方空间充足（>= 54.0px，足够容纳工具栏），置于选区上方！
-    // 选区本身与下方的代码行将保持 100% 清晰可见，绝不遮挡。
-    if (spaceAbove >= 54.0) {
-      return TextSelectionToolbarAnchors(
-        primaryAnchor: Offset(safeX, topY),
-        secondaryAnchor: spaceBelow >= 64.0 ? Offset(safeX, bottomY) : null,
-      );
+  /// 重新唤起上一次的选区悬浮工具栏（常用于滚动结束时自动恢复）
+  void reshowLastToolbar(BuildContext context) {
+    final controller = _lastController;
+    if (controller == null || controller.selection.isCollapsed || controller.selection.baseOffset == -1) {
+      return;
     }
-
-    // 规则 2：选区位于第一行/第二行（上方空间不足 54px），但下方空间充足（>= 64px）
-    // 智能翻转至选区下方，保证不超出屏幕顶部也不遮挡第一行
-    if (spaceBelow >= 64.0) {
-      return TextSelectionToolbarAnchors(
-        primaryAnchor: const Offset(-10000, -10000),
-        secondaryAnchor: Offset(safeX, bottomY),
-      );
+    if (_lastAnchors == null || _lastLayerLink == null || _lastVisibility == null) {
+      return;
     }
-
-    // 规则 3：选区跨越很大或上下空间均受限时，安全悬浮于可视区域上边缘内侧
-    return TextSelectionToolbarAnchors(
-      primaryAnchor: Offset(
-        safeX,
-        (renderRect.top + 56.0).clamp(renderRect.top + 10.0, renderRect.bottom - 10.0),
-      ),
-      secondaryAnchor: null,
+    show(
+      context: context,
+      controller: controller,
+      anchors: _lastAnchors!,
+      renderRect: _lastRenderRect,
+      layerLink: _lastLayerLink!,
+      visibility: _lastVisibility!,
     );
   }
 
@@ -300,7 +446,7 @@ class CodeEditorToolbarController implements SelectionToolbarController {
       ),
       items: [
         _EditorContextMenuItem(
-          text: l10n?.cut ?? '剪切',
+          text: l10n?.cut ?? 'Cut',
           icon: Icons.content_cut,
           enabled: hasSelection,
           onTap: () {
@@ -308,7 +454,7 @@ class CodeEditorToolbarController implements SelectionToolbarController {
           },
         ),
         _EditorContextMenuItem(
-          text: l10n?.copy ?? '复制',
+          text: l10n?.copy ?? 'Copy',
           icon: Icons.copy,
           enabled: hasSelection,
           onTap: () {
@@ -316,7 +462,7 @@ class CodeEditorToolbarController implements SelectionToolbarController {
           },
         ),
         _EditorContextMenuItem(
-          text: l10n?.paste ?? '粘贴',
+          text: l10n?.paste ?? 'Paste',
           icon: Icons.paste,
           enabled: hasClipboard,
           onTap: () {
@@ -325,7 +471,7 @@ class CodeEditorToolbarController implements SelectionToolbarController {
         ),
         const PopupMenuDivider(height: 1),
         _EditorContextMenuItem(
-          text: l10n?.selectAll ?? '全选',
+          text: l10n?.selectAll ?? 'Select All',
           icon: Icons.select_all,
           enabled: !controller.isEmpty,
           onTap: () {

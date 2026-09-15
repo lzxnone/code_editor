@@ -235,6 +235,59 @@ class _ProjectManagementViewState extends State<ProjectManagementView> {
     }
   }
 
+  Future<void> _onExportProject(Directory dir, String projectName) async {
+    final l10n = AppLocalizations.of(context)!;
+
+    // 打开系统文件管理选择导出目标文件夹
+    final selectedDir = await FilePicker.platform.getDirectoryPath(
+      dialogTitle: l10n.selectExportDirectory,
+    );
+
+    if (selectedDir == null || selectedDir.trim().isEmpty || !mounted) {
+      return;
+    }
+
+    final targetFileName = '$projectName.zip';
+    final targetFilePath = p.join(selectedDir, targetFileName);
+    final targetFile = File(targetFilePath);
+
+    // 若目标文件已存在，弹出覆盖确认
+    if (targetFile.existsSync()) {
+      final confirmOverwrite = await DialogUtils.showDestructiveConfirmDialog(
+        context,
+        title: l10n.exportProject,
+        message: l10n.targetFileAlreadyExists(targetFileName),
+        confirmText: l10n.overwrite,
+        cancelText: l10n.cancel,
+      );
+      if (!confirmOverwrite || !mounted) {
+        return;
+      }
+    }
+
+    // 执行流式压缩导出任务
+    try {
+      await DialogUtils.showSyncLoadingDialog(
+        context,
+        message: l10n.exportingProject,
+        task: () async {
+          await _projectService.exportProjectToZip(dir, targetFilePath);
+        },
+      );
+
+      if (mounted) {
+        DialogUtils.showSuccessToast(context, l10n.projectExported);
+      }
+    } catch (e) {
+      if (mounted) {
+        DialogUtils.showErrorToast(
+          context,
+          l10n.exportProjectFailed(e.toString()),
+        );
+      }
+    }
+  }
+
   Future<void> _onDeleteProject(Directory dir, String projectName) async {
     final l10n = AppLocalizations.of(context)!;
     final confirmed = await DialogUtils.showDestructiveConfirmDialog(
@@ -359,6 +412,11 @@ class _ProjectManagementViewState extends State<ProjectManagementView> {
                             icon: const Icon(Icons.edit_outlined),
                             tooltip: l10n.renameProject,
                             onPressed: () => _onRenameProject(dir, projectName),
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.drive_folder_upload_outlined),
+                            tooltip: l10n.exportProjectTooltip,
+                            onPressed: () => _onExportProject(dir, projectName),
                           ),
                           IconButton(
                             icon: const Icon(Icons.delete_outline),

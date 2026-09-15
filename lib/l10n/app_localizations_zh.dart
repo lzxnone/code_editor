@@ -1048,6 +1048,12 @@ class AppLocalizationsZh extends AppLocalizations {
   String get systemDetectedTasks => '系统动态探测任务';
 
   @override
+  String get resyncModuleTasks => '重新同步真实任务';
+
+  @override
+  String get syncingTasks => '正在后台自省任务...';
+
+  @override
   String get editCustomTasksTooltip => '编辑自定义任务';
 
   @override
@@ -1307,4 +1313,42 @@ class AppLocalizationsZh extends AppLocalizations {
   @override
   String get unsupportedDistroArchiveFormat =>
       '不支持的文件格式，仅支持系统镜像包 (.tar.gz, .tar.xz, .tar)';
+
+  @override
+  String get exportProject => '导出项目';
+
+  @override
+  String get exportProjectTooltip => '导出为 ZIP 压缩包';
+
+  @override
+  String get exportingProject => '正在压缩并导出项目...';
+
+  @override
+  String get projectExported => '项目导出成功';
+
+  @override
+  String exportProjectFailed(String error) {
+    return '导出项目失败: $error';
+  }
+
+  @override
+  String get selectExportDirectory => '选择导出目标文件夹';
+
+  @override
+  String targetFileAlreadyExists(String name) {
+    return '目标文件 \"$name\" 已存在，是否覆盖？';
+  }
+
+  @override
+  String get overwrite => '覆盖';
+
+  @override
+  String get batteryOptimizationTitle => '后台运行与电池优化';
+
+  @override
+  String get batteryOptimizationMessage =>
+      '为了保证终端会话在后台不被系统强行终止，建议将本应用的电池优化设置为“无限制”或关闭电池优化。\n\n是否前往系统设置进行配置？';
+
+  @override
+  String get copiedToClipboard => '已复制到剪贴板';
 }

@@ -178,6 +178,9 @@ class _CodeSelectionGestureDetectorState extends State<_CodeSelectionGestureDete
     }.contains);
 
   void _onMobileTapDown(Offset position) {
+    if (!widget.controller.selection.isCollapsed && _isPositionOnSelection(position)) {
+      return;
+    }
     _selectPosition(position, _SelectionChangedCause.tapDown);
     widget.selectionOverlayController.hideHandle();
     widget.selectionOverlayController.hideToolbar();
@@ -193,9 +196,15 @@ class _CodeSelectionGestureDetectorState extends State<_CodeSelectionGestureDete
     } else {
       _pointerTapTimestamp = now;
       _pointerTapPosition = position;
-      _selectPosition(position, _SelectionChangedCause.tapUp);
-      widget.selectionOverlayController.hideHandle();
-      widget.selectionOverlayController.hideToolbar();
+      if (!widget.controller.selection.isCollapsed && _isPositionOnSelection(position)) {
+        // 存在框选区域时，点击框选区域不再取消框选区域，而是弹出菜单
+        widget.selectionOverlayController.showHandle(context);
+        widget.selectionOverlayController.showToolbar(context, position);
+      } else {
+        _selectPosition(position, _SelectionChangedCause.tapUp);
+        widget.selectionOverlayController.hideHandle();
+        widget.selectionOverlayController.hideToolbar();
+      }
     }
     widget.inputController.ensureInput();
   }
@@ -432,7 +441,7 @@ abstract class _SelectionOverlayController {
 
   void hideHandle();
 
-  void showToolbar(BuildContext context, Offset position);
+  void showToolbar(BuildContext context, Offset position, [TextSelectionHandleType? targetHandle]);
 
   void hideToolbar();
 
@@ -466,7 +475,7 @@ class _DesktopSelectionOverlayController implements _SelectionOverlayController 
   }
 
   @override
-  void showToolbar(BuildContext context, Offset? position) {
+  void showToolbar(BuildContext context, Offset? position, [TextSelectionHandleType? targetHandle]) {
     if (position == null) {
       return;
     }
@@ -575,7 +584,7 @@ class _MobileSelectionOverlayController implements _SelectionOverlayController {
   }
 
   @override
-  void showToolbar(BuildContext context, Offset globalPosition) {
+  void showToolbar(BuildContext context, Offset globalPosition, [TextSelectionHandleType? targetHandle]) {
     globalPosition = _clampPosition(globalPosition);
     final Rect editingRegion = Rect.fromPoints(
       ensureRender.localToGlobal(Offset.zero),
@@ -588,28 +597,84 @@ class _MobileSelectionOverlayController implements _SelectionOverlayController {
         primaryAnchor: ensureRender.calculateTextPositionScreenOffset(selection.start, false) ?? globalPosition,
       );
     } else {
-      final Rect? bounds = ensureRender.calculateSelectionBoundingRect(selection);
-      final double midX;
-      final double topY;
-      final double bottomY;
-      if (bounds != null) {
-        midX = bounds.center.dx;
-        topY = bounds.top.clamp(editingRegion.top, editingRegion.bottom);
-        bottomY = bounds.bottom.clamp(editingRegion.top, editingRegion.bottom);
+      final Offset? startScreenOffset = ensureRender.calculateTextPositionScreenOffset(selection.start, false);
+      final Offset? endScreenOffset = ensureRender.calculateTextPositionScreenOffset(selection.end, false);
+      final double lineHeight = ensureRender.lineHeight;
+
+      // 判断左端点是否完全在屏幕编辑区内（留有微小容差）
+      final bool isStartOnScreen = startScreenOffset != null &&
+          startScreenOffset.dy >= (editingRegion.top - 1.0) &&
+          (startScreenOffset.dy + lineHeight) <= (editingRegion.bottom + 1.0) &&
+          startScreenOffset.dx >= (editingRegion.left - 1.0) &&
+          startScreenOffset.dx <= (editingRegion.right + 1.0);
+
+      // 判断右端点是否完全在屏幕编辑区内（留有微小容差）
+      final bool isEndOnScreen = endScreenOffset != null &&
+          endScreenOffset.dy >= (editingRegion.top - 1.0) &&
+          (endScreenOffset.dy + lineHeight) <= (editingRegion.bottom + 1.0) &&
+          endScreenOffset.dx >= (editingRegion.left - 1.0) &&
+          endScreenOffset.dx <= (editingRegion.right + 1.0);
+
+      final EditorToolbarPlacement placement;
+      final Offset targetOffset;
+
+      if (targetHandle == TextSelectionHandleType.left) {
+        // 用户刚才拖动或点击了左端点手柄：在左端点位置上方弹出
+        placement = EditorToolbarPlacement.aboveStart;
+        targetOffset = startScreenOffset ?? globalPosition;
+      } else if (targetHandle == TextSelectionHandleType.right) {
+        // 用户刚才拖动或点击了右端点手柄：在右端点位置下方弹出
+        placement = EditorToolbarPlacement.belowEnd;
+        targetOffset = endScreenOffset ?? globalPosition;
       } else {
-        Offset startPosition = ensureRender.calculateTextPositionScreenOffset(selection.start, false) ?? editingRegion.topLeft;
-        Offset endPosition = ensureRender.calculateTextPositionScreenOffset(selection.end, true) ?? editingRegion.bottomRight;
-        topY = min(startPosition.dy, endPosition.dy).clamp(editingRegion.top, editingRegion.bottom);
-        bottomY = max(startPosition.dy, endPosition.dy).clamp(editingRegion.top, editingRegion.bottom);
-        if ((endPosition.dy - startPosition.dy).abs() <= ensureRender.lineHeight * 1.5) {
-          midX = (startPosition.dx + endPosition.dx) / 2.0;
+        // 通用智能定位逻辑（点击选区/滑动结束/双击长按初始框选）
+        if (isStartOnScreen && isEndOnScreen) {
+          // 都在，以左边为基，在左端点上方弹出
+          placement = EditorToolbarPlacement.aboveStart;
+          targetOffset = startScreenOffset!;
+        } else if (isStartOnScreen) {
+          // 仅左端点在屏幕内：在左端点上方弹出
+          placement = EditorToolbarPlacement.aboveStart;
+          targetOffset = startScreenOffset!;
+        } else if (isEndOnScreen) {
+          // 仅右端点在屏幕内：在右端点下方弹出
+          placement = EditorToolbarPlacement.belowEnd;
+          targetOffset = endScreenOffset!;
         } else {
-          midX = globalPosition.dx;
+          // 都不在屏幕内
+          final int firstVisibleLine = ensureRender.displayParagraphs.isNotEmpty
+              ? ensureRender.displayParagraphs.first.index
+              : 0;
+          final int lastVisibleLine = ensureRender.displayParagraphs.isNotEmpty
+              ? ensureRender.displayParagraphs.last.index
+              : 0;
+
+          if (selection.startIndex <= firstVisibleLine && selection.endIndex >= lastVisibleLine) {
+            // 框选文本完全占据当前屏幕：在中间显示
+            placement = EditorToolbarPlacement.center;
+            targetOffset = editingRegion.center;
+          } else if (selection.endIndex < firstVisibleLine) {
+            // 选区整体在屏幕上方：在上面显示
+            placement = EditorToolbarPlacement.top;
+            targetOffset = Offset(editingRegion.center.dx, editingRegion.top);
+          } else if (selection.startIndex > lastVisibleLine) {
+            // 选区整体在屏幕下方：在下方显示
+            placement = EditorToolbarPlacement.bottom;
+            targetOffset = Offset(editingRegion.center.dx, editingRegion.bottom);
+          } else {
+            // 兜底（水平滚动偏离等异常情况）：在中间显示
+            placement = EditorToolbarPlacement.center;
+            targetOffset = editingRegion.center;
+          }
         }
       }
-      anchors = TextSelectionToolbarAnchors(
-        primaryAnchor: Offset(midX, topY),
-        secondaryAnchor: Offset(midX, bottomY),
+
+      anchors = EditorSelectionToolbarAnchors(
+        primaryAnchor: targetOffset,
+        secondaryAnchor: Offset(targetOffset.dx, targetOffset.dy + lineHeight),
+        placement: placement,
+        targetOffset: targetOffset,
+        visibleEditorRect: editingRegion,
       );
     }
     onShowToolbar(context, anchors, editingRegion);
@@ -704,10 +769,7 @@ class _MobileSelectionOverlayController implements _SelectionOverlayController {
           handleLayerLink: startHandleLayerLink,
           onSelectionHandleTapped: () {
             final Offset? position = ensureRender.calculateTextPositionScreenOffset(controller.selection.start, false);
-            if (position == null) {
-              return;
-            }
-            showToolbar(_context, position);
+            showToolbar(_context, position ?? Offset.zero, TextSelectionHandleType.left);
           },
           onSelectionHandleDragStart: _handleStartHandleDragStart,
           onSelectionHandleDragUpdate: (details) {
@@ -736,10 +798,7 @@ class _MobileSelectionOverlayController implements _SelectionOverlayController {
         handleLayerLink: endHandleLayerLink,
         onSelectionHandleTapped: () {
           final Offset? position = ensureRender.calculateTextPositionScreenOffset(controller.selection.end, false);
-          if (position == null) {
-            return;
-          }
-          showToolbar(_context, position);
+          showToolbar(_context, position ?? Offset.zero, TextSelectionHandleType.right);
         },
         onSelectionHandleDragStart: _handleEndHandleDragStart,
         onSelectionHandleDragUpdate: (details) {
@@ -835,7 +894,7 @@ class _MobileSelectionOverlayController implements _SelectionOverlayController {
     _isStartHandleAutoScrolling = false;
     ensureRender.stopAutoScroll();
     toolbarVisibility.value = true;
-    showToolbar(_context, _startHandleDragLastPosition);
+    showToolbar(_context, _startHandleDragLastPosition, TextSelectionHandleType.left);
   }
 
   void _handleEndHandleDragStart(DragStartDetails details) {
@@ -916,7 +975,7 @@ class _MobileSelectionOverlayController implements _SelectionOverlayController {
     _isEndHandleAutoScrolling = false;
     ensureRender.stopAutoScroll();
     toolbarVisibility.value = true;
-    showToolbar(_context, _endHandleDragLastPosition);
+    showToolbar(_context, _endHandleDragLastPosition, TextSelectionHandleType.right);
   }
 
   void _autoScrollWhenStartHandleDragging() {
@@ -1089,41 +1148,46 @@ class _SelectionHandleOverlayState extends State<_SelectionHandleOverlay> with S
           alignment: Alignment.topLeft,
           width: interactiveRect.width,
           height: interactiveRect.height,
-          child: RawGestureDetector(
-            behavior: HitTestBehavior.translucent,
-            gestures: <Type, GestureRecognizerFactory>{
-              PanGestureRecognizer: GestureRecognizerFactoryWithHandlers<PanGestureRecognizer>(
-                () => PanGestureRecognizer(
-                  debugOwner: this,
-                  // Mouse events select the text and do not drag the cursor.
-                  supportedDevices: <PointerDeviceKind>{
-                    PointerDeviceKind.touch,
-                    PointerDeviceKind.stylus,
-                    PointerDeviceKind.unknown,
+          child: MouseRegion(
+            cursor: SystemMouseCursors.grab,
+            child: RawGestureDetector(
+              behavior: HitTestBehavior.translucent,
+              gestures: <Type, GestureRecognizerFactory>{
+                PanGestureRecognizer: GestureRecognizerFactoryWithHandlers<PanGestureRecognizer>(
+                  () => PanGestureRecognizer(
+                    debugOwner: this,
+                    supportedDevices: <PointerDeviceKind>{
+                      PointerDeviceKind.touch,
+                      PointerDeviceKind.stylus,
+                      PointerDeviceKind.invertedStylus,
+                      PointerDeviceKind.mouse,
+                      PointerDeviceKind.trackpad,
+                      PointerDeviceKind.unknown,
+                    },
+                  ),
+                  (PanGestureRecognizer instance) {
+                    instance
+                      ..dragStartBehavior = DragStartBehavior.start
+                      ..onStart = widget.onSelectionHandleDragStart
+                      ..onUpdate = widget.onSelectionHandleDragUpdate
+                      ..onCancel = widget.onSelectionHandleDragCancel
+                      ..onEnd = widget.onSelectionHandleDragEnd;
                   },
                 ),
-                (PanGestureRecognizer instance) {
-                  instance
-                    ..dragStartBehavior = DragStartBehavior.start
-                    ..onStart = widget.onSelectionHandleDragStart
-                    ..onUpdate = widget.onSelectionHandleDragUpdate
-                    ..onCancel = widget.onSelectionHandleDragCancel
-                    ..onEnd = widget.onSelectionHandleDragEnd;
-                },
-              ),
-            },
-            child: Padding(
-              padding: EdgeInsets.only(
-                left: padding.left,
-                top: padding.top,
-                right: padding.right,
-                bottom: padding.bottom,
-              ),
-              child: widget.selectionControls.buildHandle(
-                context,
-                widget.type,
-                widget.preferredLineHeight,
-                widget.onSelectionHandleTapped,
+              },
+              child: Padding(
+                padding: EdgeInsets.only(
+                  left: padding.left,
+                  top: padding.top,
+                  right: padding.right,
+                  bottom: padding.bottom,
+                ),
+                child: widget.selectionControls.buildHandle(
+                  context,
+                  widget.type,
+                  widget.preferredLineHeight,
+                  widget.onSelectionHandleTapped,
+                ),
               ),
             ),
           ),
@@ -1184,6 +1248,7 @@ class _MobileSelectionToolbarController implements MobileSelectionToolbarControl
               visibility: visibility
             );
           },
+          renderRect: renderRect,
         )
       )
     );

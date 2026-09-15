@@ -2,6 +2,7 @@ import 'package:code_editor/l10n/app_localizations.dart';
 import 'package:code_editor/models/project_history.dart';
 import 'package:code_editor/providers/project_provider.dart';
 import 'package:code_editor/providers/tab_provider.dart';
+import 'package:code_editor/services/internal_project_service.dart';
 import 'package:code_editor/services/project_history_service.dart';
 import 'package:code_editor/utils/dialog_utils.dart';
 import 'package:flutter/material.dart';
@@ -196,7 +197,12 @@ class _ProjectHistoryWidgetState
                                     lastFile.trim().isNotEmpty)
                                 ? p.basename(lastFile)
                                 : l10n.noOpenFile;
-                            final rootDir = item.rootPath ?? l10n.unknownDirectory;
+                            final rawRoot = item.rootPath;
+                            final displayRoot = (rawRoot != null && rawRoot.trim().isNotEmpty)
+                                ? (InternalProjectService.instance.isInternalProject(rawRoot)
+                                    ? p.basename(rawRoot)
+                                    : rawRoot)
+                                : l10n.unknownDirectory;
 
                             return InkWell(
                               onTap: () {
@@ -235,9 +241,9 @@ class _ProjectHistoryWidgetState
                                             overflow: TextOverflow.ellipsis,
                                           ),
                                           const SizedBox(height: 4),
-                                          // 下面：一行小字表示根目录
+                                          // 下面：一行小字表示根目录或内部项目名
                                           Text(
-                                            rootDir,
+                                            displayRoot,
                                             style: theme.textTheme.bodySmall?.copyWith(
                                               color: theme.colorScheme.onSurfaceVariant,
                                             ),
