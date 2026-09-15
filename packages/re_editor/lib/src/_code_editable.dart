@@ -27,6 +27,7 @@ class _CodeEditable extends StatefulWidget {
   final EdgeInsetsGeometry padding;
   final EdgeInsetsGeometry margin;
   final Widget? leadingDivider;
+  final bool pinLineNumbers;
   final Border? border;
   final BorderRadius? borderRadius;
   final Clip clipBehavior;
@@ -68,6 +69,7 @@ class _CodeEditable extends StatefulWidget {
     required this.padding,
     required this.margin,
     required this.leadingDivider,
+    this.pinLineNumbers = true,
     this.border,
     this.borderRadius,
     this.clipBehavior = Clip.none,
@@ -104,6 +106,8 @@ class _CodeEditableState extends State<_CodeEditable> with AutomaticKeepAliveCli
 
   late _CodeHighlighter _highlighter;
   late CodeIndicatorValueNotifier _codeIndicatorValueNotifier;
+  _ShiftedViewportOffset? _shiftedHorizontalViewport;
+  double _gutterWidth = 0.0;
 
   @override
   bool get wantKeepAlive => widget.focusNode.hasFocus;
@@ -183,6 +187,7 @@ class _CodeEditableState extends State<_CodeEditable> with AutomaticKeepAliveCli
     _floatingCursorAnimationController.dispose();
     widget.focusNode.removeListener(_onFocusChanged);
     widget.findController.removeListener(_onCodeFindChanged);
+    _shiftedHorizontalViewport?.dispose();
     super.dispose();
   }
 
@@ -193,6 +198,41 @@ class _CodeEditableState extends State<_CodeEditable> with AutomaticKeepAliveCli
       axisDirection: AxisDirection.down,
       controller: widget.scrollController.verticalScroller,
       viewportBuilder: (context, ViewportOffset vertical) {
+        final Widget? indicator = widget.indicatorBuilder?.call(
+          context,
+          widget.controller,
+          widget.chunkController,
+          _codeIndicatorValueNotifier
+        );
+        final Widget? gutterWidget;
+        if (indicator != null || widget.leadingDivider != null) {
+          gutterWidget = Row(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              if (indicator != null) indicator,
+              if (widget.leadingDivider != null) widget.leadingDivider!,
+            ],
+          );
+        } else {
+          gutterWidget = null;
+        }
+
+        final Widget? effectiveGutter;
+        if (gutterWidget == null) {
+          effectiveGutter = null;
+        } else if (widget.pinLineNumbers || widget.wordWrap) {
+          effectiveGutter = gutterWidget;
+        } else {
+          effectiveGutter = _ScrollingGutter(
+            horizontalScroller: widget.scrollController.horizontalScroller,
+            onWidthMeasured: (width) {
+              _gutterWidth = width;
+            },
+            child: gutterWidget,
+          );
+        }
+
         Widget codeField;
         if (widget.wordWrap) {
           codeField = _buildCodeField(vertical, null);
@@ -201,7 +241,21 @@ class _CodeEditableState extends State<_CodeEditable> with AutomaticKeepAliveCli
             axisDirection: AxisDirection.right,
             controller: widget.scrollController.horizontalScroller,
             viewportBuilder: (context, ViewportOffset horizontal) {
-              return _buildCodeField(vertical, horizontal);
+              final ViewportOffset effectiveHorizontal;
+              if (widget.pinLineNumbers || gutterWidget == null) {
+                effectiveHorizontal = horizontal;
+              } else {
+                if (_shiftedHorizontalViewport == null ||
+                    _shiftedHorizontalViewport!._delegate != horizontal) {
+                  _shiftedHorizontalViewport?.dispose();
+                  _shiftedHorizontalViewport = _ShiftedViewportOffset(
+                    horizontal,
+                    () => _gutterWidth,
+                  );
+                }
+                effectiveHorizontal = _shiftedHorizontalViewport!;
+              }
+              return _buildCodeField(vertical, effectiveHorizontal);
             },
             scrollbarBuilder: widget.scrollbarBuilder
           );
@@ -228,12 +282,6 @@ class _CodeEditableState extends State<_CodeEditable> with AutomaticKeepAliveCli
             );
           }
         }
-        final Widget? indicator = widget.indicatorBuilder?.call(
-          context,
-          widget.controller,
-          widget.chunkController,
-          _codeIndicatorValueNotifier
-        );
         return Container(
           decoration: BoxDecoration(
             border: widget.border,
@@ -245,10 +293,8 @@ class _CodeEditableState extends State<_CodeEditable> with AutomaticKeepAliveCli
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              if (indicator != null)
-                indicator,
-              if (widget.leadingDivider != null)
-                widget.leadingDivider!,
+              if (effectiveGutter != null)
+                effectiveGutter,
               Expanded(
                 child: RepaintBoundary(
                   child: CompositedTransformTarget(
@@ -494,6 +540,207 @@ class _CodeCursorBlinkController extends ValueNotifier<bool> {
   void dispose() {
     stopBlink();
     super.dispose();
+  }
+
+}
+
+class _ShiftedViewportOffset extends ViewportOffset {
+
+  final ViewportOffset _delegate;
+  final ValueGetter<double> _gutterWidthGetter;
+
+  _ShiftedViewportOffset(this._delegate, this._gutterWidthGetter) {
+    _delegate.addListener(notifyListeners);
+  }
+
+  double get _gutterWidth => _gutterWidthGetter();
+
+  @override
+  bool get hasPixels => _delegate.hasPixels;
+
+  @override
+  double get pixels =>
+      _delegate.hasPixels ? max(0.0, _delegate.pixels - _gutterWidth) : 0.0;
+
+  @override
+  bool applyViewportDimension(double viewportDimension) {
+    return _delegate.applyViewportDimension(viewportDimension);
+  }
+
+  @override
+  bool applyContentDimensions(double minScrollExtent, double maxScrollExtent) {
+    return _delegate.applyContentDimensions(
+      minScrollExtent,
+      maxScrollExtent + _gutterWidth,
+    );
+  }
+
+  @override
+  void correctBy(double correction) {
+    _delegate.correctBy(correction);
+  }
+
+  @override
+  void jumpTo(double pixels) {
+    _delegate.jumpTo(pixels + _gutterWidth);
+  }
+
+  @override
+  Future<void> animateTo(
+    double to, {
+    required Duration duration,
+    required Curve curve,
+  }) {
+    return _delegate.animateTo(
+      to + _gutterWidth,
+      duration: duration,
+      curve: curve,
+    );
+  }
+
+  @override
+  ScrollDirection get userScrollDirection => _delegate.userScrollDirection;
+
+  @override
+  bool get allowImplicitScrolling => _delegate.allowImplicitScrolling;
+
+  @override
+  void dispose() {
+    _delegate.removeListener(notifyListeners);
+    super.dispose();
+  }
+
+}
+
+class _ScrollingGutter extends SingleChildRenderObjectWidget {
+
+  final ScrollController horizontalScroller;
+  final ValueChanged<double>? onWidthMeasured;
+
+  const _ScrollingGutter({
+    required this.horizontalScroller,
+    this.onWidthMeasured,
+    required super.child,
+  });
+
+  @override
+  RenderObject createRenderObject(BuildContext context) {
+    return _RenderScrollingGutter(
+      horizontalScroller: horizontalScroller,
+      onWidthMeasured: onWidthMeasured,
+    );
+  }
+
+  @override
+  void updateRenderObject(
+      BuildContext context, covariant _RenderScrollingGutter renderObject) {
+    renderObject
+      ..horizontalScroller = horizontalScroller
+      ..onWidthMeasured = onWidthMeasured;
+  }
+
+}
+
+class _RenderScrollingGutter extends RenderShiftedBox {
+
+  ScrollController _horizontalScroller;
+  ValueChanged<double>? _onWidthMeasured;
+  double _lastMeasuredWidth = 0.0;
+
+  _RenderScrollingGutter({
+    required ScrollController horizontalScroller,
+    ValueChanged<double>? onWidthMeasured,
+    RenderBox? child,
+  })  : _horizontalScroller = horizontalScroller,
+        _onWidthMeasured = onWidthMeasured,
+        super(child);
+
+  ScrollController get horizontalScroller => _horizontalScroller;
+  set horizontalScroller(ScrollController value) {
+    if (_horizontalScroller == value) return;
+    if (attached) {
+      _horizontalScroller.removeListener(_handleScroll);
+    }
+    _horizontalScroller = value;
+    if (attached) {
+      _horizontalScroller.addListener(_handleScroll);
+    }
+    markNeedsLayout();
+  }
+
+  set onWidthMeasured(ValueChanged<double>? value) {
+    _onWidthMeasured = value;
+  }
+
+  @override
+  void attach(PipelineOwner owner) {
+    super.attach(owner);
+    _horizontalScroller.addListener(_handleScroll);
+  }
+
+  @override
+  void detach() {
+    _horizontalScroller.removeListener(_handleScroll);
+    super.detach();
+  }
+
+  void _handleScroll() {
+    markNeedsLayout();
+  }
+
+  @override
+  void performLayout() {
+    if (child == null) {
+      size = Size(0.0, constraints.maxHeight);
+      return;
+    }
+
+    child!.layout(constraints.loosen(), parentUsesSize: true);
+    final double naturalWidth = child!.size.width;
+    if (naturalWidth != _lastMeasuredWidth) {
+      _lastMeasuredWidth = naturalWidth;
+      _onWidthMeasured?.call(naturalWidth);
+    }
+
+    final double scrollOffset =
+        _horizontalScroller.hasClients ? _horizontalScroller.offset : 0.0;
+    final double visibleWidth = max(0.0, naturalWidth - scrollOffset);
+
+    size = Size(visibleWidth, constraints.maxHeight);
+
+    final BoxParentData childParentData = child!.parentData! as BoxParentData;
+    childParentData.offset = Offset(-scrollOffset, 0.0);
+  }
+
+  @override
+  void paint(PaintingContext context, Offset offset) {
+    if (child == null || size.width <= 0) {
+      return;
+    }
+    context.pushClipRect(
+      needsCompositing,
+      offset,
+      Rect.fromLTWH(0, 0, size.width, size.height),
+      (PaintingContext context, Offset offset) {
+        final BoxParentData childParentData = child!.parentData! as BoxParentData;
+        context.paintChild(child!, offset + childParentData.offset);
+      },
+    );
+  }
+
+  @override
+  bool hitTestChildren(BoxHitTestResult result, {required Offset position}) {
+    if (child == null || size.width <= 0) {
+      return false;
+    }
+    final BoxParentData childParentData = child!.parentData! as BoxParentData;
+    return result.addWithPaintOffset(
+      offset: childParentData.offset,
+      position: position,
+      hitTest: (BoxHitTestResult result, Offset transformed) {
+        return child!.hitTest(result, position: transformed);
+      },
+    );
   }
 
 }

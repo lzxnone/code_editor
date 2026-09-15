@@ -324,6 +324,20 @@ class AppLocalizationsEn extends AppLocalizations {
   String get wordWrapSubtitle => 'Wrap long lines to fit the editor width';
 
   @override
+  String get showLineNumbers => 'Show Line Numbers';
+
+  @override
+  String get showLineNumbersSubtitle =>
+      'Display line numbers and code folding markers on the left';
+
+  @override
+  String get pinLineNumbers => 'Pin Line Numbers';
+
+  @override
+  String get pinLineNumbersSubtitle =>
+      'Keep line numbers pinned to the left during horizontal scroll';
+
+  @override
   String get virtualKeyboard => 'Accessory Keyboard';
 
   @override

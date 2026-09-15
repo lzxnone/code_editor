@@ -3214,6 +3214,186 @@ void main() {
       expect(find.text('JetBrains Mono (Recommended)'), findsWidgets);
     });
   });
+
+  group('Editor Line Numbers Settings', () {
+    test('SettingsProvider line numbers defaults, setters, and persistence', () async {
+      SharedPreferences.setMockInitialValues({});
+      final provider = SettingsProvider();
+      await provider.init();
+
+      // Defaults
+      expect(provider.showLineNumbers, isTrue);
+      expect(provider.pinLineNumbers, isTrue);
+
+      // Setters
+      bool notified = false;
+      provider.addListener(() => notified = true);
+
+      await provider.setShowLineNumbers(false);
+      expect(provider.showLineNumbers, isFalse);
+      expect(notified, isTrue);
+
+      notified = false;
+      await provider.setPinLineNumbers(false);
+      expect(provider.pinLineNumbers, isFalse);
+      expect(notified, isTrue);
+
+      // Verify loaded from SharedPreferences
+      final provider2 = SettingsProvider();
+      await provider2.init();
+      expect(provider2.showLineNumbers, isFalse);
+      expect(provider2.pinLineNumbers, isFalse);
+    });
+
+    test('Localization strings exist in both zh and en without hardcoding', () {
+      final zh = AppLocalizationsZh();
+      final en = AppLocalizationsEn();
+
+      expect(zh.showLineNumbers, '显示行号');
+      expect(zh.showLineNumbersSubtitle, '在代码左侧显示行号与折叠标记');
+      expect(zh.pinLineNumbers, '固定行号');
+      expect(zh.pinLineNumbersSubtitle, '水平滚动代码时行号固定在左侧');
+
+      expect(en.showLineNumbers, 'Show Line Numbers');
+      expect(en.showLineNumbersSubtitle, 'Display line numbers and code folding markers on the left');
+      expect(en.pinLineNumbers, 'Pin Line Numbers');
+      expect(en.pinLineNumbersSubtitle, 'Keep line numbers pinned to the left during horizontal scroll');
+    });
+
+    testWidgets('SettingsView displays line numbers tiles and disables pin when show is false', (tester) async {
+      tester.view.physicalSize = const Size(800, 1400);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(() {
+        tester.view.resetPhysicalSize();
+        tester.view.resetDevicePixelRatio();
+      });
+
+      SharedPreferences.setMockInitialValues({});
+      final provider = SettingsProvider();
+      await provider.init();
+
+      await tester.pumpWidget(
+        ChangeNotifierProvider<SettingsProvider>.value(
+          value: provider,
+          child: const MaterialApp(
+            localizationsDelegates: AppLocalizations.localizationsDelegates,
+            supportedLocales: AppLocalizations.supportedLocales,
+            locale: Locale('zh'),
+            home: SettingsView(),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('显示行号'), findsOneWidget);
+      expect(find.text('在代码左侧显示行号与折叠标记'), findsOneWidget);
+      expect(find.text('固定行号'), findsOneWidget);
+      expect(find.text('水平滚动代码时行号固定在左侧'), findsOneWidget);
+
+      // Both switches should initially be enabled and true
+      final switchesBefore = tester.widgetList<SwitchListTile>(find.byType(SwitchListTile));
+      final showSwitchBefore = switchesBefore.firstWhere((s) => (s.title as Text).data == '显示行号');
+      final pinSwitchBefore = switchesBefore.firstWhere((s) => (s.title as Text).data == '固定行号');
+      expect(showSwitchBefore.value, isTrue);
+      expect(showSwitchBefore.onChanged, isNotNull);
+      expect(pinSwitchBefore.value, isTrue);
+      expect(pinSwitchBefore.onChanged, isNotNull);
+
+      // Turn off showLineNumbers
+      await tester.tap(find.text('显示行号'));
+      await tester.pumpAndSettle();
+
+      expect(provider.showLineNumbers, isFalse);
+
+      // Now pinLineNumbers should be disabled (onChanged == null)
+      final switchesAfter = tester.widgetList<SwitchListTile>(find.byType(SwitchListTile));
+      final pinSwitchAfter = switchesAfter.firstWhere((s) => (s.title as Text).data == '固定行号');
+      expect(pinSwitchAfter.onChanged, isNull);
+
+      // Tapping disabled pinLineNumbers does nothing
+      await tester.tap(find.text('固定行号'));
+      await tester.pumpAndSettle();
+      expect(provider.pinLineNumbers, isTrue); // unchanged
+
+      // Re-enabling showLineNumbers re-enables pinLineNumbers
+      await tester.tap(find.text('显示行号'));
+      await tester.pumpAndSettle();
+      expect(provider.showLineNumbers, isTrue);
+
+      final switchesReenabled = tester.widgetList<SwitchListTile>(find.byType(SwitchListTile));
+      final pinSwitchReenabled = switchesReenabled.firstWhere((s) => (s.title as Text).data == '固定行号');
+      expect(pinSwitchReenabled.onChanged, isNotNull);
+    });
+
+    testWidgets('CodeEditor renders without line numbers when indicatorBuilder is null', (tester) async {
+      final controller = CodeLineEditingController.fromText('const x = 1;\nconst y = 2;');
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: SizedBox(
+              width: 500,
+              height: 400,
+              child: CodeEditor(
+                controller: controller,
+                wordWrap: false,
+                pinLineNumbers: true,
+                indicatorBuilder: null,
+                leadingDivider: null,
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.byType(CodeEditor), findsOneWidget);
+      expect(find.byType(DefaultCodeLineNumber), findsNothing);
+    });
+
+    testWidgets('CodeEditor with pinLineNumbers: false scrolls line numbers horizontally', (tester) async {
+      final longText = 'const aLongVariableNameThatIsVeryLong = 1234567890 + 987654321;';
+      final controller = CodeLineEditingController.fromText('$longText\nline2');
+      final scrollController = CodeScrollController();
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: SizedBox(
+              width: 300,
+              height: 400,
+              child: CodeEditor(
+                controller: controller,
+                scrollController: scrollController,
+                wordWrap: false,
+                pinLineNumbers: false,
+                leadingDivider: const SizedBox(width: 1.0),
+                indicatorBuilder: (context, c, ch, n) {
+                  return DefaultCodeLineNumber(
+                    controller: c,
+                    notifier: n,
+                  );
+                },
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.byType(CodeEditor), findsOneWidget);
+      expect(find.byType(DefaultCodeLineNumber), findsOneWidget);
+
+      // Initially at offset 0
+      expect(scrollController.horizontalScroller.offset, 0.0);
+
+      // Scroll horizontally
+      scrollController.horizontalScroller.jumpTo(50.0);
+      await tester.pumpAndSettle();
+
+      expect(scrollController.horizontalScroller.offset, 50.0);
+    });
+  });
 }
 
 

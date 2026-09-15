@@ -54,6 +54,8 @@ class SettingsView extends StatelessWidget {
           _buildEditorFontTile(context, provider),
           _buildIndentSizeTile(context, provider, l10n),
           _buildWordWrapTile(context, provider, l10n),
+          _buildShowLineNumbersTile(context, provider, l10n),
+          _buildPinLineNumbersTile(context, provider, l10n),
           _buildVirtualKeyboardTile(context, provider, l10n),
           _buildVirtualKeyboardConfigTile(context, provider, l10n),
 
@@ -751,6 +753,54 @@ class SettingsView extends StatelessWidget {
       subtitle: Text(l10n.wordWrapSubtitle),
       value: provider.wordWrap,
       onChanged: (val) => provider.setWordWrap(val),
+    );
+  }
+
+  /// 编辑区：显示行号条目
+  Widget _buildShowLineNumbersTile(
+    BuildContext context,
+    SettingsProvider provider,
+    AppLocalizations l10n,
+  ) {
+    final theme = Theme.of(context);
+
+    return SwitchListTile(
+      secondary: Icon(Icons.format_list_numbered, color: theme.colorScheme.primary),
+      title: Text(l10n.showLineNumbers),
+      subtitle: Text(l10n.showLineNumbersSubtitle),
+      value: provider.showLineNumbers,
+      onChanged: (val) => provider.setShowLineNumbers(val),
+    );
+  }
+
+  /// 编辑区：固定行号条目（当显示行号开启时才可调整）
+  Widget _buildPinLineNumbersTile(
+    BuildContext context,
+    SettingsProvider provider,
+    AppLocalizations l10n,
+  ) {
+    final theme = Theme.of(context);
+    final isEnabled = provider.showLineNumbers;
+
+    return SwitchListTile(
+      secondary: Icon(
+        Icons.push_pin_outlined,
+        color: isEnabled ? theme.colorScheme.primary : theme.disabledColor,
+      ),
+      title: Text(
+        l10n.pinLineNumbers,
+        style: TextStyle(
+          color: isEnabled ? null : theme.disabledColor,
+        ),
+      ),
+      subtitle: Text(
+        l10n.pinLineNumbersSubtitle,
+        style: TextStyle(
+          color: isEnabled ? null : theme.disabledColor,
+        ),
+      ),
+      value: provider.pinLineNumbers,
+      onChanged: isEnabled ? (val) => provider.setPinLineNumbers(val) : null,
     );
   }
 

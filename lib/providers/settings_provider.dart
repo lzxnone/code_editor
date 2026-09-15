@@ -18,6 +18,8 @@ class SettingsProvider extends ChangeNotifier {
   static const String _keyEditorFontSize = 'editor_font_size'; //代码字体大小
   static const String _keyEditorIndentSize = 'editor_indent_size'; //缩进大小
   static const String _keyWordWrap = 'editor_word_wrap';  //自动换行
+  static const String _keyShowLineNumbers = 'editor_show_line_numbers'; //显示行号
+  static const String _keyPinLineNumbers = 'editor_pin_line_numbers'; //固定行号
   static const String _keyEnableVirtualKeyboard = 'enable_virtual_keyboard'; //小键盘启用
   static const String _keyVirtualKeyboardConfig = 'virtual_keyboard_config'; //小键盘配置JSON
   static const String _keyEditorFont = 'editor_font_family'; //代码字体
@@ -47,6 +49,8 @@ class SettingsProvider extends ChangeNotifier {
   double _fontSize = 14.0;
   int _indentSize = 4;
   bool _wordWrap = false;
+  bool _showLineNumbers = true;
+  bool _pinLineNumbers = true;
   bool _enableVirtualKeyboard = defaultTargetPlatform == TargetPlatform.android || defaultTargetPlatform == TargetPlatform.iOS;
   String _virtualKeyboardConfigJson = VirtualKeyboardConfig.defaultJsonPretty();
   VirtualKeyboardConfig _virtualKeyboardConfig = VirtualKeyboardConfig.defaultConfiguration();
@@ -77,6 +81,8 @@ class SettingsProvider extends ChangeNotifier {
   double get fontSize => _fontSize;
   int get indentSize => _indentSize;
   bool get wordWrap => _wordWrap;
+  bool get showLineNumbers => _showLineNumbers;
+  bool get pinLineNumbers => _pinLineNumbers;
   bool get enableVirtualKeyboard => _enableVirtualKeyboard;
   String get virtualKeyboardConfigJson => _virtualKeyboardConfigJson;
   VirtualKeyboardConfig get virtualKeyboardConfig => _virtualKeyboardConfig;
@@ -203,6 +209,16 @@ class SettingsProvider extends ChangeNotifier {
       final savedWordWrap = prefs.getBool(_keyWordWrap);
       if(savedWordWrap != null) {
         _wordWrap = savedWordWrap;
+      }
+
+      final savedShowLineNumbers = prefs.getBool(_keyShowLineNumbers);
+      if (savedShowLineNumbers != null) {
+        _showLineNumbers = savedShowLineNumbers;
+      }
+
+      final savedPinLineNumbers = prefs.getBool(_keyPinLineNumbers);
+      if (savedPinLineNumbers != null) {
+        _pinLineNumbers = savedPinLineNumbers;
       }
 
       final savedEnableVirtualKeyboard = prefs.getBool(_keyEnableVirtualKeyboard);
@@ -346,6 +362,26 @@ class SettingsProvider extends ChangeNotifier {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setBool(_keyWordWrap, wrap);
     }catch (_) {}
+  }
+
+  Future<void> setShowLineNumbers(bool show) async {
+    if (_showLineNumbers == show) return;
+    _showLineNumbers = show;
+    notifyListeners();
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool(_keyShowLineNumbers, show);
+    } catch (_) {}
+  }
+
+  Future<void> setPinLineNumbers(bool pin) async {
+    if (_pinLineNumbers == pin) return;
+    _pinLineNumbers = pin;
+    notifyListeners();
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool(_keyPinLineNumbers, pin);
+    } catch (_) {}
   }
 
   /// 编辑区小键盘开关（等价于 `setKeyboardEnabled(KeyboardScope.editor, ...)`）

@@ -199,6 +199,7 @@ class CodeEditor extends StatefulWidget {
     this.shortcutsActivatorsBuilder,
     this.shortcutOverrideActions,
     this.leadingDivider,
+    this.pinLineNumbers = true,
     this.border,
     this.borderRadius,
     this.clipBehavior = Clip.none,
@@ -268,6 +269,9 @@ class CodeEditor extends StatefulWidget {
 
   /// A leadingDivider widget between indicator and editor field.
   final Widget? leadingDivider;
+
+  /// Whether line numbers and indicator are pinned to the left during horizontal scroll.
+  final bool pinLineNumbers;
 
   /// The border of the editor.
   final Border? border;
@@ -523,6 +527,7 @@ class _CodeEditorState extends State<CodeEditor> {
       cursorWidth: widget.style?.cursorWidth ?? _kDefaultCaretWidth,
       showCursorWhenReadOnly: widget.showCursorWhenReadOnly ?? true,
       leadingDivider: widget.leadingDivider,
+      pinLineNumbers: widget.pinLineNumbers,
       border: widget.border,
       borderRadius: widget.borderRadius,
       clipBehavior: widget.clipBehavior,

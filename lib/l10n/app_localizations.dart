@@ -656,6 +656,30 @@ abstract class AppLocalizations {
   /// **'长代码行超出边界时自动折行'**
   String get wordWrapSubtitle;
 
+  /// No description provided for @showLineNumbers.
+  ///
+  /// In zh, this message translates to:
+  /// **'显示行号'**
+  String get showLineNumbers;
+
+  /// No description provided for @showLineNumbersSubtitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'在代码左侧显示行号与折叠标记'**
+  String get showLineNumbersSubtitle;
+
+  /// No description provided for @pinLineNumbers.
+  ///
+  /// In zh, this message translates to:
+  /// **'固定行号'**
+  String get pinLineNumbers;
+
+  /// No description provided for @pinLineNumbersSubtitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'水平滚动代码时行号固定在左侧'**
+  String get pinLineNumbersSubtitle;
+
   /// No description provided for @virtualKeyboard.
   ///
   /// In zh, this message translates to:

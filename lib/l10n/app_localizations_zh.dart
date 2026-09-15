@@ -320,6 +320,18 @@ class AppLocalizationsZh extends AppLocalizations {
   String get wordWrapSubtitle => '长代码行超出边界时自动折行';
 
   @override
+  String get showLineNumbers => '显示行号';
+
+  @override
+  String get showLineNumbersSubtitle => '在代码左侧显示行号与折叠标记';
+
+  @override
+  String get pinLineNumbers => '固定行号';
+
+  @override
+  String get pinLineNumbersSubtitle => '水平滚动代码时行号固定在左侧';
+
+  @override
   String get virtualKeyboard => '辅助小键盘';
 
   @override

@@ -420,11 +420,15 @@ class _CodeEditorWidgetState extends State<CodeEditorWidget> {
     bool enableVirtualKeyboard = false;
     VirtualKeyboardConfig? keyboardConfig;
     AppFontItem activeEditorFont = AppFonts.editorJetBrainsMono;
+    bool showLineNumbers = true;
+    bool pinLineNumbers = true;
     try {
       final settings = _getSettingsProvider(context, listen: true);
       activeTheme = settings.editorTheme;
       activeFontSize = settings.fontSize;
       activeWordWrap = settings.wordWrap;
+      showLineNumbers = settings.showLineNumbers;
+      pinLineNumbers = settings.pinLineNumbers;
       enableVirtualKeyboard = settings.enableVirtualKeyboard;
       keyboardConfig = settings.virtualKeyboardConfig;
       activeEditorFont = settings.editorFont;
@@ -458,13 +462,16 @@ class _CodeEditorWidgetState extends State<CodeEditorWidget> {
                     focusNode: _focusNode,
                     scrollController: _scrollController,
                       wordWrap: activeWordWrap,
+                      pinLineNumbers: pinLineNumbers,
                       toolbarController: _toolbarController,
                       margin: const EdgeInsets.only(left: 2.0, top: 4.0, right: 8, bottom: 8.0),
                       padding: const EdgeInsets.fromLTRB(6.0, 0.0, 0.0, 0.0),
-                      leadingDivider: Container(
-                        width: 1.0,
-                        color: activeTheme.gutterTextColor.withValues(alpha: 0.25),
-                      ),
+                      leadingDivider: showLineNumbers
+                          ? Container(
+                              width: 1.0,
+                              color: activeTheme.gutterTextColor.withValues(alpha: 0.25),
+                            )
+                          : null,
                       style: CodeEditorStyle(
                         fontSize: displayFontSize,
                         textColor: activeTheme.textColor,
@@ -479,37 +486,39 @@ class _CodeEditorWidgetState extends State<CodeEditorWidget> {
                           theme: activeTheme.highlightTheme,
                         ),
                       ),
-                      indicatorBuilder: (context, editingController, chunkController, notifier) {
-                        return Row(
-                          children: [
-                            DefaultCodeLineNumber(
-                              controller: editingController,
-                              notifier: notifier,
-                              textStyle: TextStyle(
-                                color: activeTheme.gutterTextColor,
-                                fontSize: (displayFontSize - 1).clamp(9.0, 30.0),
-                                fontFamily: activeEditorFont.fontFamily,
-                                fontFamilyFallback: activeEditorFont.fallback,
-                              ),
-                              focusedTextStyle: TextStyle(
-                                color: activeTheme.focusedGutterTextColor,
-                                fontSize: (displayFontSize - 1).clamp(9.0, 30.0),
-                                fontWeight: FontWeight.bold,
-                                fontFamily: activeEditorFont.fontFamily,
-                                fontFamilyFallback: activeEditorFont.fallback,
-                              ),
-                            ),
-                            DefaultCodeChunkIndicator(
-                              width: 20,
-                              controller: chunkController,
-                              notifier: notifier,
-                              painter: DefaultCodeChunkIndicatorPainter(
-                                color: activeTheme.gutterTextColor,
-                              ),
-                            ),
-                          ],
-                        );
-                      },
+                      indicatorBuilder: showLineNumbers
+                          ? (context, editingController, chunkController, notifier) {
+                              return Row(
+                                children: [
+                                  DefaultCodeLineNumber(
+                                    controller: editingController,
+                                    notifier: notifier,
+                                    textStyle: TextStyle(
+                                      color: activeTheme.gutterTextColor,
+                                      fontSize: (displayFontSize - 1).clamp(9.0, 30.0),
+                                      fontFamily: activeEditorFont.fontFamily,
+                                      fontFamilyFallback: activeEditorFont.fallback,
+                                    ),
+                                    focusedTextStyle: TextStyle(
+                                      color: activeTheme.focusedGutterTextColor,
+                                      fontSize: (displayFontSize - 1).clamp(9.0, 30.0),
+                                      fontWeight: FontWeight.bold,
+                                      fontFamily: activeEditorFont.fontFamily,
+                                      fontFamilyFallback: activeEditorFont.fallback,
+                                    ),
+                                  ),
+                                  DefaultCodeChunkIndicator(
+                                    width: 20,
+                                    controller: chunkController,
+                                    notifier: notifier,
+                                    painter: DefaultCodeChunkIndicatorPainter(
+                                      color: activeTheme.gutterTextColor,
+                                    ),
+                                  ),
+                                ],
+                              );
+                            }
+                          : null,
                     ),
                 ],
               ),
