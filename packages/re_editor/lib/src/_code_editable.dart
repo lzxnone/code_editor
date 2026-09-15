@@ -243,7 +243,7 @@ class _CodeEditableState extends State<_CodeEditable> with AutomaticKeepAliveCli
           clipBehavior: widget.clipBehavior,
           margin: widget.margin,
           child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               if (indicator != null)
                 indicator,

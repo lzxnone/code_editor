@@ -55,9 +55,11 @@ class _MobileToolbarLayoutDelegate extends SingleChildLayoutDelegate {
 
   @override
   Offset getPositionForChild(Size size, Size childSize) {
-    // 1. 计算受保护的可视安全编辑区 safeEditorRect
-    // 顶部：排除 AppBar, TabBar (renderRect.top) 以及系统状态栏
-    final double safeTop = max(renderRect?.top ?? 0.0, mediaQuery.padding.top) + 6.0;
+    // 1. 计算受保护的可视安全编辑区与屏幕顶界
+    // 屏幕顶界：手机系统状态栏安全区（由于菜单置于 rootOverlay 顶层悬浮层，高于 TabBar 和 AppBar，因此向上可借用其空间，避免向下翻转遮挡光标）
+    final double screenTop = mediaQuery.padding.top + 6.0;
+    // 编辑区顶界：排除 AppBar / TabBar (renderRect.top)，用于编辑区居中或贴顶显示
+    final double editorTop = max(renderRect?.top ?? 0.0, mediaQuery.padding.top) + 6.0;
     // 底部：排除软键盘 (viewInsets.bottom)、虚拟小键盘 (renderRect.bottom) 以及底部安全区
     final double screenBottomWithoutKeyboard = mediaQuery.size.height - mediaQuery.viewInsets.bottom - mediaQuery.padding.bottom;
     final double safeBottom = min(renderRect?.bottom ?? screenBottomWithoutKeyboard, screenBottomWithoutKeyboard) - 6.0;
@@ -66,57 +68,61 @@ class _MobileToolbarLayoutDelegate extends SingleChildLayoutDelegate {
     final double safeRight = min(renderRect?.right ?? mediaQuery.size.width, mediaQuery.size.width - mediaQuery.padding.right) - 8.0;
 
     final double availableWidth = max(0.0, safeRight - safeLeft);
-    final double availableHeight = max(0.0, safeBottom - safeTop);
+    final double editorAvailableHeight = max(0.0, safeBottom - editorTop);
 
     // 2. 根据 anchors 中的 EditorToolbarPlacement 或传统 anchors 计算位置
     EditorToolbarPlacement placement = EditorToolbarPlacement.aboveStart;
     Offset targetOffset = anchors.primaryAnchor;
+    double lineHeight = 24.0;
 
     if (anchors is EditorSelectionToolbarAnchors) {
       final customAnchors = anchors as EditorSelectionToolbarAnchors;
       placement = customAnchors.placement;
       targetOffset = customAnchors.targetOffset;
+      lineHeight = customAnchors.lineHeight;
     }
+
+    // 光标手柄（水滴形手柄）下挂高度约 26px，加上间距共 32px 避让距离
+    const double handleClearance = 32.0;
 
     double x;
     double y;
 
     switch (placement) {
       case EditorToolbarPlacement.center:
-        // 框选文本完全占据当前屏幕：在中间显示
+        // 框选文本完全占据当前屏幕：在编辑区中间显示
         x = safeLeft + (availableWidth - childSize.width) / 2.0;
-        y = safeTop + (availableHeight - childSize.height) / 2.0;
+        y = editorTop + (editorAvailableHeight - childSize.height) / 2.0;
         break;
 
       case EditorToolbarPlacement.top:
         // 选区整体在视口上方：在视口顶部贴边显示
         x = safeLeft + (availableWidth - childSize.width) / 2.0;
-        y = safeTop + 4.0;
+        y = editorTop + 4.0;
         break;
 
       case EditorToolbarPlacement.bottom:
         // 选区整体在视口下方：在视口底部贴边显示（紧贴软键盘/小键盘上方）
         x = safeLeft + (availableWidth - childSize.width) / 2.0;
-        y = max(safeTop, safeBottom - childSize.height - 4.0);
+        y = max(screenTop, safeBottom - childSize.height - 4.0);
         break;
 
       case EditorToolbarPlacement.aboveStart:
-        // 在左端点上方弹出，若上方空间不足则翻转至下方
+        // 在左端点上方弹出，菜单位于 rootOverlay，允许借用 TabBar/AppBar 空间，只要不超出状态栏即可保留在上方
         x = targetOffset.dx - childSize.width / 2.0;
         final double yAbove = targetOffset.dy - childSize.height - 8.0;
-        if (yAbove >= safeTop) {
+        if (yAbove >= screenTop) {
           y = yAbove;
         } else {
-          // 上方空间不足，翻转到左端点下方（行高约为 24）
-          y = targetOffset.dy + 24.0 + 8.0;
+          // 状态栏顶部空间不足时翻转到下方，并根据动态行高与手柄下挂高度充分避让
+          y = targetOffset.dy + lineHeight + handleClearance;
         }
         break;
 
       case EditorToolbarPlacement.belowEnd:
-        // 在右端点下方弹出，若下方空间不足则翻转至上方
+        // 在右端点下方弹出，根据当前实际字号行高与手柄下挂高度充分避让
         x = targetOffset.dx - childSize.width / 2.0;
-        // 右端点手柄下挂高度约 28px，避免遮挡光标水滴手柄
-        final double yBelow = targetOffset.dy + 24.0 + 26.0;
+        final double yBelow = targetOffset.dy + lineHeight + handleClearance;
         if (yBelow + childSize.height <= safeBottom) {
           y = yBelow;
         } else {
@@ -130,9 +136,9 @@ class _MobileToolbarLayoutDelegate extends SingleChildLayoutDelegate {
     final double clampedX = (availableWidth >= childSize.width)
         ? x.clamp(safeLeft, safeRight - childSize.width)
         : safeLeft;
-    final double clampedY = (availableHeight >= childSize.height)
-        ? y.clamp(safeTop, safeBottom - childSize.height)
-        : safeTop;
+    final double clampedY = (safeBottom - screenTop >= childSize.height)
+        ? y.clamp(screenTop, safeBottom - childSize.height)
+        : screenTop;
 
     return Offset(clampedX, clampedY);
   }
@@ -218,7 +224,6 @@ class _MobileSelectionToolbarWidgetState extends State<_MobileSelectionToolbarWi
             if (hasSelection) ...[
               _buildItem(
                 context,
-                icon: Icons.content_cut,
                 label: cutLabel,
                 onTap: () {
                   widget.controller.cut();
@@ -229,7 +234,6 @@ class _MobileSelectionToolbarWidgetState extends State<_MobileSelectionToolbarWi
               _buildDivider(context),
               _buildItem(
                 context,
-                icon: Icons.copy,
                 label: copyLabel,
                 onTap: () {
                   widget.controller.copy();
@@ -242,7 +246,6 @@ class _MobileSelectionToolbarWidgetState extends State<_MobileSelectionToolbarWi
               if (hasSelection) _buildDivider(context),
               _buildItem(
                 context,
-                icon: Icons.paste,
                 label: pasteLabel,
                 onTap: () {
                   widget.controller.paste();
@@ -255,7 +258,6 @@ class _MobileSelectionToolbarWidgetState extends State<_MobileSelectionToolbarWi
               _buildDivider(context),
               _buildItem(
                 context,
-                icon: Icons.select_all,
                 label: selectAllLabel,
                 onTap: () {
                   widget.controller.selectAll();
@@ -281,7 +283,6 @@ class _MobileSelectionToolbarWidgetState extends State<_MobileSelectionToolbarWi
 
   Widget _buildItem(
     BuildContext context, {
-    required IconData icon,
     required String label,
     required VoidCallback onTap,
   }) {
@@ -289,21 +290,16 @@ class _MobileSelectionToolbarWidgetState extends State<_MobileSelectionToolbarWi
     return InkWell(
       onTap: onTap,
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 8.0),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, size: 16, color: colorScheme.onSurface),
-            const SizedBox(width: 4),
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.w500,
-                color: colorScheme.onSurface,
-              ),
+        padding: const EdgeInsets.symmetric(horizontal: 14.0, vertical: 9.0),
+        child: Center(
+          child: Text(
+            label,
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w500,
+              color: colorScheme.onSurface,
             ),
-          ],
+          ),
         ),
       ),
     );

@@ -22,6 +22,8 @@ class EditorSelectionToolbarAnchors extends TextSelectionToolbarAnchors {
   final Offset targetOffset;
   /// 当前编辑器的有效可视区域边界（绝对屏幕坐标）
   final Rect visibleEditorRect;
+  /// 当前编辑区字号对应的实际行高
+  final double lineHeight;
 
   const EditorSelectionToolbarAnchors({
     required super.primaryAnchor,
@@ -29,6 +31,7 @@ class EditorSelectionToolbarAnchors extends TextSelectionToolbarAnchors {
     required this.placement,
     required this.targetOffset,
     required this.visibleEditorRect,
+    this.lineHeight = 24.0,
   });
 }
 

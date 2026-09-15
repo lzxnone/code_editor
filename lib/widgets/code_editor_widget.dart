@@ -460,7 +460,11 @@ class _CodeEditorWidgetState extends State<CodeEditorWidget> {
                       wordWrap: activeWordWrap,
                       toolbarController: _toolbarController,
                       margin: const EdgeInsets.only(left: 2.0, top: 4.0, right: 8, bottom: 8.0),
-                      padding: const EdgeInsets.fromLTRB(0.0, 0.0, 0.0, 0.0),
+                      padding: const EdgeInsets.fromLTRB(6.0, 0.0, 0.0, 0.0),
+                      leadingDivider: Container(
+                        width: 1.0,
+                        color: activeTheme.gutterTextColor.withValues(alpha: 0.25),
+                      ),
                       style: CodeEditorStyle(
                         fontSize: displayFontSize,
                         textColor: activeTheme.textColor,
@@ -506,41 +510,6 @@ class _CodeEditorWidgetState extends State<CodeEditorWidget> {
                           ],
                         );
                       },
-                    ),
-                  if (_isPinching && _activeZoomFontSize != null)
-                    Center(
-                      child: IgnorePointer(
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                          decoration: BoxDecoration(
-                            color: Colors.black.withValues(alpha: 0.75),
-                            borderRadius: BorderRadius.circular(24),
-                            boxShadow: const [
-                              BoxShadow(
-                                color: Colors.black26,
-                                blurRadius: 8,
-                                offset: Offset(0, 2),
-                              ),
-                            ],
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              const Icon(Icons.format_size, color: Colors.white, size: 18),
-                              const SizedBox(width: 8),
-                              Text(
-                                '${_activeZoomFontSize!.round()} pt',
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 15,
-                                  fontWeight: FontWeight.bold,
-                                  decoration: TextDecoration.none,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
                     ),
                 ],
               ),

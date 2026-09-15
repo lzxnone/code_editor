@@ -2750,8 +2750,8 @@ void main() {
       await gesture2.moveTo(const Offset(200, 400));
       await tester.pump();
 
-      // Verify pinch HUD is visible
-      expect(find.text('28 pt'), findsOneWidget);
+      // Verify pinch HUD is NOT shown (per user requirement: no font size prompt on screen)
+      expect(find.text('28 pt'), findsNothing);
 
       // Release pointers
       await gesture1.up();

@@ -229,7 +229,7 @@ void main() {
       final abovePos = tester.getTopLeft(find.byType(Material).last);
       expect(abovePos.dy, lessThan(300));
 
-      // 2. aboveStart: 空间狭小（靠近顶部）时翻转到下方
+      // 2. aboveStart: 靠前行可借用 AppBar 空间留在上方，避免向下翻转遮挡光标
       controller.show(
         context: buildCtx,
         controller: codeController,
@@ -244,10 +244,29 @@ void main() {
         visibility: visibility,
       );
       await tester.pumpAndSettle();
-      final flippedBelowPos = tester.getTopLeft(find.byType(Material).last);
-      expect(flippedBelowPos.dy, greaterThan(60));
+      final borrowAppBarPos = tester.getTopLeft(find.byType(Material).last);
+      expect(borrowAppBarPos.dy, lessThan(60));
 
-      // 3. belowEnd: 空间充裕时显示在目标下方
+      // 2.1 aboveStart: 触及手机状态栏安全区极限时向下翻转，并避开行高与手柄
+      controller.show(
+        context: buildCtx,
+        controller: codeController,
+        anchors: const EditorSelectionToolbarAnchors(
+          primaryAnchor: Offset(200, 20),
+          placement: EditorToolbarPlacement.aboveStart,
+          targetOffset: Offset(200, 20),
+          visibleEditorRect: Rect.fromLTWH(0, 0, 400, 500),
+          lineHeight: 24.0,
+        ),
+        renderRect: const Rect.fromLTWH(0, 0, 400, 500),
+        layerLink: layerLink,
+        visibility: visibility,
+      );
+      await tester.pumpAndSettle();
+      final flippedBelowPos = tester.getTopLeft(find.byType(Material).last);
+      expect(flippedBelowPos.dy, greaterThan(20 + 24.0 + 30.0));
+
+      // 3. belowEnd: 空间充裕时显示在目标下方（避让动态行高 + 手柄）
       controller.show(
         context: buildCtx,
         controller: codeController,
@@ -386,6 +405,157 @@ void main() {
 
       // 选区在点击外部后被取消
       expect(codeController.selection.isCollapsed, isTrue);
+    });
+
+    testWidgets('点击选中文本所在行的末尾空白区域，严格判定为非选区并取消框选', (tester) async {
+      final codeController = CodeLineEditingController.fromText('Hello Flutter Code Editor\nSecond line text');
+
+      await tester.pumpWidget(
+        MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: Scaffold(
+            body: SizedBox(
+              width: 500,
+              height: 400,
+              child: CodeEditor(
+                controller: codeController,
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // 选中第 0 行的 "Hello"
+      codeController.selection = const CodeLineSelection(
+        baseIndex: 0,
+        baseOffset: 0,
+        extentIndex: 0,
+        extentOffset: 5,
+      );
+      await tester.pumpAndSettle();
+      expect(codeController.selection.isCollapsed, isFalse);
+
+      // 点击第 0 行后面的空白区域 (例如横坐标 400 远超文本宽度)
+      final editorFinder = find.byType(CodeEditor);
+      final editorTopLeft = tester.getTopLeft(editorFinder);
+      await tester.tapAt(editorTopLeft + const Offset(400, 10));
+      await tester.pumpAndSettle();
+
+      // 严格判定：点击末尾空白区域时，框选必须被取消
+      expect(codeController.selection.isCollapsed, isTrue);
+    });
+
+    testWidgets('移动端选区菜单移除图标仅保留文字', (tester) async {
+      final controller = CodeEditorToolbarController();
+      final codeController = CodeLineEditingController.fromText('Hello World');
+      codeController.selection = const CodeLineSelection(
+        baseIndex: 0,
+        baseOffset: 0,
+        extentIndex: 0,
+        extentOffset: 5,
+      );
+
+      late BuildContext buildCtx;
+
+      await tester.pumpWidget(
+        MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: Scaffold(
+            body: Builder(
+              builder: (context) {
+                buildCtx = context;
+                return const SizedBox(width: 400, height: 600);
+              },
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final layerLink = LayerLink();
+      final visibility = ValueNotifier<bool>(true);
+
+      controller.show(
+        context: buildCtx,
+        controller: codeController,
+        anchors: const TextSelectionToolbarAnchors(
+          primaryAnchor: Offset(100, 100),
+        ),
+        renderRect: const Rect.fromLTWH(0, 0, 400, 600),
+        layerLink: layerLink,
+        visibility: visibility,
+      );
+      await tester.pumpAndSettle();
+
+      // 验证菜单弹出的 Material 容器内不包含任何 Icon，只保留文字
+      final toolbarMaterial = find.byType(Material).last;
+      expect(find.descendant(of: toolbarMaterial, matching: find.byType(Icon)), findsNothing);
+      expect(find.descendant(of: toolbarMaterial, matching: find.byType(Text)), findsWidgets);
+
+      controller.hide(buildCtx);
+      await tester.pumpAndSettle();
+    });
+
+    testWidgets('大字号下 belowEnd 与翻转到下方时，根据动态行高与手柄下挂距离充分下移', (tester) async {
+      final controller = CodeEditorToolbarController();
+      final codeController = CodeLineEditingController.fromText('Large Font Test');
+      codeController.selection = const CodeLineSelection(
+        baseIndex: 0,
+        baseOffset: 0,
+        extentIndex: 0,
+        extentOffset: 5,
+      );
+
+      late BuildContext buildCtx;
+
+      await tester.pumpWidget(
+        MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: Scaffold(
+            body: Builder(
+              builder: (context) {
+                buildCtx = context;
+                return const SizedBox(width: 400, height: 700);
+              },
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final layerLink = LayerLink();
+      final visibility = ValueNotifier<bool>(true);
+
+      // 模拟大字号：lineHeight 达到 48.0
+      const double largeLineHeight = 48.0;
+      const double targetY = 150.0;
+
+      controller.show(
+        context: buildCtx,
+        controller: codeController,
+        anchors: const EditorSelectionToolbarAnchors(
+          primaryAnchor: Offset(200, targetY),
+          placement: EditorToolbarPlacement.belowEnd,
+          targetOffset: Offset(200, targetY),
+          visibleEditorRect: Rect.fromLTWH(0, 0, 400, 700),
+          lineHeight: largeLineHeight,
+        ),
+        renderRect: const Rect.fromLTWH(0, 0, 400, 700),
+        layerLink: layerLink,
+        visibility: visibility,
+      );
+      await tester.pumpAndSettle();
+
+      final menuPos = tester.getTopLeft(find.byType(Material).last);
+      // y 应该正好是 targetY + largeLineHeight + 32.0 = 150 + 48 + 32 = 230.0
+      expect(menuPos.dy, equals(targetY + largeLineHeight + 32.0));
+
+      controller.hide(buildCtx);
+      await tester.pumpAndSettle();
     });
   });
 }

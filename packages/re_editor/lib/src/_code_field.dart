@@ -1240,6 +1240,64 @@ class _CodeFieldRender extends RenderBox implements MouseTrackerAnnotation {
     return Rect.fromLTRB(minX, minY, maxX, maxY);
   }
 
+  /// Checks whether a given [position] (in global coordinates) physically intersects
+  /// the visible selection bounding rectangles.
+  /// Clicking beyond the end of text into trailing blank space returns false.
+  bool isPositionInSelection({
+    required Offset position,
+    required CodeLineSelection selection,
+  }) {
+    if (selection.isCollapsed) {
+      return false;
+    }
+    final Offset localPosition = globalToLocal(position);
+    if (!isValidPointer(localPosition)) {
+      return false;
+    }
+    final Offset offset = localPosition + paintOffset;
+    final CodeLinePosition start = selection.start;
+    final CodeLinePosition end = selection.end;
+
+    for (final CodeLineRenderParagraph paragraph in _displayParagraphs) {
+      if (paragraph.index < start.index || paragraph.index > end.index) {
+        continue;
+      }
+      if (!paragraph.inVerticalRange(offset)) {
+        continue;
+      }
+      final int startIndex = (paragraph.index == start.index) ? start.offset : 0;
+      final int endIndex = (paragraph.index == end.index) ? end.offset : paragraph.length;
+
+      final List<Rect> rects;
+      if (startIndex == endIndex) {
+        final Offset? off = paragraph.getOffset(TextPosition(offset: startIndex));
+        if (off != null) {
+          rects = [Rect.fromLTWH(off.dx, off.dy, 0, paragraph.preferredLineHeight)];
+        } else {
+          rects = const [];
+        }
+      } else {
+        rects = paragraph.getRangeRects(TextRange(start: startIndex, end: endIndex));
+      }
+      if (rects.isEmpty) {
+        continue;
+      }
+      final Offset pointInParagraph = offset - paragraph.offset;
+      for (final Rect rect in rects) {
+        if (rect.isEmpty) {
+          continue;
+        }
+        final Rect visualRect = (rect == rects.last && paragraph.index < end.index)
+            ? Rect.fromPoints(rect.topLeft, rect.bottomRight + const Offset(5.0, 0.0))
+            : rect;
+        if (visualRect.inflate(2.0).contains(pointInParagraph)) {
+          return true;
+        }
+      }
+    }
+    return false;
+  }
+
   void _updateDisplayRenderParagraphs() {
     final double effectiveWidth;
     if (_horizontalViewport == null) {
