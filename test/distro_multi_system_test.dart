@@ -86,6 +86,33 @@ void main() {
       expect(await manager.hasAnySystem(), isFalse);
     });
 
+    test('空壳 rootfs（只有 etc 缺少 bin）不被视为已安装系统，也不会出现在列表里', () async {
+      // 复现历史缺陷遗留物：探测流程的 ensure* 会在未安装的系统名下造出 rootfs/etc
+      final ghostEtc = Directory(p.join(tempBaseDir.path, 'ghost', 'rootfs', 'etc'));
+      ghostEtc.createSync(recursive: true);
+      File(p.join(ghostEtc.path, 'resolv.conf')).writeAsStringSync('nameserver 1.1.1.1\n');
+
+      // 一个真正可用的系统实例
+      final realRootfs = Directory(p.join(tempBaseDir.path, 'real', 'rootfs'));
+      Directory(p.join(realRootfs.path, 'etc')).createSync(recursive: true);
+      Directory(p.join(realRootfs.path, 'bin')).createSync(recursive: true);
+
+      expect(await manager.listInstalledSystems(), equals(<String>['real']));
+      expect(await manager.isSystemInstalled('ghost'), isFalse);
+      expect(await manager.isSystemInstalled('real'), isTrue);
+    });
+
+    test('buildLaunchConfig 对未安装的系统直接抛错，且不在磁盘上创建任何目录', () async {
+      await expectLater(
+        manager.buildLaunchConfig(
+          systemName: 'not_installed',
+          workspacePath: tempBaseDir.path,
+        ),
+        throwsA(isA<StateError>()),
+      );
+      expect(Directory(p.join(tempBaseDir.path, 'not_installed')).existsSync(), isFalse);
+    });
+
     test('同一 Rootfs 包支持导入并创建多个独立系统实例', () async {
       final gzBytes = createMockRootfsTarGz();
       final tempGzFile = File(p.join(tempBaseDir.path, 'source_rootfs.tar.gz'));

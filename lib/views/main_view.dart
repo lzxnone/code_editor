@@ -17,7 +17,10 @@ import 'package:code_editor/widgets/code_editor_drawer.dart';
 import 'package:code_editor/widgets/code_editor_tab_bar.dart';
 import 'package:code_editor/widgets/code_editor_widget.dart';
 import 'package:code_editor/views/run_task_edit_view.dart';
+import 'package:code_editor/providers/notice_center.dart';
 import 'package:code_editor/widgets/distro_selector_dialog.dart';
+import 'package:code_editor/widgets/notice_host.dart';
+import 'package:code_editor/widgets/probe_cancel_guard.dart';
 import 'package:code_editor/widgets/run_tasks_dialog.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -32,6 +35,9 @@ class MainView extends StatefulWidget {
 
 class _MainViewState extends State<MainView> {
   String? _lastProjectRoot;
+
+  /// 最近一次已触发探测的 (工程, 系统) 组合，用于去重与"系统就绪后补探测"
+  String? _lastProbeKey;
 
   static ProjectProvider _getProjectProvider(BuildContext context, {bool listen = false}) {
     return listen ? context.watch<ProjectProvider>() : context.read<ProjectProvider>();
@@ -144,12 +150,41 @@ class _MainViewState extends State<MainView> {
     );
   }
 
+  /// 解析并校准「当前真实可用」的容器系统名。
+  /// 返回 null 表示没有任何可用系统（此时不应进行任何任务探测）。
+  Future<String?> _resolveUsableDistro(BuildContext context) async {
+    final distroProvider = _getDistroProvider(context);
+    final distroManager = DistroManager();
+    try {
+      var targetDistro = distroProvider?.selectedSystem;
+
+      if (targetDistro == null || !(await distroManager.isSystemInstalled(targetDistro))) {
+        if (distroProvider != null) {
+          await distroProvider.refreshSystems();
+          targetDistro = distroProvider.selectedSystem;
+        }
+        if (targetDistro == null || !(await distroManager.isSystemInstalled(targetDistro))) {
+          final physicalSystems = await distroManager.listInstalledSystems();
+          if (physicalSystems.isNotEmpty) {
+            targetDistro = physicalSystems.first;
+            await distroProvider?.selectSystem(targetDistro);
+          }
+        }
+      }
+
+      final ok = targetDistro != null && await distroManager.isSystemInstalled(targetDistro);
+      return ok ? targetDistro : null;
+    } catch (e) {
+      debugPrint('[MainView] 系统可用性解析失败: $e');
+      return null;
+    }
+  }
+
   /// 执行某个具体的运行任务（前置校验环境、识别工具链并推入终端 PTY 执行）
   Future<void> _executeRunTask(BuildContext context, RunTask task) async {
     final projectProvider = _getProjectProvider(context);
     final terminalProvider = _getTerminalProvider(context);
     final runProvider = _getRunProvider(context);
-    final distroProvider = _getDistroProvider(context);
 
     final l10n = AppLocalizations.of(context)!;
     final rootPath = projectProvider.rootPath;
@@ -159,29 +194,12 @@ class _MainViewState extends State<MainView> {
     }
 
     final distroManager = DistroManager();
-    var targetDistro = distroProvider?.selectedSystem;
 
     // 1. 运行前环境可用性前置拦截校验与状态自动校准
-    // 如果尚未选定系统，或者已选系统校验未通过，主动重新扫描物理系统列表进行校准
-    if (targetDistro == null || !(await distroManager.isSystemInstalled(targetDistro))) {
-      if (distroProvider != null) {
-        await distroProvider.refreshSystems();
-        targetDistro = distroProvider.selectedSystem;
-      }
-      // 如果 Provider 仍未选定，兜底从物理已安装列表中选取并同步
-      if (targetDistro == null || !(await distroManager.isSystemInstalled(targetDistro))) {
-        final physicalSystems = await distroManager.listInstalledSystems();
-        if (physicalSystems.isNotEmpty) {
-          targetDistro = physicalSystems.first;
-          await distroProvider?.selectSystem(targetDistro);
-        }
-      }
-    }
-
-    final hasDistro = targetDistro != null && await distroManager.isSystemInstalled(targetDistro);
-    if (!hasDistro) {
+    final String? targetDistro = await _resolveUsableDistro(context);
+    if (targetDistro == null) {
       if (!context.mounted) return;
-      _showMissingDistroDialog(context, targetDistro);
+      _showMissingDistroDialog(context, null);
       return;
     }
 
@@ -244,7 +262,7 @@ class _MainViewState extends State<MainView> {
   }
 
   /// 打开运行任务选择弹窗
-  void _handleOpenRunTasksDialog(BuildContext context) {
+  Future<void> _handleOpenRunTasksDialog(BuildContext context) async {
     final runProvider = _getRunProvider(context);
     if (runProvider == null) return;
     final projectProvider = _getProjectProvider(context);
@@ -255,11 +273,30 @@ class _MainViewState extends State<MainView> {
       return;
     }
 
+    // 任务探测必须基于「真实可用的容器系统」；没有任何可用系统时不做任何探测，
+    // 直接引导用户去系统管理安装环境（避免伪造出并不存在的任务）。
+    final systemName = await _resolveUsableDistro(context);
+    if (systemName == null) {
+      if (!context.mounted) return;
+      _showMissingDistroDialog(context, null);
+      return;
+    }
+    if (!context.mounted) return;
+
     // 如果 runProvider 尚未绑定当前项目，立即触发同步
     if (runProvider.currentProjectRoot != rootPath) {
       final tabProvider = _getTabProvider(context);
-      runProvider.onProjectOpened(rootPath, activeFilePath: tabProvider.currentFilePath);
+      unawaited(runProvider.onProjectOpened(
+        rootPath,
+        activeFilePath: tabProvider.currentFilePath,
+        systemName: systemName,
+      ));
     }
+
+    // 单文件任务与"当前打开的文件"强相关：打开列表前本地重算一次（不跑容器）
+    runProvider.refreshSingleFileTask(
+      currentFilePath: _getTabProvider(context).currentFilePath,
+    );
 
     final isCurrentProject = runProvider.currentProjectRoot == rootPath;
     RunTasksDialog.show(
@@ -269,7 +306,7 @@ class _MainViewState extends State<MainView> {
       lastRunTaskId: isCurrentProject ? (runProvider.lastRunTaskId ?? runProvider.lastRunTask?.id) : null,
       onTaskSelected: (task) => _executeRunTask(context, task),
       onEditCustomTasks: () => _handleOpenEditRunTasks(context),
-      onSyncModule: (moduleId) => runProvider.syncModuleTasks(moduleId),
+      onSyncModule: (moduleId) => runProvider.syncModuleTasks(moduleId, systemName: systemName),
       isSyncingModule: (moduleId) => runProvider.isModuleSyncing(moduleId),
     );
   }
@@ -309,18 +346,33 @@ class _MainViewState extends State<MainView> {
     final runProvider = _getRunProvider(context);
     if (runProvider == null) return;
 
-    await runProvider.detectTasks(
+    // 没有可用系统则不探测，直接引导安装（探测必须跑在真实系统里）
+    final systemName = await _resolveUsableDistro(context);
+    if (systemName == null) {
+      if (!context.mounted) return;
+      _showMissingDistroDialog(context, null);
+      return;
+    }
+    if (!context.mounted) return;
+
+    // 正在进行探测时：toast 提示并忽略本次点击（不打断、不重复探测）
+    final started = await runProvider.requestProjectProbe(
       projectRoot: rootPath,
       currentFilePath: tabProvider.currentFilePath,
+      systemName: systemName,
     );
 
-    if (context.mounted) {
-      final l10n = AppLocalizations.of(context)!;
-      DialogUtils.showSuccessToast(
-        context,
-        l10n.detectCompletedMessage(runProvider.detectedTasks.length),
-      );
+    if (!context.mounted) return;
+    final l10n = AppLocalizations.of(context)!;
+    if (!started) {
+      DialogUtils.showErrorToast(context, l10n.probeAlreadyRunning);
+      return;
     }
+
+    DialogUtils.showSuccessToast(
+      context,
+      l10n.detectCompletedMessage(runProvider.detectedTasks.length),
+    );
   }
 
   Future<void> _handleOpenTerminal(BuildContext context) async {
@@ -349,22 +401,41 @@ class _MainViewState extends State<MainView> {
     final rootPath = projectProvider.rootPath;
     final isModified = tabProvider.isModified;
 
-    // 当检测到切换了项目根目录时，自动触发初始化并进行一次探测
-    if (rootPath != _lastProjectRoot) {
-      _lastProjectRoot = rootPath;
-      if (rootPath != null) {
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (mounted) {
-            runProvider?.onProjectOpened(rootPath, activeFilePath: currentFile);
-          }
-        });
-      } else {
+    // 【进入项目 = 探测入口】打开 / 切换 / 历史恢复 都由 rootPath 变化体现，
+    // 因此这里统一作为唯一触发点；同时把"当前真实系统"纳入去重键：
+    // 冷启动时系统尚未就绪会先跳过，等 DistroProvider 就绪后自动补探测一次。
+    final systemName = _getDistroProvider(context, listen: true)?.selectedSystem;
+    final probeKey = (rootPath == null || systemName == null) ? null : '$rootPath|$systemName';
+
+    if (rootPath == null) {
+      if (_lastProjectRoot != null) {
+        _lastProjectRoot = null;
+        _lastProbeKey = null;
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (mounted) {
             runProvider?.onProjectClosed();
           }
         });
       }
+    } else if (probeKey != null && probeKey != _lastProbeKey) {
+      _lastProbeKey = probeKey;
+      _lastProjectRoot = rootPath;
+      WidgetsBinding.instance.addPostFrameCallback((_) async {
+        if (!mounted) return;
+        final l10n = AppLocalizations.of(this.context);
+        await runProvider?.onProjectOpened(
+          rootPath,
+          activeFilePath: currentFile,
+          systemName: systemName,
+        );
+        if (!mounted) return;
+        if (l10n != null && runProvider != null) {
+          DialogUtils.showSuccessToast(
+            this.context,
+            l10n.detectCompletedMessage(runProvider.detectedTasks.length),
+          );
+        }
+      });
     }
 
     return PopScope(
@@ -409,9 +480,22 @@ class _MainViewState extends State<MainView> {
           children: [
             const CodeEditorTabBar(),
             Expanded(
-              child: CodeEditorWidget(
-                filePath: currentFile,
-                rootPath: rootPath,
+              child: Stack(
+                children: [
+                  Positioned.fill(
+                    child: CodeEditorWidget(
+                      filePath: currentFile,
+                      rootPath: rootPath,
+                    ),
+                  ),
+                  if (context.watch<NoticeCenter?>() case final NoticeCenter center)
+                    Positioned.fill(
+                      child: NoticeHost(
+                        center: center,
+                        confirmDismissBuilder: confirmCancelProbe,
+                      ),
+                    ),
+                ],
               ),
             ),
           ],

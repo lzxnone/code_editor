@@ -1,4 +1,5 @@
 import 'package:code_editor/l10n/app_localizations.dart';
+import 'package:code_editor/providers/distro_provider.dart';
 import 'package:code_editor/providers/project_provider.dart';
 import 'package:code_editor/providers/run_provider.dart';
 import 'package:code_editor/providers/tab_provider.dart';
@@ -8,6 +9,7 @@ import 'package:code_editor/utils/dialog_utils.dart';
 import 'package:code_editor/views/project_management_view.dart';
 import 'package:code_editor/widgets/project_history_widget.dart';
 import 'package:code_editor/widgets/file_tree_widget.dart';
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:path/path.dart' as p;
 import 'package:provider/provider.dart';
@@ -92,6 +94,38 @@ class CodeEditorDrawer extends StatelessWidget {
     }
   }
 
+  Future<void> _handleImportFiles(BuildContext context, String rootPath) async {
+    final hasPermission = await PermissionService.instance
+        .ensureStoragePermission(context: context);
+    if (!hasPermission || !context.mounted) return;
+
+    final l10n = AppLocalizations.of(context);
+    try {
+      final result = await FilePicker.platform.pickFiles(
+        allowMultiple: true,
+      );
+      if (result == null || result.files.isEmpty || !context.mounted) return;
+
+      final count = await _getProjectProvider(context).importFiles(
+        rootPath,
+        result.files,
+      );
+      if (context.mounted && count > 0) {
+        DialogUtils.showSuccessToast(
+          context,
+          l10n?.importFilesSuccess(count) ?? '成功导入 $count 个文件',
+        );
+      }
+    } catch (e) {
+      if (context.mounted) {
+        DialogUtils.showErrorToast(
+          context,
+          l10n?.importFilesFailed(e.toString()) ?? '导入文件失败: $e',
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -132,7 +166,11 @@ class CodeEditorDrawer extends StatelessWidget {
                             final runProvider = context.read<RunProvider?>();
                             final root = _getProjectProvider(context).rootPath;
                             if (root != null && root.isNotEmpty) {
-                              runProvider?.onProjectOpened(root);
+                              // 传入当前真实选中的系统，无系统时不进行任何任务探测
+                              runProvider?.onProjectOpened(
+                                root,
+                                systemName: context.read<DistroProvider?>()?.selectedSystem,
+                              );
                             }
                           },
                         ),
@@ -223,32 +261,58 @@ class CodeEditorDrawer extends StatelessWidget {
                           ),
                         ),
                         if (hasProject) ...[
-                          const SizedBox(width: 8),
+                          const SizedBox(width: 6),
                           IconButton(
                             visualDensity: VisualDensity.compact,
-                            iconSize: 18,
-                            padding: EdgeInsets.zero,
-                            constraints: const BoxConstraints(
-                              minWidth: 28,
-                              minHeight: 28,
+                            style: IconButton.styleFrom(
+                              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                              minimumSize: Size.zero,
+                              padding: const EdgeInsets.all(3),
                             ),
+                            constraints: const BoxConstraints(
+                              minWidth: 24,
+                              minHeight: 24,
+                            ),
+                            iconSize: 18,
                             icon: const Icon(Icons.note_add_outlined),
                             tooltip: l10n.newFile,
                             onPressed: () => _handleNewFile(context, rootPath),
                           ),
-                          const SizedBox(width: 4),
+                          const SizedBox(width: 2),
                           IconButton(
                             visualDensity: VisualDensity.compact,
-                            iconSize: 18,
-                            padding: EdgeInsets.zero,
-                            constraints: const BoxConstraints(
-                              minWidth: 28,
-                              minHeight: 28,
+                            style: IconButton.styleFrom(
+                              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                              minimumSize: Size.zero,
+                              padding: const EdgeInsets.all(3),
                             ),
+                            constraints: const BoxConstraints(
+                              minWidth: 24,
+                              minHeight: 24,
+                            ),
+                            iconSize: 18,
                             icon: const Icon(Icons.create_new_folder_outlined),
                             tooltip: l10n.newFolder,
                             onPressed: () =>
                                 _handleNewFolder(context, rootPath),
+                          ),
+                          const SizedBox(width: 2),
+                          IconButton(
+                            visualDensity: VisualDensity.compact,
+                            style: IconButton.styleFrom(
+                              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                              minimumSize: Size.zero,
+                              padding: const EdgeInsets.all(3),
+                            ),
+                            constraints: const BoxConstraints(
+                              minWidth: 24,
+                              minHeight: 24,
+                            ),
+                            iconSize: 18,
+                            icon: const Icon(Icons.file_upload_outlined),
+                            tooltip: l10n.importFromExternal,
+                            onPressed: () =>
+                                _handleImportFiles(context, rootPath),
                           ),
                         ],
                       ],

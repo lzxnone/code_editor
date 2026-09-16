@@ -85,7 +85,9 @@ class _CodeSelectionGestureDetectorState extends State<_CodeSelectionGestureDete
           render?.stopAutoScroll();
           if (!_isMultiTouch) {
             widget.selectionOverlayController.hideToolbar();
-            widget.selectionOverlayController.hideHandle();
+            if (widget.controller.selection.isCollapsed) {
+              widget.selectionOverlayController.hideHandle();
+            }
           }
         },
         onLongPressUp: () {

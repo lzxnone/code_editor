@@ -66,8 +66,63 @@ class _CodeEditorWidgetState extends State<CodeEditorWidget> {
   Offset? _currentLocalFocal;
   double _initialScrollV = 0.0;
   double _initialScrollH = 0.0;
+  double _focalLineContinuous = 0.0;
+  double _focalCharContinuous = 0.0;
 
-  void _handlePointerDown(PointerDownEvent event, double currentFontSize) {
+  final Map<String, double> _lineHeightCache = {};
+  final Map<String, double> _charWidthCache = {};
+
+  double getLineHeight(double fontSize, String? fontFamily, List<String>? fallback) {
+    final key = '$fontSize-$fontFamily-${fallback?.join(',')}';
+    if (_lineHeightCache.containsKey(key)) {
+      return _lineHeightCache[key]!;
+    }
+    final painter = TextPainter(
+      textDirection: TextDirection.ltr,
+      strutStyle: StrutStyle(
+        fontSize: fontSize,
+        fontFamily: fontFamily,
+        fontFamilyFallback: fallback,
+        height: 1.4,
+        forceStrutHeight: true,
+      ),
+      text: TextSpan(
+        text: '0',
+        style: TextStyle(
+          fontSize: fontSize,
+          fontFamily: fontFamily,
+          fontFamilyFallback: fallback,
+          height: 1.4,
+        ),
+      ),
+    )..layout();
+    final h = painter.preferredLineHeight;
+    _lineHeightCache[key] = h;
+    return h;
+  }
+
+  double getCharWidth(double fontSize, String? fontFamily, List<String>? fallback) {
+    final key = '$fontSize-$fontFamily-${fallback?.join(',')}';
+    if (_charWidthCache.containsKey(key)) {
+      return _charWidthCache[key]!;
+    }
+    final painter = TextPainter(
+      textDirection: TextDirection.ltr,
+      text: TextSpan(
+        text: '0',
+        style: TextStyle(
+          fontSize: fontSize,
+          fontFamily: fontFamily,
+          fontFamilyFallback: fallback,
+        ),
+      ),
+    )..layout();
+    final w = painter.width;
+    _charWidthCache[key] = w;
+    return w;
+  }
+
+  void _handlePointerDown(PointerDownEvent event, double currentFontSize, AppFontItem activeEditorFont) {
     _pointerPositions[event.pointer] = event.position;
     if (_pointerPositions.length >= 2 && !_isPinching) {
       final keys = _pointerPositions.keys.toList();
@@ -103,6 +158,12 @@ class _CodeEditorWidgetState extends State<CodeEditorWidget> {
       _initialScrollH = (_scrollController?.horizontalScroller.hasClients == true)
           ? _scrollController!.horizontalScroller.offset
           : 0.0;
+
+      final startH = getLineHeight(_initialPinchFontSize!, activeEditorFont.fontFamily, activeEditorFont.fallback);
+      final startW = getCharWidth(_initialPinchFontSize!, activeEditorFont.fontFamily, activeEditorFont.fallback);
+
+      _focalLineContinuous = (_initialScrollV + localFocal.dy) / max(1.0, startH);
+      _focalCharContinuous = (_initialScrollH + localFocal.dx) / max(1.0, startW);
 
       final currentController = _controller;
       if (currentController != null &&
@@ -148,25 +209,33 @@ class _CodeEditorWidgetState extends State<CodeEditorWidget> {
           : currentGlobalFocal;
       _currentLocalFocal = currentLocalFocal;
 
-      // 连续高精度浮点字号（避免 0.1 离散跳变造成的阶梯式顿挫）
-      final continuousFontSize = ((_initialPinchFontSize! * clampedScale) * 100).round() / 100.0;
+      final continuousFontSize = ((_initialPinchFontSize! * clampedScale) * 10).round() / 10.0;
       final newFontSize = continuousFontSize.clamp(10.0, 30.0);
-      final fontRatio = newFontSize / _initialPinchFontSize!;
 
-      // 焦心连续锚定公式：保持手指焦心下的代码行与手指相对位置绝对静止
-      final targetScrollV = (_initialScrollV + _initialLocalFocal!.dy) * fontRatio - currentLocalFocal.dy;
-      final targetScrollH = (_initialScrollH + _initialLocalFocal!.dx) * fontRatio - currentLocalFocal.dx;
+      AppFontItem activeEditorFont = AppFonts.editorJetBrainsMono;
+      try {
+        activeEditorFont = _getSettingsProvider(context).editorFont;
+      } catch (_) {}
+
+      final newH = getLineHeight(newFontSize, activeEditorFont.fontFamily, activeEditorFont.fallback);
+      final newW = getCharWidth(newFontSize, activeEditorFont.fontFamily, activeEditorFont.fallback);
+
+      final targetScrollV = _focalLineContinuous * newH - currentLocalFocal.dy;
+      final targetScrollH = _focalCharContinuous * newW - currentLocalFocal.dx;
 
       if (_scrollController?.verticalScroller.hasClients == true) {
         final pos = _scrollController!.verticalScroller.position;
-        final maxV = max(0.0, pos.maxScrollExtent);
-        final clampedV = targetScrollV.clamp(0.0, maxV);
+        final totalLines = _controller?.lineCount ?? 1;
+        final viewportHeight = renderBox?.size.height ?? 500.0;
+        final computedMaxV = max(0.0, totalLines * newH + viewportHeight * 0.5 - viewportHeight);
+        final maxV = max(computedMaxV, pos.maxScrollExtent);
+        final clampedV = targetScrollV.clamp(0.0, maxV).toDouble();
         _scrollController!.verticalScroller.jumpTo(clampedV);
       }
       if (_scrollController?.horizontalScroller.hasClients == true) {
         final pos = _scrollController!.horizontalScroller.position;
         final maxH = max(0.0, pos.maxScrollExtent);
-        final clampedH = targetScrollH.clamp(0.0, maxH);
+        final clampedH = targetScrollH.clamp(0.0, max(maxH, targetScrollH)).toDouble();
         _scrollController!.horizontalScroller.jumpTo(clampedH);
       }
 
@@ -217,32 +286,38 @@ class _CodeEditorWidgetState extends State<CodeEditorWidget> {
     final initialFontSize = _initialPinchFontSize;
     final initialLocalFocal = _initialLocalFocal;
     final currentLocalFocal = _currentLocalFocal ?? initialLocalFocal;
-    final initialScrollV = _initialScrollV;
-    final initialScrollH = _initialScrollH;
 
     if (finalSize != null && initialFontSize != null && initialLocalFocal != null && currentLocalFocal != null) {
       // 手势释放后定格为整数（如 16.0），持久化到用户设置
       final double targetFontSize = finalSize.clamp(10.0, 30.0).roundToDouble();
-      final double fontRatio = targetFontSize / initialFontSize;
 
-      final targetScrollV = (initialScrollV + initialLocalFocal.dy) * fontRatio - currentLocalFocal.dy;
-      final targetScrollH = (initialScrollH + initialLocalFocal.dx) * fontRatio - currentLocalFocal.dx;
-
+      AppFontItem activeEditorFont = AppFonts.editorJetBrainsMono;
       try {
         final settings = _getSettingsProvider(context);
+        activeEditorFont = settings.editorFont;
         settings.setFontSize(targetFontSize);
       } catch (_) {}
 
+      final finalH = getLineHeight(targetFontSize, activeEditorFont.fontFamily, activeEditorFont.fallback);
+      final finalW = getCharWidth(targetFontSize, activeEditorFont.fontFamily, activeEditorFont.fallback);
+
+      final targetScrollV = _focalLineContinuous * finalH - currentLocalFocal.dy;
+      final targetScrollH = _focalCharContinuous * finalW - currentLocalFocal.dx;
+
       if (_scrollController?.verticalScroller.hasClients == true) {
         final pos = _scrollController!.verticalScroller.position;
-        final maxV = max(0.0, pos.maxScrollExtent);
-        final clampedV = targetScrollV.clamp(0.0, maxV);
+        final totalLines = _controller?.lineCount ?? 1;
+        final renderBox = _editorContainerKey.currentContext?.findRenderObject() as RenderBox?;
+        final viewportHeight = renderBox?.size.height ?? 500.0;
+        final computedMaxV = max(0.0, totalLines * finalH + viewportHeight * 0.5 - viewportHeight);
+        final maxV = max(computedMaxV, pos.maxScrollExtent);
+        final clampedV = targetScrollV.clamp(0.0, maxV).toDouble();
         _scrollController!.verticalScroller.jumpTo(clampedV);
       }
       if (_scrollController?.horizontalScroller.hasClients == true) {
         final pos = _scrollController!.horizontalScroller.position;
         final maxH = max(0.0, pos.maxScrollExtent);
-        final clampedH = targetScrollH.clamp(0.0, maxH);
+        final clampedH = targetScrollH.clamp(0.0, max(maxH, targetScrollH)).toDouble();
         _scrollController!.horizontalScroller.jumpTo(clampedH);
       }
     }
@@ -258,6 +333,8 @@ class _CodeEditorWidgetState extends State<CodeEditorWidget> {
       _currentLocalFocal = null;
       _initialScrollV = 0.0;
       _initialScrollH = 0.0;
+      _focalLineContinuous = 0.0;
+      _focalCharContinuous = 0.0;
     });
 
     if (savedSelection != null && !savedSelection.isCollapsed) {
@@ -601,7 +678,7 @@ class _CodeEditorWidgetState extends State<CodeEditorWidget> {
             child: Listener(
               key: _editorContainerKey,
               behavior: HitTestBehavior.translucent,
-              onPointerDown: (event) => _handlePointerDown(event, activeFontSize),
+              onPointerDown: (event) => _handlePointerDown(event, activeFontSize, activeEditorFont),
               onPointerMove: _handlePointerMove,
               onPointerUp: _handlePointerUp,
               onPointerCancel: _handlePointerCancel,
@@ -652,6 +729,7 @@ class _CodeEditorWidgetState extends State<CodeEditorWidget> {
                                       fontSize: (displayFontSize - 1).clamp(9.0, 30.0),
                                       fontFamily: activeEditorFont.fontFamily,
                                       fontFamilyFallback: activeEditorFont.fallback,
+                                      height: 1.4,
                                     ),
                                     focusedTextStyle: TextStyle(
                                       color: activeTheme.focusedGutterTextColor,
@@ -659,6 +737,7 @@ class _CodeEditorWidgetState extends State<CodeEditorWidget> {
                                       fontWeight: FontWeight.bold,
                                       fontFamily: activeEditorFont.fontFamily,
                                       fontFamilyFallback: activeEditorFont.fallback,
+                                      height: 1.4,
                                     ),
                                   ),
                                   DefaultCodeChunkIndicator(

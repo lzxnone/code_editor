@@ -1369,4 +1369,126 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get copiedToClipboard => '已复制到剪贴板';
+
+  @override
+  String probeBannerPreparing(String module) {
+    return '正在准备 $module 探测环境…';
+  }
+
+  @override
+  String probeBannerDetecting(String module) {
+    return '正在探测 $module 任务…';
+  }
+
+  @override
+  String get probeBannerFinalizing => '正在整理探测结果…';
+
+  @override
+  String probePhaseQueued(String module) {
+    return '$module 排队等待中…';
+  }
+
+  @override
+  String probePhaseCheckingDependency(String module) {
+    return '正在检查 $module 依赖…';
+  }
+
+  @override
+  String probePhaseInstallingDependency(String module) {
+    return '正在安装 $module 依赖…';
+  }
+
+  @override
+  String probeDoneWithCount(String module, int count) {
+    return '$module 探测完成 · 发现 $count 个任务';
+  }
+
+  @override
+  String probeFailureDependencyInstallFailed(String tool) {
+    return '依赖 $tool 自动安装失败';
+  }
+
+  @override
+  String get taskTypeSingleFile => '当前文件任务';
+
+  @override
+  String get taskTypeOther => '其他任务';
+
+  @override
+  String get probeAlreadyRunning => '正在探测中，请稍候…';
+
+  @override
+  String get probeBusyEnterTerminalTitle => '任务探测进行中';
+
+  @override
+  String get probeBusyEnterTerminalMessage =>
+      '项目任务探测正在后台进行（会占用当前容器执行构建工具自省与依赖安装）。\n\n此时进入终端并进行安装软件包、构建等操作，可能与探测互相阻塞或产生异常。\n\n是否仍要进入终端？';
+
+  @override
+  String get probeEnterTerminalAnyway => '继续进入终端';
+
+  @override
+  String get probeCancelConfirmTitle => '取消本次探测？';
+
+  @override
+  String get probeCancelConfirmMessage =>
+      '正在进行的探测会被立即中止：已完成模块的结果会保留，未完成的模块将被跳过。';
+
+  @override
+  String get probeKeepDetecting => '继续探测';
+
+  @override
+  String get cancelProbe => '取消探测';
+
+  @override
+  String get probeBudgetExceededTitle => '探测超时已中止';
+
+  @override
+  String probeBudgetExceededMessage(int completed, int total) {
+    return '已完成 $completed/$total 个模块，剩余模块本次跳过。可稍后重新探测。';
+  }
+
+  @override
+  String get probeBannerClose => '关闭';
+
+  @override
+  String probeDone(String module) {
+    return '$module 任务探测完成';
+  }
+
+  @override
+  String probeFailedTitle(String module) {
+    return '$module 任务探测失败';
+  }
+
+  @override
+  String probeFailureToolchainMissing(String tool) {
+    return '当前系统内未找到 $tool，请先在系统管理中安装';
+  }
+
+  @override
+  String probeFailureExecutionFailed(String detail) {
+    return '构建工具执行失败：$detail';
+  }
+
+  @override
+  String get probeFailureUnparsable => '无法识别构建工具输出（可能版本不兼容）';
+
+  @override
+  String get probeFailureTimeout => '探测超时，已中止';
+
+  @override
+  String noticeQueueMore(int count) {
+    return '还有 $count 项进行中';
+  }
+
+  @override
+  String importFilesSuccess(int count) {
+    return '成功导入 $count 个文件';
+  }
+
+  @override
+  String importFilesFailed(String error) {
+    return '导入文件失败: $error';
+  }
 }

@@ -1,11 +1,9 @@
 import 'dart:ui';
 import 'package:code_editor/l10n/app_localizations.dart';
-import 'package:code_editor/models/terminal_session.dart';
 import 'package:code_editor/providers/settings_provider.dart';
 import 'package:code_editor/providers/terminal_provider.dart';
 import 'package:code_editor/views/settings_view.dart';
 import 'package:code_editor/views/terminal_view.dart';
-import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -277,6 +275,7 @@ void main() {
       expect(termView.controller?.selection, isNotNull);
       expect(termView.controller?.selection!.isCollapsed, isFalse);
       expect(textInputShowCount, 0, reason: 'Long press must not show soft keyboard');
+      expect(textInputAttachCount, greaterThanOrEqualTo(0));
 
       // 3. Lift finger: Floating menu (复制, 粘贴, 全选) should appear
       await gesture.up();

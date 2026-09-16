@@ -683,5 +683,146 @@
   "cut": "剪切",
   "paste": "粘贴",
   "selectAll": "全选",
-  "copiedToClipboard": "已复制到剪贴板"
+  "copiedToClipboard": "已复制到剪贴板",
+  "probeBannerPreparing": "正在准备 {module} 探测环境…",
+  "@probeBannerPreparing": {
+    "placeholders": {
+      "module": {
+        "type": "String"
+      }
+    }
+  },
+  "probeBannerDetecting": "正在探测 {module} 任务…",
+  "@probeBannerDetecting": {
+    "placeholders": {
+      "module": {
+        "type": "String"
+      }
+    }
+  },
+  "probeBannerFinalizing": "正在整理探测结果…",
+  "probePhaseQueued": "{module} 排队等待中…",
+  "@probePhaseQueued": {
+    "placeholders": {
+      "module": {
+        "type": "String"
+      }
+    }
+  },
+  "probePhaseCheckingDependency": "正在检查 {module} 依赖…",
+  "@probePhaseCheckingDependency": {
+    "placeholders": {
+      "module": {
+        "type": "String"
+      }
+    }
+  },
+  "probePhaseInstallingDependency": "正在安装 {module} 依赖…",
+  "@probePhaseInstallingDependency": {
+    "placeholders": {
+      "module": {
+        "type": "String"
+      }
+    }
+  },
+  "probeDoneWithCount": "{module} 探测完成 · 发现 {count} 个任务",
+  "@probeDoneWithCount": {
+    "placeholders": {
+      "module": {
+        "type": "String"
+      },
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "probeFailureDependencyInstallFailed": "依赖 {tool} 自动安装失败",
+  "@probeFailureDependencyInstallFailed": {
+    "placeholders": {
+      "tool": {
+        "type": "String"
+      }
+    }
+  },
+  "taskTypeSingleFile": "当前文件任务",
+  "taskTypeOther": "其他任务",
+  "probeAlreadyRunning": "正在探测中，请稍候…",
+  "probeBusyEnterTerminalTitle": "任务探测进行中",
+  "probeBusyEnterTerminalMessage": "项目任务探测正在后台进行（会占用当前容器执行构建工具自省与依赖安装）。\n\n此时进入终端并进行安装软件包、构建等操作，可能与探测互相阻塞或产生异常。\n\n是否仍要进入终端？",
+  "probeEnterTerminalAnyway": "继续进入终端",
+  "probeCancelConfirmTitle": "取消本次探测？",
+  "probeCancelConfirmMessage": "正在进行的探测会被立即中止：已完成模块的结果会保留，未完成的模块将被跳过。",
+  "probeKeepDetecting": "继续探测",
+  "cancelProbe": "取消探测",
+  "probeBudgetExceededTitle": "探测超时已中止",
+  "probeBudgetExceededMessage": "已完成 {completed}/{total} 个模块，剩余模块本次跳过。可稍后重新探测。",
+  "@probeBudgetExceededMessage": {
+    "placeholders": {
+      "completed": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "probeBannerClose": "关闭",
+  "probeDone": "{module} 任务探测完成",
+  "@probeDone": {
+    "placeholders": {
+      "module": {
+        "type": "String"
+      }
+    }
+  },
+  "probeFailedTitle": "{module} 任务探测失败",
+  "@probeFailedTitle": {
+    "placeholders": {
+      "module": {
+        "type": "String"
+      }
+    }
+  },
+  "probeFailureToolchainMissing": "当前系统内未找到 {tool}，请先在系统管理中安装",
+  "@probeFailureToolchainMissing": {
+    "placeholders": {
+      "tool": {
+        "type": "String"
+      }
+    }
+  },
+  "probeFailureExecutionFailed": "构建工具执行失败：{detail}",
+  "@probeFailureExecutionFailed": {
+    "placeholders": {
+      "detail": {
+        "type": "String"
+      }
+    }
+  },
+  "probeFailureUnparsable": "无法识别构建工具输出（可能版本不兼容）",
+  "probeFailureTimeout": "探测超时，已中止",
+  "noticeQueueMore": "还有 {count} 项进行中",
+  "@noticeQueueMore": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "importFilesSuccess": "成功导入 {count} 个文件",
+  "@importFilesSuccess": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "importFilesFailed": "导入文件失败: {error}",
+  "@importFilesFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  }
 }

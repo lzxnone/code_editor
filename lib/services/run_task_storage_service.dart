@@ -56,12 +56,6 @@ class RunTaskStorageService {
     }
   }
 
-  /// 兼容旧方法：直接返回 tasks
-  Future<List<RunTask>> loadTasks(String projectRoot) async {
-    final result = await loadConfig(projectRoot);
-    return result.tasks;
-  }
-
   /// 将自定义任务列表与最近运行的任务ID持久化保存到 `.code_editor/run_tasks.json`
   Future<void> saveConfig({
     required String projectRoot,
@@ -93,9 +87,20 @@ class RunTaskStorageService {
     }
   }
 
-  /// 兼容旧方法
-  Future<void> saveTasks(String projectRoot, List<RunTask> tasks) async {
-    await saveConfig(projectRoot: projectRoot, tasks: tasks);
+  /// 只更新"最近执行任务 id"，**完整保留磁盘上已有的用户任务**。
+  ///
+  /// 边界：不能用内存里的任务列表去覆盖磁盘——内存可能是"尚未加载完/已被清空"的状态
+  /// （例如刚打开工程就立刻点了运行），那会把用户已保存的任务清空。
+  Future<void> saveLastRunTaskId({
+    required String projectRoot,
+    String? lastRunTaskId,
+  }) async {
+    final existing = await loadConfig(projectRoot);
+    await saveConfig(
+      projectRoot: projectRoot,
+      tasks: existing.tasks,
+      lastRunTaskId: lastRunTaskId,
+    );
   }
 
   /// 获取特定模块的独立任务缓存配置文件（例如 `.code_editor/gradle_tasks.json`）

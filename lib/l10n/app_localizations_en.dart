@@ -1409,4 +1409,129 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get copiedToClipboard => 'Copied to clipboard';
+
+  @override
+  String probeBannerPreparing(String module) {
+    return 'Preparing $module environment…';
+  }
+
+  @override
+  String probeBannerDetecting(String module) {
+    return 'Detecting $module tasks…';
+  }
+
+  @override
+  String get probeBannerFinalizing => 'Finalizing detection result…';
+
+  @override
+  String probePhaseQueued(String module) {
+    return '$module queued…';
+  }
+
+  @override
+  String probePhaseCheckingDependency(String module) {
+    return 'Checking $module dependencies…';
+  }
+
+  @override
+  String probePhaseInstallingDependency(String module) {
+    return 'Installing $module dependencies…';
+  }
+
+  @override
+  String probeDoneWithCount(String module, int count) {
+    return '$module finished · $count tasks found';
+  }
+
+  @override
+  String probeFailureDependencyInstallFailed(String tool) {
+    return 'Failed to auto-install dependency $tool';
+  }
+
+  @override
+  String get taskTypeSingleFile => 'Current File Task';
+
+  @override
+  String get taskTypeOther => 'Other Tasks';
+
+  @override
+  String get probeAlreadyRunning =>
+      'Detection already in progress, please wait…';
+
+  @override
+  String get probeBusyEnterTerminalTitle => 'Task detection in progress';
+
+  @override
+  String get probeBusyEnterTerminalMessage =>
+      'Project task detection is running in the background (it uses the current container for build-tool introspection and dependency installation).\n\nEntering the terminal and running installs or builds may block or conflict with it.\n\nDo you still want to open the terminal?';
+
+  @override
+  String get probeEnterTerminalAnyway => 'Open Terminal Anyway';
+
+  @override
+  String get probeCancelConfirmTitle => 'Cancel this detection?';
+
+  @override
+  String get probeCancelConfirmMessage =>
+      'The running detection will be aborted immediately: results of finished modules are kept, unfinished modules will be skipped.';
+
+  @override
+  String get probeKeepDetecting => 'Keep detecting';
+
+  @override
+  String get cancelProbe => 'Cancel detection';
+
+  @override
+  String get probeBudgetExceededTitle =>
+      'Detection aborted (time budget exceeded)';
+
+  @override
+  String probeBudgetExceededMessage(int completed, int total) {
+    return '$completed/$total modules finished; the rest were skipped. You can re-detect later.';
+  }
+
+  @override
+  String get probeBannerClose => 'Close';
+
+  @override
+  String probeDone(String module) {
+    return '$module task detection finished';
+  }
+
+  @override
+  String probeFailedTitle(String module) {
+    return '$module task detection failed';
+  }
+
+  @override
+  String probeFailureToolchainMissing(String tool) {
+    return '$tool was not found in the current system. Install it in System Management first.';
+  }
+
+  @override
+  String probeFailureExecutionFailed(String detail) {
+    return 'Build tool execution failed: $detail';
+  }
+
+  @override
+  String get probeFailureUnparsable =>
+      'Unable to parse build tool output (possible version mismatch)';
+
+  @override
+  String get probeFailureTimeout => 'Detection timed out and was aborted';
+
+  @override
+  String noticeQueueMore(int count) {
+    return '$count more in progress';
+  }
+
+  @override
+  String importFilesSuccess(int count) {
+    return 'Successfully imported $count files';
+  }
+
+  @override
+  String importFilesFailed(String error) {
+    return 'Failed to import files: $error';
+  }
 }

@@ -217,7 +217,7 @@ class FileService {
     String targetPath = p.join(destinationDir, baseName);
 
     // 如果同名，自动生成副本名称（如 file(1).dart）
-    targetPath = await _getUniqueTargetPath(targetPath, entityType == FileSystemEntityType.directory);
+    targetPath = await getUniqueTargetPath(targetPath, entityType == FileSystemEntityType.directory);
 
     if(entityType == FileSystemEntityType.directory) {
       await _copyDirectory(Directory(sourcePath), Directory(targetPath));
@@ -237,7 +237,7 @@ class FileService {
       return;
     }
 
-    targetPath = await _getUniqueTargetPath(targetPath, entityType == FileSystemEntityType.directory);
+    targetPath = await getUniqueTargetPath(targetPath, entityType == FileSystemEntityType.directory);
 
     if(entityType == FileSystemEntityType.directory) {
       try {
@@ -271,7 +271,7 @@ class FileService {
   }
 
   //处理同名
-  Future<String> _getUniqueTargetPath(String originalPath, bool isDirectory) async {
+  Future<String> getUniqueTargetPath(String originalPath, bool isDirectory) async {
     if(!await FileSystemEntity.isDirectory(originalPath) &&
         !await FileSystemEntity.isFile(originalPath)) {
       return originalPath;

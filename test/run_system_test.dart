@@ -2,12 +2,20 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:path/path.dart' as p;
 import 'package:code_editor/l10n/app_localizations.dart';
+import 'package:code_editor/models/notice_item.dart';
 import 'package:code_editor/models/run_task.dart';
+import 'package:code_editor/providers/notice_center.dart';
 import 'package:code_editor/providers/run_provider.dart';
+import 'package:code_editor/services/distro_manager.dart';
 import 'package:code_editor/services/run_task_storage_service.dart';
-import 'package:code_editor/services/project_task_detector.dart';
+import 'package:code_editor/services/project_task_dispatcher.dart';
+import 'package:code_editor/widgets/notice_host.dart';
 import 'package:code_editor/widgets/run_tasks_dialog.dart';
+
+/// 单测用的假系统名（探测必须基于"真实可用系统"，单测里用假 rootfs 代替真容器）
+const String kTestSystemName = 'test_sys';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -15,20 +23,38 @@ void main() {
   group('RunTask & RunTaskStorageService Tests', () {
     late Directory tempDir;
     late RunTaskStorageService storageService;
+    late Directory distroBaseDir;
+    late DistroManager distroManager;
 
     setUp(() async {
       tempDir = await Directory.systemTemp.createTemp('run_task_test_');
       storageService = RunTaskStorageService();
+
+      // 构造一个已安装就绪的假系统：<base>/<sys>/rootfs/{etc,bin}
+      // 并放入各模块所需工具链的桩文件（依赖检测走宿主 rootfs 快速判定）
+      distroBaseDir = await Directory.systemTemp.createTemp('run_task_distro_');
+      final rootfs = Directory(p.join(distroBaseDir.path, kTestSystemName, 'rootfs'));
+      Directory(p.join(rootfs.path, 'etc')).createSync(recursive: true);
+      Directory(p.join(rootfs.path, 'bin')).createSync(recursive: true);
+      final usrBin = Directory(p.join(rootfs.path, 'usr', 'bin'))..createSync(recursive: true);
+      for (final binary in ['java', 'gradle', 'cmake', 'make', 'npm', 'node', 'cargo']) {
+        File(p.join(usrBin.path, binary)).writeAsStringSync('#!/bin/sh\n');
+      }
+      distroManager = DistroManager()..customBaseDir = distroBaseDir;
     });
 
     tearDown(() async {
+      DistroManager().customBaseDir = null;
       if (await tempDir.exists()) {
         await tempDir.delete(recursive: true);
+      }
+      if (await distroBaseDir.exists()) {
+        await distroBaseDir.delete(recursive: true);
       }
     });
 
     test('save and load custom tasks', () async {
-      final initialTasks = await storageService.loadTasks(tempDir.path);
+      final initialTasks = (await storageService.loadConfig(tempDir.path)).tasks;
       expect(initialTasks, isEmpty);
 
       final customTask = const RunTask(
@@ -40,9 +66,9 @@ void main() {
         clearBeforeRun: true,
       );
 
-      await storageService.saveTasks(tempDir.path, [customTask]);
+      await storageService.saveConfig(projectRoot: tempDir.path, tasks: [customTask]);
 
-      final loadedTasks = await storageService.loadTasks(tempDir.path);
+      final loadedTasks = (await storageService.loadConfig(tempDir.path)).tasks;
       expect(loadedTasks.length, 1);
       expect(loadedTasks.first.id, 'task_1');
       expect(loadedTasks.first.name, 'Debug Build');
@@ -60,7 +86,7 @@ void main() {
       expect(config.tasks.length, 1);
     });
 
-    test('ProjectTaskDetector detects CMake and single file', () async {
+    test('任务探测：CMake + 单文件任务', () async {
       // 模拟 CMakeLists.txt
       final cmakeFile = File('${tempDir.path}/CMakeLists.txt');
       await cmakeFile.writeAsString('cmake_minimum_required(VERSION 3.10)');
@@ -69,9 +95,11 @@ void main() {
       final pyFile = File('${tempDir.path}/main.py');
       await pyFile.writeAsString('print("hello")');
 
-      final tasks = await ProjectTaskDetector.detect(
+      final tasks = await ProjectTaskDispatcher.instance.detect(
         projectRoot: tempDir.path,
         currentFilePath: pyFile.path,
+        systemName: kTestSystemName,
+        distroManager: distroManager,
       );
 
       expect(tasks.isNotEmpty, isTrue);
@@ -84,7 +112,7 @@ void main() {
       expect(tasks.any((t) => t.id == 'detected_cmake_clean'), isTrue);
     });
 
-    test('ProjectTaskDetector detects Makefile, Gradle, Cargo, NPM, Dart and source files', () async {
+    test('任务探测：Makefile / Cargo / NPM / Dart / 单文件（Gradle 只认真实自省）', () async {
       final makefile = File('${tempDir.path}/Makefile');
       await makefile.writeAsString('all:\n\tgcc main.c\n');
 
@@ -92,7 +120,7 @@ void main() {
       await cargoToml.writeAsString('[package]\nname = "demo"\n');
 
       final packageJson = File('${tempDir.path}/package.json');
-      await packageJson.writeAsString('{"name": "demo"}');
+      await packageJson.writeAsString('{"name": "demo", "scripts": {"start": "node index.js", "test": "jest"}}');
 
       final pubspec = File('${tempDir.path}/pubspec.yaml');
       await pubspec.writeAsString('name: demo\n');
@@ -103,9 +131,11 @@ void main() {
       final cppFile = File('${tempDir.path}/main.cpp');
       await cppFile.writeAsString('int main() { return 0; }');
 
-      final tasks = await ProjectTaskDetector.detect(
+      final tasks = await ProjectTaskDispatcher.instance.detect(
         projectRoot: tempDir.path,
         currentFilePath: cppFile.path,
+        systemName: kTestSystemName,
+        distroManager: distroManager,
       );
 
       expect(tasks.any((t) => t.id == 'detected_single_cpp'), isTrue);
@@ -114,7 +144,10 @@ void main() {
       expect(tasks.any((t) => t.id == 'detected_cargo_run'), isTrue);
       expect(tasks.any((t) => t.id == 'detected_npm_start'), isTrue);
       expect(tasks.any((t) => t.id == 'detected_dart_run'), isTrue);
-      expect(tasks.any((t) => t.id == 'detected_gradle_run'), isTrue);
+      // Gradle 只认真实自省结果：测试环境无法真正执行 gradle，因此不产出任何 Gradle 任务，
+      // 更不允许出现任何硬编码兜底任务（detected_gradle_*）
+      expect(tasks.any((t) => t.id.startsWith('detected_gradle_')), isFalse);
+      expect(tasks.any((t) => t.moduleId == 'gradle'), isFalse);
     });
   });
 
@@ -406,6 +439,120 @@ void main() {
       expect(runProvider.lastRunTask, isNull);
       expect(runProvider.lastRunTaskId, isNull);
       expect(runProvider.allTasks, isEmpty);
+    });
+
+    testWidgets('RunTasksDialog: 任务类型折叠 Tile 自由切换且在内存中保持折叠状态', (tester) async {
+      const detectedTasks = [
+        RunTask(
+          id: 'detected_gradle_run',
+          name: 'Gradle: Run',
+          command: 'sh ./gradlew run',
+          source: TaskSource.detected,
+          moduleId: 'gradle',
+          group: 'mod development/internal',
+        ),
+      ];
+
+      Widget buildDialog() {
+        return MaterialApp(
+          localizationsDelegates: const [
+            AppLocalizations.delegate,
+            GlobalMaterialLocalizations.delegate,
+            GlobalWidgetsLocalizations.delegate,
+            GlobalCupertinoLocalizations.delegate,
+          ],
+          supportedLocales: const [Locale('zh'), Locale('en')],
+          locale: const Locale('zh'),
+          home: Scaffold(
+            body: RunTasksDialog(
+              customTasks: const [],
+              detectedTasks: detectedTasks,
+              onTaskSelected: (_) {},
+              onEditCustomTasks: () {},
+            ),
+          ),
+        );
+      }
+
+      // 1. 初次渲染，任务正常显示
+      await tester.pumpWidget(buildDialog());
+      await tester.pumpAndSettle();
+      expect(find.text('Gradle: Run'), findsOneWidget);
+
+      // 2. 点击 Gradle 折叠 tile 头部将其收起
+      await tester.tap(find.text('Gradle'));
+      await tester.pumpAndSettle();
+      expect(find.text('Gradle: Run'), findsNothing);
+
+      // 3. 模拟关闭并重新打开 Dialog（重建 widget）
+      await tester.pumpWidget(buildDialog());
+      await tester.pumpAndSettle();
+      // 折叠状态由内存持久化维持，依然处于收起状态
+      expect(find.text('Gradle: Run'), findsNothing);
+
+      // 4. 再次点击重新展开
+      await tester.tap(find.text('Gradle'));
+      await tester.pumpAndSettle();
+      expect(find.text('Gradle: Run'), findsOneWidget);
+    });
+
+    testWidgets('NoticeHost 卡片视觉：成功时背景为绿色，失败时为红色描边', (tester) async {
+      final center = NoticeCenter();
+
+      await tester.pumpWidget(
+        MaterialApp(
+          localizationsDelegates: const [
+            AppLocalizations.delegate,
+            GlobalMaterialLocalizations.delegate,
+            GlobalWidgetsLocalizations.delegate,
+            GlobalCupertinoLocalizations.delegate,
+          ],
+          supportedLocales: const [Locale('zh'), Locale('en')],
+          locale: const Locale('zh'),
+          home: Scaffold(
+            body: NoticeHost(center: center),
+          ),
+        ),
+      );
+
+      // 1. 推送成功通知
+      center.push(const NoticeItem(
+        id: 'success_notice',
+        kind: NoticeKind.success,
+        text: ModuleDoneText('Gradle', taskCount: 3),
+      ));
+      await tester.pumpAndSettle();
+
+      final successMaterial = tester.widget<Material>(
+        find.ancestor(
+          of: find.textContaining('Gradle'),
+          matching: find.byType(Material),
+        ).first,
+      );
+      // 成功卡片背景为深绿或绿色
+      expect(successMaterial.color, equals(const Color(0xFF2E7D32)));
+
+      // 2. 推送失败通知
+      center.push(const NoticeItem(
+        id: 'failure_notice',
+        kind: NoticeKind.failure,
+        text: ModuleFailureText(
+          moduleDisplayName: 'CMake',
+          failure: NoticeFailure.executionFailed,
+        ),
+      ));
+      await tester.pumpAndSettle();
+
+      final failureMaterial = tester.widget<Material>(
+        find.ancestor(
+          of: find.textContaining('CMake'),
+          matching: find.byType(Material),
+        ).first,
+      );
+      final shape = failureMaterial.shape as RoundedRectangleBorder;
+      // 失败卡片有红色描边
+      expect(shape.side.color, equals(const Color(0xFFE53935)));
+      expect(shape.side.width, equals(1.5));
     });
   });
 }

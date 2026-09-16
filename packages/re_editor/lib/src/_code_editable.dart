@@ -201,6 +201,7 @@ class _CodeEditableState extends State<_CodeEditable> with AutomaticKeepAliveCli
     final Widget child = _CodeScrollable(
       axisDirection: AxisDirection.down,
       controller: widget.scrollController.verticalScroller,
+      bidirectionalHorizontalController: widget.wordWrap ? null : widget.scrollController.horizontalScroller,
       viewportBuilder: (context, ViewportOffset vertical) {
         final Widget? indicator = widget.indicatorBuilder?.call(
           context,
@@ -244,6 +245,7 @@ class _CodeEditableState extends State<_CodeEditable> with AutomaticKeepAliveCli
           codeField = _CodeScrollable(
             axisDirection: AxisDirection.right,
             controller: widget.scrollController.horizontalScroller,
+            enableDrag: false,
             viewportBuilder: (context, ViewportOffset horizontal) {
               final ViewportOffset effectiveHorizontal;
               if (widget.pinLineNumbers || gutterWidget == null) {
@@ -321,11 +323,6 @@ class _CodeEditableState extends State<_CodeEditable> with AutomaticKeepAliveCli
         onNotification: (notification) {
           if (notification is ScrollStartNotification) {
             widget.selectionOverlayController.hideToolbar();
-            if (notification.metrics.axis == Axis.horizontal) {
-              _stopScroller(widget.scrollController.verticalScroller);
-            } else if (notification.metrics.axis == Axis.vertical) {
-              _stopScroller(widget.scrollController.horizontalScroller);
-            }
           } else if (notification is ScrollEndNotification) {
             if (!widget.controller.selection.isCollapsed && widget.controller.selection.baseOffset != -1) {
               WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -333,6 +330,7 @@ class _CodeEditableState extends State<_CodeEditable> with AutomaticKeepAliveCli
                     !widget.controller.selection.isCollapsed &&
                     widget.controller.selection.baseOffset != -1) {
                   widget.selectionOverlayController.showToolbar(context, Offset.zero);
+                  widget.selectionOverlayController.showHandle(context);
                 }
               });
             }
@@ -342,17 +340,6 @@ class _CodeEditableState extends State<_CodeEditable> with AutomaticKeepAliveCli
         child: child
       )
     );
-  }
-
-  void _stopScroller(ScrollController scroller) {
-    if (!scroller.hasClients) return;
-    for (final position in scroller.positions) {
-      if (position is CodeEditorScrollPosition) {
-        position.stopScrolling();
-      } else if (position.activity?.isScrolling == true) {
-        position.hold(() {});
-      }
-    }
   }
 
   Widget _buildCodeField(ViewportOffset vertical, ViewportOffset? horizontal) {

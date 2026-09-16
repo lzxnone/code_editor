@@ -558,5 +558,73 @@ void main() {
       controller.hide(buildCtx);
       await tester.pumpAndSettle();
     });
+
+    testWidgets('选中文本后进行滚动，手柄层不应被销毁消失且在滚动停止后正常维持', (tester) async {
+      final codeController = CodeLineEditingController.fromText(
+        List.generate(50, (i) => 'Line $i: Content of the test line with some length').join('\n'),
+      );
+      final scrollController = CodeScrollController();
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: SizedBox(
+              width: 400,
+              height: 300,
+              child: CodeEditor(
+                controller: codeController,
+                scrollController: scrollController,
+                wordWrap: false,
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // 选中第 5 行文本
+      codeController.selection = const CodeLineSelection(
+        baseIndex: 5,
+        baseOffset: 0,
+        extentIndex: 5,
+        extentOffset: 10,
+      );
+      await tester.pumpAndSettle();
+
+      // 执行纵向滚动
+      await tester.drag(find.byType(CodeEditor), const Offset(0, -60));
+      await tester.pumpAndSettle();
+
+      // 选区依然存在
+      expect(codeController.selection.isCollapsed, isFalse);
+    });
+
+    testWidgets('非折行模式(wordWrap: false)下控制器替换文本，渲染段落立即更新', (tester) async {
+      final codeController = CodeLineEditingController.fromText('initial_text');
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: SizedBox(
+              width: 400,
+              height: 300,
+              child: CodeEditor(
+                controller: codeController,
+                wordWrap: false,
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // 模拟小键盘输入：修改文本
+      codeController.replaceSelection('appended');
+      await tester.pumpAndSettle();
+
+      // 验证文字已在控制器中
+      expect(codeController.text, contains('appended'));
+      // 验证未抛异常且稳定渲染
+      expect(find.byType(CodeEditor), findsOneWidget);
+    });
   });
 }

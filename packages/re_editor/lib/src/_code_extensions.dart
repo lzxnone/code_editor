@@ -37,8 +37,8 @@ extension _TextSpanExtension on TextSpan {
 
 extension _OffsetExtension on Offset {
 
-  bool isSamePosition(Offset offset) {
-    return (this - offset).distance < 10;
+  bool isSamePosition(Offset offset, [double slop = 35.0]) {
+    return (this - offset).distance <= slop;
   }
 
 }

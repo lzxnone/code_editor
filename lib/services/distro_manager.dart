@@ -46,6 +46,32 @@ enum DistroFamily {
   unknown,
 }
 
+/// 后台静默命令的取消令牌：把子进程句柄暴露给上层（如任务探测会话），
+/// 支持"切换工程 / 关闭弹窗 / 用户取消"时立即终止容器内的长时间探测。
+class HeadlessCancelToken {
+  Process? _process;
+  bool _cancelled = false;
+
+  bool get isCancelled => _cancelled;
+
+  void _attach(Process process) {
+    _process = process;
+    if (_cancelled) {
+      try {
+        process.kill(ProcessSignal.sigkill);
+      } catch (_) {}
+    }
+  }
+
+  /// 取消：标记状态并杀掉当前子进程（若有）
+  void cancel() {
+    _cancelled = true;
+    try {
+      _process?.kill(ProcessSignal.sigkill);
+    } catch (_) {}
+  }
+}
+
 /// Linux 发行版与多系统实例管理器服务（单例模式，易扩展）
 class DistroManager {
   static final DistroManager _instance = DistroManager._internal();
@@ -80,6 +106,10 @@ class DistroManager {
   }
 
   /// 获取当前已创建并解压成功的系统实例列表（文件夹名称即系统名称）
+  ///
+  /// 判定标准与 [isSystemInstalled] 保持一致：rootfs 内必须同时具备 `etc` 与 `bin`。
+  /// 仅存在 `rootfs` 空壳（例如历史版本探测流程遗留的目录）不计入，避免"幽灵系统"
+  /// 出现在系统选择器里却在启动时必然失败。
   Future<List<String>> listInstalledSystems() async {
     final baseDir = await getBaseDistrosDir();
     if (!baseDir.existsSync()) return [];
@@ -89,9 +119,12 @@ class DistroManager {
     for (final entity in entities) {
       if (entity is Directory) {
         final name = p.basename(entity.path);
-        // 若子目录存在 rootfs/ 且包含基础目录结构，则视为有效系统实例
         final rootDir = Directory(p.join(entity.path, 'rootfs'));
-        if (rootDir.existsSync()) {
+        if (!rootDir.existsSync()) continue;
+        // 基本目录结构校验：必须具备 etc 与 bin 才算真正可用的系统实例
+        final hasEtc = Directory(p.join(rootDir.path, 'etc')).existsSync();
+        final hasBin = Directory(p.join(rootDir.path, 'bin')).existsSync();
+        if (hasEtc && hasBin) {
           systems.add(name);
         }
       }
@@ -361,6 +394,11 @@ class DistroManager {
 
     // 2. Linux 容器 (PRoot 隔离环境)
     final rootDir = await getSystemRootDir(systemName);
+    // 前置守卫：rootfs 必须先真实存在。否则下方一系列 ensure*（DNS/CA 证书/shm/l2s/sysdata）
+    // 会 recursive 地创建出一套空壳目录，把"并不存在的系统"伪造成系统选择器里的已安装项。
+    if (!rootDir.existsSync()) {
+      throw StateError('目标系统未安装，拒绝构建启动配置: $systemName（rootfs 不存在: ${rootDir.path}）');
+    }
     final nativeDir = await getNativeLibraryDir();
     final effectiveProot = (prootPath == 'proot') ? await getProotExecutablePath() : prootPath;
     final targetShell = _resolveTargetShell(rootDir);
@@ -815,11 +853,15 @@ class DistroManager {
   /// [workspacePath] 工程挂载目录（挂载到 /workspace）
   /// [command] 执行的 Shell 脚本命令
   /// [timeout] 超时时长（默认 120 秒）
+  /// [cancelToken] 可选取消令牌：取消后立即杀掉子进程，并返回 null
+  /// [onStdout] 可选逐行输出回调（用于显示依赖安装进度等长耗时操作）
   Future<ProcessResult?> runHeadlessCommand({
     required String systemName,
     String? workspacePath,
     required String command,
     Duration timeout = const Duration(seconds: 120),
+    HeadlessCancelToken? cancelToken,
+    void Function(String chunk)? onStdout,
   }) async {
     try {
       final config = await buildLaunchConfig(
@@ -834,11 +876,25 @@ class DistroManager {
         environment: config.environment,
         workingDirectory: config.workingDirectory,
       );
+      cancelToken?._attach(process);
+      if (cancelToken?.isCancelled ?? false) {
+        try {
+          process.kill(ProcessSignal.sigkill);
+        } catch (_) {}
+        return null;
+      }
 
       final stdoutBytes = <int>[];
       final stderrBytes = <int>[];
 
-      final stdoutFuture = process.stdout.listen(stdoutBytes.addAll).asFuture<void>();
+      final stdoutFuture = process.stdout.listen((chunk) {
+        stdoutBytes.addAll(chunk);
+        if (onStdout != null && chunk.isNotEmpty) {
+          try {
+            onStdout(utf8.decode(chunk, allowMalformed: true));
+          } catch (_) {}
+        }
+      }).asFuture<void>();
       final stderrFuture = process.stderr.listen(stderrBytes.addAll).asFuture<void>();
 
       final exitCode = await process.exitCode.timeout(
@@ -855,6 +911,10 @@ class DistroManager {
         const Duration(seconds: 2),
         onTimeout: () => [],
       );
+
+      if (cancelToken?.isCancelled ?? false) {
+        return null;
+      }
 
       final stdoutStr = utf8.decode(stdoutBytes, allowMalformed: true);
       final stderrStr = utf8.decode(stderrBytes, allowMalformed: true);

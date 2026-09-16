@@ -2353,6 +2353,186 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'已复制到剪贴板'**
   String get copiedToClipboard;
+
+  /// No description provided for @probeBannerPreparing.
+  ///
+  /// In zh, this message translates to:
+  /// **'正在准备 {module} 探测环境…'**
+  String probeBannerPreparing(String module);
+
+  /// No description provided for @probeBannerDetecting.
+  ///
+  /// In zh, this message translates to:
+  /// **'正在探测 {module} 任务…'**
+  String probeBannerDetecting(String module);
+
+  /// No description provided for @probeBannerFinalizing.
+  ///
+  /// In zh, this message translates to:
+  /// **'正在整理探测结果…'**
+  String get probeBannerFinalizing;
+
+  /// No description provided for @probePhaseQueued.
+  ///
+  /// In zh, this message translates to:
+  /// **'{module} 排队等待中…'**
+  String probePhaseQueued(String module);
+
+  /// No description provided for @probePhaseCheckingDependency.
+  ///
+  /// In zh, this message translates to:
+  /// **'正在检查 {module} 依赖…'**
+  String probePhaseCheckingDependency(String module);
+
+  /// No description provided for @probePhaseInstallingDependency.
+  ///
+  /// In zh, this message translates to:
+  /// **'正在安装 {module} 依赖…'**
+  String probePhaseInstallingDependency(String module);
+
+  /// No description provided for @probeDoneWithCount.
+  ///
+  /// In zh, this message translates to:
+  /// **'{module} 探测完成 · 发现 {count} 个任务'**
+  String probeDoneWithCount(String module, int count);
+
+  /// No description provided for @probeFailureDependencyInstallFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'依赖 {tool} 自动安装失败'**
+  String probeFailureDependencyInstallFailed(String tool);
+
+  /// No description provided for @taskTypeSingleFile.
+  ///
+  /// In zh, this message translates to:
+  /// **'当前文件任务'**
+  String get taskTypeSingleFile;
+
+  /// No description provided for @taskTypeOther.
+  ///
+  /// In zh, this message translates to:
+  /// **'其他任务'**
+  String get taskTypeOther;
+
+  /// No description provided for @probeAlreadyRunning.
+  ///
+  /// In zh, this message translates to:
+  /// **'正在探测中，请稍候…'**
+  String get probeAlreadyRunning;
+
+  /// No description provided for @probeBusyEnterTerminalTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'任务探测进行中'**
+  String get probeBusyEnterTerminalTitle;
+
+  /// No description provided for @probeBusyEnterTerminalMessage.
+  ///
+  /// In zh, this message translates to:
+  /// **'项目任务探测正在后台进行（会占用当前容器执行构建工具自省与依赖安装）。\n\n此时进入终端并进行安装软件包、构建等操作，可能与探测互相阻塞或产生异常。\n\n是否仍要进入终端？'**
+  String get probeBusyEnterTerminalMessage;
+
+  /// No description provided for @probeEnterTerminalAnyway.
+  ///
+  /// In zh, this message translates to:
+  /// **'继续进入终端'**
+  String get probeEnterTerminalAnyway;
+
+  /// No description provided for @probeCancelConfirmTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'取消本次探测？'**
+  String get probeCancelConfirmTitle;
+
+  /// No description provided for @probeCancelConfirmMessage.
+  ///
+  /// In zh, this message translates to:
+  /// **'正在进行的探测会被立即中止：已完成模块的结果会保留，未完成的模块将被跳过。'**
+  String get probeCancelConfirmMessage;
+
+  /// No description provided for @probeKeepDetecting.
+  ///
+  /// In zh, this message translates to:
+  /// **'继续探测'**
+  String get probeKeepDetecting;
+
+  /// No description provided for @cancelProbe.
+  ///
+  /// In zh, this message translates to:
+  /// **'取消探测'**
+  String get cancelProbe;
+
+  /// No description provided for @probeBudgetExceededTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'探测超时已中止'**
+  String get probeBudgetExceededTitle;
+
+  /// No description provided for @probeBudgetExceededMessage.
+  ///
+  /// In zh, this message translates to:
+  /// **'已完成 {completed}/{total} 个模块，剩余模块本次跳过。可稍后重新探测。'**
+  String probeBudgetExceededMessage(int completed, int total);
+
+  /// No description provided for @probeBannerClose.
+  ///
+  /// In zh, this message translates to:
+  /// **'关闭'**
+  String get probeBannerClose;
+
+  /// No description provided for @probeDone.
+  ///
+  /// In zh, this message translates to:
+  /// **'{module} 任务探测完成'**
+  String probeDone(String module);
+
+  /// No description provided for @probeFailedTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'{module} 任务探测失败'**
+  String probeFailedTitle(String module);
+
+  /// No description provided for @probeFailureToolchainMissing.
+  ///
+  /// In zh, this message translates to:
+  /// **'当前系统内未找到 {tool}，请先在系统管理中安装'**
+  String probeFailureToolchainMissing(String tool);
+
+  /// No description provided for @probeFailureExecutionFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'构建工具执行失败：{detail}'**
+  String probeFailureExecutionFailed(String detail);
+
+  /// No description provided for @probeFailureUnparsable.
+  ///
+  /// In zh, this message translates to:
+  /// **'无法识别构建工具输出（可能版本不兼容）'**
+  String get probeFailureUnparsable;
+
+  /// No description provided for @probeFailureTimeout.
+  ///
+  /// In zh, this message translates to:
+  /// **'探测超时，已中止'**
+  String get probeFailureTimeout;
+
+  /// No description provided for @noticeQueueMore.
+  ///
+  /// In zh, this message translates to:
+  /// **'还有 {count} 项进行中'**
+  String noticeQueueMore(int count);
+
+  /// No description provided for @importFilesSuccess.
+  ///
+  /// In zh, this message translates to:
+  /// **'成功导入 {count} 个文件'**
+  String importFilesSuccess(int count);
+
+  /// No description provided for @importFilesFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'导入文件失败: {error}'**
+  String importFilesFailed(String error);
 }
 
 class _AppLocalizationsDelegate

@@ -1346,21 +1346,6 @@ class _CodeFieldRender extends RenderBox implements MouseTrackerAnnotation {
         startIndex = min(((target - paddingTop) / _preferredLineHeight).floor(), max(0, _codes.length - 1));
       }
       _displayParagraphs.addAll(_buildDisplayRenderParagraphs(startIndex, effectiveWidth));
-    } else if (_horizontalViewport != null) {
-      // In horizontal scrolling (unwrapped) mode, every line has height == _preferredLineHeight.
-      // There is no line wrapping, so delta is strictly 0 and viewport correction should never occur.
-      final int startIndex;
-      if (target <= paddingTop) {
-        startIndex = 0;
-      } else {
-        startIndex = min(((target - paddingTop) / _preferredLineHeight).floor(), max(0, _codes.length - 1));
-      }
-      if (_displayParagraphs.first.index != startIndex ||
-          target < _displayParagraphs.first.top ||
-          target + size.height > _displayParagraphs.last.bottom) {
-        _displayParagraphs.clear();
-        _displayParagraphs.addAll(_buildDisplayRenderParagraphs(startIndex, effectiveWidth));
-      }
     } else {
       if (_codes.length <= _displayParagraphs.first.index) {
         _displayParagraphs.clear();
@@ -1541,13 +1526,21 @@ class _CodeFieldRender extends RenderBox implements MouseTrackerAnnotation {
   }
 
   void _calculatePreferredLineHeight() {
+    final StrutStyle strutStyle = StrutStyle(
+      fontSize: _textStyle.fontSize,
+      fontFamily: _textStyle.fontFamily,
+      height: _textStyle.height,
+      forceStrutHeight: true,
+    );
     final TextPainter painter = TextPainter(
       textDirection: TextDirection.ltr,
+      strutStyle: strutStyle,
     );
     painter.text = TextSpan(
       text: '0',
       style: _textStyle,
     );
+    painter.layout();
     _preferredLineHeight = painter.preferredLineHeight;
     _foregroundRender.find<_CodeFieldCursorPainter>().height = painter.preferredLineHeight;
     _foregroundRender.find<_CodeFieldFloatingCursorPainter>().height = painter.preferredLineHeight;

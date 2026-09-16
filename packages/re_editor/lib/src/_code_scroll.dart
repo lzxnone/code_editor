@@ -6,6 +6,8 @@ class _CodeScrollable extends StatefulWidget {
 
   final AxisDirection axisDirection;
   final ScrollController? controller;
+  final ScrollController? bidirectionalHorizontalController;
+  final bool enableDrag;
   final ViewportBuilder viewportBuilder;
   final CodeScrollbarBuilder? scrollbarBuilder;
 
@@ -13,6 +15,8 @@ class _CodeScrollable extends StatefulWidget {
     super.key,
     required this.axisDirection,
     this.controller,
+    this.bidirectionalHorizontalController,
+    this.enableDrag = true,
     required this.viewportBuilder,
     this.scrollbarBuilder,
   });
@@ -25,6 +29,11 @@ class _CodeScrollable extends StatefulWidget {
 class _CodeScrollableState extends State<_CodeScrollable> {
 
   CodeEditorScrollController? _effectiveController;
+
+  ScrollHoldController? _verticalHold;
+  ScrollHoldController? _horizontalHold;
+  Drag? _verticalDrag;
+  Drag? _horizontalDrag;
 
   @override
   void initState() {
@@ -48,31 +57,191 @@ class _CodeScrollableState extends State<_CodeScrollable> {
   void didUpdateWidget(_CodeScrollable oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (widget.controller != oldWidget.controller) {
+      _handlePanCancel();
       if (_effectiveController != null && _effectiveController!.delegate != null) {
         _effectiveController!.dispose();
       }
       _initController();
     }
+    if (widget.bidirectionalHorizontalController != oldWidget.bidirectionalHorizontalController) {
+      _handlePanCancel();
+    }
   }
 
   @override
   void dispose() {
+    _handlePanCancel();
     if (_effectiveController != null && _effectiveController!.delegate != null) {
       _effectiveController!.dispose();
     }
     super.dispose();
   }
 
+  ScrollPosition? get _verticalPosition {
+    if (_effectiveController != null && _effectiveController!.positions.isNotEmpty) {
+      return _effectiveController!.positions.first;
+    }
+    return null;
+  }
+
+  ScrollPosition? get _horizontalPosition {
+    final hController = widget.bidirectionalHorizontalController;
+    if (hController != null && hController.positions.isNotEmpty) {
+      return hController.positions.first;
+    }
+    return null;
+  }
+
+  void _handlePanDown(DragDownDetails details) {
+    if (_effectiveController?.isPinchLocked == true) {
+      return;
+    }
+    final vPos = _verticalPosition;
+    final hPos = _horizontalPosition;
+    _verticalHold = vPos?.hold(_disposeVerticalHold);
+    _horizontalHold = hPos?.hold(_disposeHorizontalHold);
+  }
+
+  void _handlePanStart(DragStartDetails details) {
+    if (_effectiveController?.isPinchLocked == true) {
+      _handlePanCancel();
+      return;
+    }
+    final vPos = _verticalPosition;
+    final hPos = _horizontalPosition;
+    _verticalDrag = vPos?.drag(details, _disposeVerticalDrag);
+    _horizontalDrag = hPos?.drag(details, _disposeHorizontalDrag);
+    _disposeVerticalHold();
+    _disposeHorizontalHold();
+  }
+
+  void _handlePanUpdate(DragUpdateDetails details) {
+    if (_effectiveController?.isPinchLocked == true) {
+      _handlePanCancel();
+      return;
+    }
+    if (_verticalDrag != null) {
+      final verticalDetails = DragUpdateDetails(
+        sourceTimeStamp: details.sourceTimeStamp,
+        delta: Offset(0.0, details.delta.dy),
+        primaryDelta: details.delta.dy,
+        globalPosition: details.globalPosition,
+        localPosition: details.localPosition,
+      );
+      _verticalDrag?.update(verticalDetails);
+    }
+    if (_horizontalDrag != null) {
+      final horizontalDetails = DragUpdateDetails(
+        sourceTimeStamp: details.sourceTimeStamp,
+        delta: Offset(details.delta.dx, 0.0),
+        primaryDelta: details.delta.dx,
+        globalPosition: details.globalPosition,
+        localPosition: details.localPosition,
+      );
+      _horizontalDrag?.update(horizontalDetails);
+    }
+  }
+
+  void _handlePanEnd(DragEndDetails details) {
+    final double dx = details.velocity.pixelsPerSecond.dx;
+    final double dy = details.velocity.pixelsPerSecond.dy;
+
+    final vDrag = _verticalDrag;
+    final hDrag = _horizontalDrag;
+    _verticalDrag = null;
+    _horizontalDrag = null;
+
+    if (vDrag != null) {
+      final verticalDetails = DragEndDetails(
+        velocity: Velocity(pixelsPerSecond: Offset(0.0, dy)),
+        primaryVelocity: dy,
+      );
+      vDrag.end(verticalDetails);
+    }
+    if (hDrag != null) {
+      final horizontalDetails = DragEndDetails(
+        velocity: Velocity(pixelsPerSecond: Offset(dx, 0.0)),
+        primaryVelocity: dx,
+      );
+      hDrag.end(horizontalDetails);
+    }
+  }
+
+  void _handlePanCancel() {
+    final vHold = _verticalHold;
+    final hHold = _horizontalHold;
+    final vDrag = _verticalDrag;
+    final hDrag = _horizontalDrag;
+    _verticalHold = null;
+    _horizontalHold = null;
+    _verticalDrag = null;
+    _horizontalDrag = null;
+    vHold?.cancel();
+    hHold?.cancel();
+    vDrag?.cancel();
+    hDrag?.cancel();
+  }
+
+  void _disposeVerticalHold() {
+    _verticalHold = null;
+  }
+
+  void _disposeHorizontalHold() {
+    _horizontalHold = null;
+  }
+
+  void _disposeVerticalDrag() {
+    _verticalDrag = null;
+  }
+
+  void _disposeHorizontalDrag() {
+    _horizontalDrag = null;
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Scrollable(
+    final bool isBidirectional = widget.bidirectionalHorizontalController != null;
+    final Widget scrollable = Scrollable(
       excludeFromSemantics: true,
       controller: _effectiveController,
-      scrollBehavior: _ScrollBehavior(widget.scrollbarBuilder),
+      scrollBehavior: _ScrollBehavior(
+        widget.scrollbarBuilder,
+        enableDrag: !isBidirectional && widget.enableDrag,
+      ),
       viewportBuilder: widget.viewportBuilder,
       axisDirection: widget.axisDirection,
       physics: const ClampingScrollPhysics(),
     );
+
+    if (isBidirectional) {
+      return RawGestureDetector(
+        gestures: <Type, GestureRecognizerFactory>{
+          PanGestureRecognizer: GestureRecognizerFactoryWithHandlers<PanGestureRecognizer>(
+            () => PanGestureRecognizer(
+              supportedDevices: const <PointerDeviceKind>{
+                PointerDeviceKind.touch,
+                PointerDeviceKind.stylus,
+                PointerDeviceKind.invertedStylus,
+                PointerDeviceKind.trackpad,
+              },
+            ),
+            (PanGestureRecognizer instance) {
+              instance
+                ..onDown = _handlePanDown
+                ..onStart = _handlePanStart
+                ..onUpdate = _handlePanUpdate
+                ..onEnd = _handlePanEnd
+                ..onCancel = _handlePanCancel
+                ..gestureSettings = MediaQuery.maybeGestureSettingsOf(context);
+            },
+          ),
+        },
+        behavior: HitTestBehavior.opaque,
+        child: scrollable,
+      );
+    }
+
+    return scrollable;
   }
 
 }
@@ -81,8 +250,13 @@ class _ScrollBehavior extends MaterialScrollBehavior {
 
   final _ScrollPhysics physics;
   final CodeScrollbarBuilder? scrollbarBuilder;
+  final bool enableDrag;
 
-  _ScrollBehavior(this.scrollbarBuilder) : physics = _ScrollPhysics();
+  _ScrollBehavior(this.scrollbarBuilder, {this.enableDrag = true}) : physics = _ScrollPhysics();
+
+  @override
+  Set<PointerDeviceKind> get dragDevices =>
+      enableDrag ? super.dragDevices : const <PointerDeviceKind>{};
 
   @override
   Widget buildScrollbar(BuildContext context, Widget child, ScrollableDetails details) {

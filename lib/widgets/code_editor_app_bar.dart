@@ -1,6 +1,7 @@
 import 'package:code_editor/l10n/app_localizations.dart';
 import 'package:code_editor/services/permission_service.dart';
 import 'package:code_editor/views/terminal_view.dart';
+import 'package:code_editor/widgets/terminal_entry_guard.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:path/path.dart' as p;
@@ -327,7 +328,14 @@ class _MoreMenuButtonState extends State<_MoreMenuButton> with SingleTickerProvi
                         title: l10n.terminal,
                         iconColor: onSurfaceColor,
                         onTap: () {
-                          _closeMenu(onClosed: widget.onTerminal);
+                          _closeMenu(onClosed: () async {
+                            // 探测进行中：先提示（探测与终端共用同一个容器，可能互相阻塞）
+                            if (widget.isDetecting) {
+                              final proceed = await confirmEnterTerminalWhileProbing(context);
+                              if (!proceed) return;
+                            }
+                            widget.onTerminal?.call();
+                          });
                         },
                       ),
                       Divider(

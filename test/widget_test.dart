@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:ui';
 import 'package:re_editor/re_editor.dart';
 import 'package:code_editor/models/app_font.dart';
 import 'package:code_editor/models/editor_tab_item.dart';
@@ -3637,6 +3638,62 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(scrollController.horizontalScroller.offset, 50.0);
+    });
+
+    testWidgets('CodeEditor continuous bidirectional gesture scrolls horizontally then vertically without lifting finger', (tester) async {
+      final text = List.generate(50, (i) => 'Line $i: const aLongVariableNameThatIsVeryLong = 1234567890 + 987654321;').join('\n');
+      final controller = CodeLineEditingController.fromText(text);
+      final scrollController = CodeScrollController();
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: SizedBox(
+              width: 300,
+              height: 400,
+              child: CodeEditor(
+                controller: controller,
+                scrollController: scrollController,
+                wordWrap: false,
+                pinLineNumbers: false,
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(scrollController.horizontalScroller.offset, 0.0);
+      expect(scrollController.verticalScroller.offset, 0.0);
+
+      // Start drag gesture with touch
+      final gesture = await tester.startGesture(const Offset(200, 200), kind: PointerDeviceKind.touch);
+      // Exceed touch slop to trigger onStart
+      await gesture.moveBy(const Offset(-30, 0));
+      // Subsequent movement triggers onUpdate
+      await gesture.moveBy(const Offset(-60, 0));
+      await tester.pump();
+
+      expect(scrollController.horizontalScroller.offset, greaterThan(0.0));
+      final hOffsetAfterHorizontal = scrollController.horizontalScroller.offset;
+
+      // Now scroll vertically without lifting finger
+      await gesture.moveBy(const Offset(0, -60));
+      await tester.pump();
+
+      expect(scrollController.verticalScroller.offset, greaterThan(0.0));
+      // Horizontal offset should still be preserved
+      expect(scrollController.horizontalScroller.offset, closeTo(hOffsetAfterHorizontal, 1.0));
+
+      // Diagonal movement scrolls both
+      await gesture.moveBy(const Offset(-30, -30));
+      await tester.pump();
+
+      expect(scrollController.horizontalScroller.offset, greaterThan(hOffsetAfterHorizontal));
+      expect(scrollController.verticalScroller.offset, greaterThan(50.0));
+
+      await gesture.up();
+      await tester.pumpAndSettle();
     });
   });
 }

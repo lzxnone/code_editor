@@ -315,6 +315,40 @@ class ProjectProvider extends ChangeNotifier {
     }
   }
 
+  /// 从外部导入文件到指定目录（通常为项目根目录，支持多选文件）
+  Future<int> importFiles(String destinationDir, List<PlatformFile> files) async {
+    final destDir = Directory(destinationDir);
+    if (!await destDir.exists()) {
+      await destDir.create(recursive: true);
+    }
+
+    int importedCount = 0;
+    for (final file in files) {
+      final rawName = file.name.trim().isNotEmpty
+          ? file.name.trim()
+          : (file.path != null ? p.basename(file.path!) : '');
+      if (rawName.isEmpty) continue;
+
+      final targetPath = await FileService.instance.getUniqueTargetPath(
+        p.join(destinationDir, rawName),
+        false,
+      );
+
+      if (file.path != null && file.path!.isNotEmpty) {
+        await File(file.path!).copy(targetPath);
+        importedCount++;
+      } else if (file.bytes != null) {
+        await File(targetPath).writeAsBytes(file.bytes!);
+        importedCount++;
+      }
+    }
+
+    if (importedCount > 0) {
+      await refreshTree();
+    }
+    return importedCount;
+  }
+
   Future<void> createFile(String parentDir, String name) async {
     final targetPath = p.join(parentDir, name.trim());
     await FileService.instance.createFile(targetPath);

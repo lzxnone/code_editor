@@ -1,5 +1,6 @@
 import 'package:code_editor/l10n/app_localizations.dart';
 import 'package:code_editor/providers/distro_provider.dart';
+import 'package:code_editor/providers/notice_center.dart';
 import 'package:code_editor/providers/project_provider.dart';
 import 'package:code_editor/providers/settings_provider.dart';
 import 'package:code_editor/providers/tab_provider.dart';
@@ -44,7 +45,10 @@ class MyApp extends StatelessWidget {
               (tab ?? (TabProvider()..init()))..bindProjectProvider(project),
         ),
         ChangeNotifierProvider(create: (_) => TerminalProvider()),
-        ChangeNotifierProvider(create: (_) => RunProvider()),
+        ChangeNotifierProvider(create: (_) => NoticeCenter()),
+        ChangeNotifierProvider(
+          create: (context) => RunProvider(noticeCenter: context.read<NoticeCenter>()),
+        ),
         ChangeNotifierProxyProvider<TerminalProvider, DistroProvider>(
           create: (_) => DistroProvider()..init(),
           update: (_, terminal, distro) {

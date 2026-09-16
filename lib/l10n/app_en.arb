@@ -683,5 +683,146 @@
   "cut": "Cut",
   "paste": "Paste",
   "selectAll": "Select All",
-  "copiedToClipboard": "Copied to clipboard"
+  "copiedToClipboard": "Copied to clipboard",
+  "probeBannerPreparing": "Preparing {module} environment…",
+  "@probeBannerPreparing": {
+    "placeholders": {
+      "module": {
+        "type": "String"
+      }
+    }
+  },
+  "probeBannerDetecting": "Detecting {module} tasks…",
+  "@probeBannerDetecting": {
+    "placeholders": {
+      "module": {
+        "type": "String"
+      }
+    }
+  },
+  "probeBannerFinalizing": "Finalizing detection result…",
+  "probePhaseQueued": "{module} queued…",
+  "@probePhaseQueued": {
+    "placeholders": {
+      "module": {
+        "type": "String"
+      }
+    }
+  },
+  "probePhaseCheckingDependency": "Checking {module} dependencies…",
+  "@probePhaseCheckingDependency": {
+    "placeholders": {
+      "module": {
+        "type": "String"
+      }
+    }
+  },
+  "probePhaseInstallingDependency": "Installing {module} dependencies…",
+  "@probePhaseInstallingDependency": {
+    "placeholders": {
+      "module": {
+        "type": "String"
+      }
+    }
+  },
+  "probeDoneWithCount": "{module} finished · {count} tasks found",
+  "@probeDoneWithCount": {
+    "placeholders": {
+      "module": {
+        "type": "String"
+      },
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "probeFailureDependencyInstallFailed": "Failed to auto-install dependency {tool}",
+  "@probeFailureDependencyInstallFailed": {
+    "placeholders": {
+      "tool": {
+        "type": "String"
+      }
+    }
+  },
+  "taskTypeSingleFile": "Current File Task",
+  "taskTypeOther": "Other Tasks",
+  "probeAlreadyRunning": "Detection already in progress, please wait…",
+  "probeBusyEnterTerminalTitle": "Task detection in progress",
+  "probeBusyEnterTerminalMessage": "Project task detection is running in the background (it uses the current container for build-tool introspection and dependency installation).\n\nEntering the terminal and running installs or builds may block or conflict with it.\n\nDo you still want to open the terminal?",
+  "probeEnterTerminalAnyway": "Open Terminal Anyway",
+  "probeCancelConfirmTitle": "Cancel this detection?",
+  "probeCancelConfirmMessage": "The running detection will be aborted immediately: results of finished modules are kept, unfinished modules will be skipped.",
+  "probeKeepDetecting": "Keep detecting",
+  "cancelProbe": "Cancel detection",
+  "probeBudgetExceededTitle": "Detection aborted (time budget exceeded)",
+  "probeBudgetExceededMessage": "{completed}/{total} modules finished; the rest were skipped. You can re-detect later.",
+  "@probeBudgetExceededMessage": {
+    "placeholders": {
+      "completed": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "probeBannerClose": "Close",
+  "probeDone": "{module} task detection finished",
+  "@probeDone": {
+    "placeholders": {
+      "module": {
+        "type": "String"
+      }
+    }
+  },
+  "probeFailedTitle": "{module} task detection failed",
+  "@probeFailedTitle": {
+    "placeholders": {
+      "module": {
+        "type": "String"
+      }
+    }
+  },
+  "probeFailureToolchainMissing": "{tool} was not found in the current system. Install it in System Management first.",
+  "@probeFailureToolchainMissing": {
+    "placeholders": {
+      "tool": {
+        "type": "String"
+      }
+    }
+  },
+  "probeFailureExecutionFailed": "Build tool execution failed: {detail}",
+  "@probeFailureExecutionFailed": {
+    "placeholders": {
+      "detail": {
+        "type": "String"
+      }
+    }
+  },
+  "probeFailureUnparsable": "Unable to parse build tool output (possible version mismatch)",
+  "probeFailureTimeout": "Detection timed out and was aborted",
+  "noticeQueueMore": "{count} more in progress",
+  "@noticeQueueMore": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "importFilesSuccess": "Successfully imported {count} files",
+  "@importFilesSuccess": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "importFilesFailed": "Failed to import files: {error}",
+  "@importFilesFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  }
 }

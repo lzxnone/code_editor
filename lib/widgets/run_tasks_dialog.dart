@@ -1,7 +1,9 @@
 import 'package:code_editor/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../models/project_task_table.dart';
 import '../models/run_task.dart';
+import '../models/run_task_type.dart';
 import '../providers/run_provider.dart';
 
 /// 运行任务选择弹窗（带顶部搜索栏、区分系统探测与自定义任务、支持模块深度重新同步、点击直接调度执行）
@@ -54,8 +56,16 @@ class RunTasksDialog extends StatefulWidget {
 }
 
 class _RunTasksDialogState extends State<RunTasksDialog> {
+  /// 内存中持久化各类型任务段的折叠状态（生命周期内常驻，不写磁盘）
+  static final Set<RunTaskType> _collapsedTypes = <RunTaskType>{};
+
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
+
+  bool _isCollapsed(RunTaskType type) {
+    if (_searchQuery.isNotEmpty) return false;
+    return _collapsedTypes.contains(type);
+  }
 
   @override
   void initState() {
@@ -96,22 +106,28 @@ class _RunTasksDialogState extends State<RunTasksDialog> {
       runProvider = Provider.of<RunProvider>(context);
     } catch (_) {}
 
-    final effectiveCustomTasks = runProvider?.customTasks ?? widget.customTasks;
-    final effectiveDetectedTasks = runProvider?.detectedTasks ?? widget.detectedTasks;
     final effectiveLastRunTaskId = runProvider?.lastRunTaskId ?? widget.lastRunTaskId;
 
-    final filteredCustom = effectiveCustomTasks.where((t) => _matchesQuery(t, l10n)).toList();
-    final filteredDetected = effectiveDetectedTasks.where((t) => _matchesQuery(t, l10n)).toList();
-    final hasAny = filteredCustom.isNotEmpty || filteredDetected.isNotEmpty;
+    // 类型 → 任务数组：优先取 Provider 的当前工程内存表；
+    // 无 Provider（独立使用弹窗/单测）时按同构结构由入参临时组装。
+    final ProjectTaskTable table;
+    if (runProvider != null) {
+      table = runProvider.taskTable;
+    } else {
+      table = ProjectTaskTable()..setUserTasks(widget.customTasks);
+      for (final task in widget.detectedTasks) {
+        final type = RunTaskType.ofTask(task);
+        table.replaceType(type, [...table.tasksOf(type), task]);
+      }
+    }
 
-    // 检测是否存在 Gradle 模块任务
-    final hasGradleTasks = filteredDetected.any(
-      (t) => t.moduleId == 'gradle' || t.id.startsWith('gradle_') || t.id.startsWith('detected_gradle_'),
-    );
-
-    final isGradleSyncing = (widget.isSyncingModule != null)
-        ? widget.isSyncingModule!('gradle')
-        : (runProvider?.isModuleSyncing('gradle') ?? false);
+    // 按类型过滤（搜索命中），保留非空类型的顺序
+    final sections = <({RunTaskType type, List<RunTask> tasks})>[];
+    for (final type in RunTaskType.values) {
+      final tasks = table.tasksOf(type).where((t) => _matchesQuery(t, l10n)).toList();
+      if (tasks.isNotEmpty) sections.add((type: type, tasks: tasks));
+    }
+    final hasAny = sections.isNotEmpty;
 
     return Dialog(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
@@ -179,27 +195,31 @@ class _RunTasksDialogState extends State<RunTasksDialog> {
                       )
                     : ListView(
                         children: [
-                          if (filteredDetected.isNotEmpty) ...[
+                          // 任务类型 → 具体任务：每个类型为独立折叠 Tile（折叠状态内存常驻）
+                          for (final section in sections) ...[
                             _buildSectionHeader(
                               context,
-                              l10n.systemDetectedTasks,
-                              Icons.radar_outlined,
-                              trailing: hasGradleTasks
-                                  ? _buildGradleSyncAction(context, l10n, isGradleSyncing, () {
-                                      if (widget.onSyncModule != null) {
-                                        widget.onSyncModule!('gradle');
-                                      } else {
-                                        runProvider?.syncModuleTasks('gradle');
-                                      }
-                                    })
-                                  : null,
+                              section.type,
+                              _typeLabel(l10n, section.type, runProvider),
+                              _typeIcon(section.type),
+                              section.tasks.length,
+                              _isCollapsed(section.type),
+                              () {
+                                setState(() {
+                                  if (_collapsedTypes.contains(section.type)) {
+                                    _collapsedTypes.remove(section.type);
+                                  } else {
+                                    _collapsedTypes.add(section.type);
+                                  }
+                                });
+                              },
                             ),
-                            ...filteredDetected.map((task) => _buildTaskItem(context, task, l10n, effectiveLastRunTaskId)),
-                            const SizedBox(height: 8),
-                          ],
-                          if (filteredCustom.isNotEmpty) ...[
-                            _buildSectionHeader(context, l10n.userCustomTasks, Icons.person_outline),
-                            ...filteredCustom.map((task) => _buildTaskItem(context, task, l10n, effectiveLastRunTaskId)),
+                            if (!_isCollapsed(section.type)) ...[
+                              ...section.tasks.map(
+                                (task) => _buildTaskItem(context, task, l10n, effectiveLastRunTaskId),
+                              ),
+                            ],
+                            const SizedBox(height: 6),
                           ],
                         ],
                       ),
@@ -211,88 +231,91 @@ class _RunTasksDialogState extends State<RunTasksDialog> {
     );
   }
 
-  Widget _buildGradleSyncAction(
-    BuildContext context,
-    AppLocalizations l10n,
-    bool isSyncing,
-    VoidCallback onSync,
-  ) {
-    final theme = Theme.of(context);
-    if (isSyncing) {
-      return Padding(
-        padding: const EdgeInsets.only(right: 6),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            SizedBox(
-              width: 14,
-              height: 14,
-              child: CircularProgressIndicator(
-                strokeWidth: 2,
-                color: theme.colorScheme.primary,
-              ),
-            ),
-            const SizedBox(width: 6),
-            Text(
-              l10n.syncingTasks,
-              style: TextStyle(
-                fontSize: 11,
-                color: theme.colorScheme.primary,
-              ),
-            ),
-          ],
-        ),
-      );
+  /// 任务类型展示名：模块类型用专有名词（取自模块 displayName），单文件/用户任务走 l10n
+  String _typeLabel(AppLocalizations l10n, RunTaskType type, RunProvider? runProvider) {
+    final moduleId = type.moduleId;
+    if (moduleId == null) {
+      return switch (type) {
+        RunTaskType.singleFile => l10n.taskTypeSingleFile,
+        RunTaskType.user => l10n.userCustomTasks,
+        RunTaskType.other => l10n.taskTypeOther,
+        _ => type.name,
+      };
     }
+    return runProvider?.moduleDisplayName(moduleId) ?? _moduleLabel(type);
+  }
 
-    return InkWell(
-      borderRadius: BorderRadius.circular(12),
-      onTap: onSync,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(Icons.refresh, size: 14, color: theme.colorScheme.primary),
-            const SizedBox(width: 4),
-            Text(
-              l10n.resyncModuleTasks,
-              style: TextStyle(
-                fontSize: 11,
-                fontWeight: FontWeight.w600,
-                color: theme.colorScheme.primary,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
+  /// 模块类型专有名词（Gradle / CMake / …）
+  String _moduleLabel(RunTaskType type) {
+    final moduleId = type.moduleId;
+    if (moduleId == null) return type.name;
+    return moduleId[0].toUpperCase() + moduleId.substring(1);
+  }
+
+  IconData _typeIcon(RunTaskType type) {
+    return switch (type) {
+      RunTaskType.user => Icons.person_outline,
+      RunTaskType.singleFile => Icons.description_outlined,
+      RunTaskType.other => Icons.category_outlined,
+      _ => Icons.radar_outlined,
+    };
   }
 
   Widget _buildSectionHeader(
     BuildContext context,
+    RunTaskType type,
     String title,
-    IconData icon, {
-    Widget? trailing,
-  }) {
+    IconData icon,
+    int count,
+    bool isCollapsed,
+    VoidCallback onToggle,
+  ) {
     final theme = Theme.of(context);
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 4),
-      child: Row(
-        children: [
-          Icon(icon, size: 16, color: theme.colorScheme.primary),
-          const SizedBox(width: 6),
-          Expanded(
-            child: Text(
-              title,
-              style: theme.textTheme.labelMedium?.copyWith(
-                color: theme.colorScheme.primary,
-                fontWeight: FontWeight.bold,
+    return InkWell(
+      borderRadius: BorderRadius.circular(8),
+      onTap: onToggle,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 6),
+        child: Row(
+          children: [
+            Icon(icon, size: 16, color: theme.colorScheme.primary),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Row(
+                children: [
+                  Text(
+                    title,
+                    style: theme.textTheme.labelMedium?.copyWith(
+                      color: theme.colorScheme.primary,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(width: 6),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+                    decoration: BoxDecoration(
+                      color: theme.colorScheme.primaryContainer.withValues(alpha: 0.5),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Text(
+                      '$count',
+                      style: TextStyle(
+                        fontSize: 10.5,
+                        fontWeight: FontWeight.w600,
+                        color: theme.colorScheme.primary,
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
-          ),
-          if (trailing != null) trailing,
-        ],
+            Icon(
+              isCollapsed ? Icons.expand_more : Icons.expand_less,
+              size: 18,
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -322,11 +345,14 @@ class _RunTasksDialogState extends State<RunTasksDialog> {
       child: ListTile(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
         dense: true,
+        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
         title: Row(
           children: [
             Expanded(
               child: Text(
                 task.getLocalizedName(l10n),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
                 style: TextStyle(
                   fontWeight: FontWeight.w600,
                   color: isLastRun ? Colors.green.shade700 : null,
@@ -335,7 +361,8 @@ class _RunTasksDialogState extends State<RunTasksDialog> {
             ),
             if (task.group != null && task.group!.isNotEmpty && task.group != 'single_file')
               Container(
-                margin: const EdgeInsets.only(left: 6),
+                margin: const EdgeInsets.only(left: 8),
+                constraints: const BoxConstraints(maxWidth: 130),
                 padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1.5),
                 decoration: BoxDecoration(
                   color: theme.colorScheme.secondaryContainer.withValues(alpha: 0.6),
@@ -343,6 +370,8 @@ class _RunTasksDialogState extends State<RunTasksDialog> {
                 ),
                 child: Text(
                   task.group!,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                   style: TextStyle(
                     fontSize: 10,
                     fontWeight: FontWeight.w500,
@@ -378,12 +407,12 @@ class _RunTasksDialogState extends State<RunTasksDialog> {
               )
             : null,
         trailing: CircleAvatar(
-          radius: 16,
+          radius: 15,
           backgroundColor: isLastRun
               ? Colors.green.withValues(alpha: 0.25)
               : theme.colorScheme.primaryContainer,
           foregroundColor: isLastRun ? Colors.green : theme.colorScheme.onPrimaryContainer,
-          child: const Icon(Icons.play_arrow, size: 20),
+          child: const Icon(Icons.play_arrow, size: 18),
         ),
         onTap: () {
           Navigator.of(context).pop();

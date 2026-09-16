@@ -213,24 +213,27 @@ class _CodeParagraphProvider {
     if (uiStyle == _style) {
       return;
     }
+    final StrutStyle strutStyle = StrutStyle(
+      fontSize: style.fontSize,
+      fontFamily: style.fontFamily,
+      height: style.height,
+      forceStrutHeight: true,
+    );
     _paragraphStyle = style.getParagraphStyle(
       textAlign: TextAlign.left,
       textDirection: TextDirection.ltr,
-      strutStyle: StrutStyle(
-        fontSize: style.fontSize,
-        fontFamily: style.fontFamily,
-        height: style.height,
-        forceStrutHeight: true,
-      )
+      strutStyle: strutStyle,
     );
     _style = uiStyle;
     final TextPainter painter = TextPainter(
       textDirection: TextDirection.ltr,
+      strutStyle: strutStyle,
     );
     painter.text = TextSpan(
       text: '0',
-      style: style
+      style: style,
     );
+    painter.layout();
     _preferredLineHeight = painter.preferredLineHeight;
     clearCache();
   }

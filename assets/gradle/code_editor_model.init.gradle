@@ -1,0 +1,97 @@
+// code_editor 结构化探测脚本（Gradle init script）
+//
+// 作用：把 Gradle 自身的项目/任务模型序列化成 JSON，写入工程内的
+//       .code_editor/gradle_ide_model.json（该目录同时被挂载为容器内 /workspace），
+//       Flutter 端直接按字段读取 —— 不再解析任何人类可读文本输出。
+//
+// 调用方式（由 App 生成，见 GradleProjectModule）：
+//   LC_ALL=C LANG=C sh ./gradlew --console=plain -q -I .code_editor/code_editor_model.init.gradle help
+//
+// 说明：本文件由 App 在 warmUp 阶段写入工程目录，请勿手工修改（会被覆盖）。
+
+import groovy.json.JsonOutput
+
+gradle.projectsEvaluated {
+    try {
+        def root = gradle.rootProject
+        def projects = []
+
+        root.allprojects.each { proj ->
+            def tasks = []
+            try {
+                proj.tasks.each { t ->
+                    def group = null
+                    def description = null
+                    try { group = t.group } catch (ignored) { }
+                    try { description = t.description } catch (ignored) { }
+                    tasks << [
+                        name       : t.name,
+                        path       : t.path,
+                        group      : group,
+                        description: description,
+                        type       : t.class.name
+                    ]
+                }
+            } catch (ignored) { }
+
+            def plugins = []
+            try { plugins = proj.plugins.collect { it.class.name } } catch (ignored) { }
+
+            def sourceSets = []
+            try {
+                def ss = proj.extensions.findByName('sourceSets')
+                if (ss != null) {
+                    sourceSets = ss.names.toList()
+                }
+            } catch (ignored) { }
+
+            def configurations = []
+            try {
+                configurations = proj.configurations.names.toList()
+            } catch (ignored) { }
+
+            def javaVersion = null
+            try {
+                def ext = proj.extensions.findByName('java')
+                if (ext != null && ext.hasProperty('sourceCompatibility')) {
+                    javaVersion = ext.sourceCompatibility?.toString()
+                }
+            } catch (ignored) { }
+
+            projects << [
+                path          : proj.path,
+                name          : proj.name,
+                description   : proj.description,
+                buildFile     : proj.buildFile?.absolutePath,
+                plugins       : plugins,
+                sourceSets    : sourceSets,
+                configurations: configurations,
+                javaVersion   : javaVersion,
+                tasks         : tasks
+            ]
+        }
+
+        def model = [
+            schema       : 1,
+            generatedAt  : System.currentTimeMillis(),
+            gradleVersion: gradle.gradleVersion,
+            rootProject  : root.name,
+            projects     : projects
+        ]
+
+        def outFile = new File(root.projectDir, '.code_editor/gradle_ide_model.json')
+        outFile.parentFile?.mkdirs()
+        outFile.setText(JsonOutput.toJson(model), 'UTF-8')
+    } catch (Throwable error) {
+        // 失败时写入错误信息，便于 App 侧归类失败原因（而不是静默失败）
+        try {
+            def root = gradle.rootProject
+            def outFile = new File(root.projectDir, '.code_editor/gradle_ide_model.json')
+            outFile.parentFile?.mkdirs()
+            outFile.setText(JsonOutput.toJson([
+                schema: 0,
+                error : error.toString()
+            ]), 'UTF-8')
+        } catch (ignored) { }
+    }
+}

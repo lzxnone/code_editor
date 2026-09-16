@@ -1,16 +1,32 @@
+import 'dart:collection';
 import 'dart:io';
-import 'package:flutter/material.dart';
-import 'package:path/path.dart' as p;
 
+import 'package:flutter/material.dart';
+
+import '../models/notice_item.dart';
 import '../models/run_task.dart';
 import 'distro_manager.dart';
+import 'project_modules/cargo_project_module.dart';
+import 'project_modules/cmake_project_module.dart';
+import 'project_modules/dart_project_module.dart';
 import 'project_modules/gradle_project_module.dart';
+import 'project_modules/make_project_module.dart';
+import 'project_modules/npm_project_module.dart';
 import 'project_modules/project_module.dart';
-import 'project_modules/standard_project_modules.dart';
-import 'run_task_storage_service.dart';
+import 'project_modules/project_probe.dart';
+import 'project_modules/single_file_task_detector.dart';
 
-/// 项目任务总调度与路由器（对标 VS Code Task Service）
-/// 统一管理各项目模块注册、条件匹配激活、并发/缓存调度与单文件即时任务生成
+/// 项目任务总调度（对标 VS Code Task Service / IDE 的 ProjectModel 协调器）
+///
+/// 一次探测 = 下面这套流程走完一遍：
+/// 1. **模块发现**（按特征文件激活，快）；
+/// 2. 命中的模块**全部入队**；
+/// 3. **队列线性执行**：一次只跑一个模块，无论成功/失败都接着跑下一个，直到队列空；
+/// 4. 每个模块依次做三个动作：**依赖检测 → 自动补全 → 执行探测**；
+/// 5. 每个模块探测完成即通过 [onModuleResult] 回调上抛（UI 增量写入"类型→任务数组"）。
+///
+/// 队列串行还有一个关键收益：同一时刻只有一个模块在装依赖，
+/// 不会出现 apt/apk 争抢同一把包管理器锁的问题。
 class ProjectTaskDispatcher {
   static final ProjectTaskDispatcher instance = ProjectTaskDispatcher();
 
@@ -43,215 +59,286 @@ class ProjectTaskDispatcher {
   }
 
   ProjectModule? getModule(String id) {
-    try {
-      return _modules.firstWhere((m) => m.id == id);
-    } catch (_) {
-      return null;
+    for (final module in _modules) {
+      if (module.id == id) return module;
     }
+    return null;
   }
 
-  /// 获取当前项目中所有被激活的模块
-  List<ProjectModule> getActiveModules(Directory projectDir) {
-    return _modules.where((m) => m.shouldActivate(projectDir)).toList();
+  /// 当前项目中所有被激活的模块（模块发现阶段）
+  List<ProjectModule> getActiveModules(Directory projectDir) =>
+      _modules.where((m) => m.shouldActivate(projectDir)).toList();
+
+  /// 创建一次探测会话（不执行）
+  ProjectProbe createProbe({
+    required String projectRoot,
+    String? currentFilePath,
+    required String? systemName,
+    DistroManager? distroManager,
+    String? onlyModuleId,
+    Duration? budget,
+  }) {
+    return ProjectProbe(
+      request: ProjectProbeRequest(
+        projectDir: Directory(projectRoot),
+        currentFilePath: currentFilePath,
+        systemName: systemName ?? '',
+        onlyModuleId: onlyModuleId,
+      ),
+      distroManager: distroManager ?? DistroManager(),
+      budget: budget ?? ProjectProbe.defaultBudget,
+    );
   }
 
-  /// 核心任务探测与分发
-  /// [projectRoot]: 工程根目录（宿主绝对路径）
-  /// [currentFilePath]: 当前编辑器激活打开的文件（宿主绝对路径，可能为 null）
-  /// [systemName]: 容器实例名称
-  /// [forceRefresh]: 是否忽略缓存，强制重新请求真实探测
-  /// [onlyModuleId]: 可选，仅执行指定的模块探测
+  /// 执行探测会话：模块发现 → 入队 → 线性三动作执行 → 汇总报告
+  ///
+  /// [onModuleResult] 在每个模块结束时回调一次（成功/失败都会回调），
+  /// 供 UI 立即把结果写入该模块对应的任务类型，并更新它自己的那条弹窗。
+  Future<ProjectProbeReport> run(
+    ProjectProbe probe, {
+    void Function(ProjectModule module, ModuleProbeResult result)? onModuleResult,
+  }) async {
+    final projectDir = probe.projectDir;
+    if (!projectDir.existsSync()) {
+      return ProjectProbeReport.empty(probe.systemName);
+    }
+
+    // 0. 无可用系统 -> 不探测（也绝不触碰任何 rootfs 目录）
+    if (!await isUsableSystem(probe.distroManager, probe.systemName)) {
+      debugPrint('[ProjectTaskDispatcher] 无可用系统 (systemName=${probe.systemName})，跳过项目任务探测');
+      return ProjectProbeReport.empty(probe.systemName);
+    }
+
+    // 1. 模块发现 + 入队
+    final active = _resolveActiveModules(projectDir, probe.onlyModuleId);
+    if (active.isEmpty) {
+      return ProjectProbeReport.empty(probe.systemName);
+    }
+    final queue = ListQueue<ProjectModule>()..addAll(active);
+    final refs = [for (final m in active) ProbeModuleRef(m.id, m.displayName)];
+
+    // 开始计时：整轮探测的时间预算从这里起算
+    probe.startBudget();
+
+    probe.reportProgress(ProbeProgress(
+      phase: ProbePhase.queued,
+      queue: refs,
+    ));
+
+    final results = <String, ModuleProbeResult>{};
+    var abortedByBudget = false;
+
+    // 2. 线性执行队列
+    while (queue.isNotEmpty) {
+      if (probe.isCancelled) break;
+
+      // 预算检查点 1：模块之间（绝不在安装中途强杀，避免半装状态）
+      if (probe.isBudgetExceeded) {
+        abortedByBudget = true;
+        break;
+      }
+
+      final module = queue.removeFirst();
+      final ref = ProbeModuleRef(module.id, module.displayName);
+
+      void report(ProbePhase phase) {
+        probe.reportProgress(ProbeProgress(
+          phase: phase,
+          queue: refs,
+          current: ref,
+        ));
+      }
+
+      ModuleProbeResult result;
+
+      try {
+        // 动作 1：环境准备 + 依赖检测
+        report(ProbePhase.checkingDependency);
+        await module.prepare(probe);
+        var missing = await module.checkDependencies(probe);
+
+        // 动作 2：自动补全缺失依赖（队列串行 => 同一时刻只有一次安装）
+        result = ModuleProbeResult.ok(module.id, const <RunTask>[]);
+        if (missing.isNotEmpty) {
+          if (probe.isCancelled) {
+            result = ModuleProbeResult.cancelled(module.id);
+          } else if (probe.isBudgetExceeded) {
+            // 预算检查点 2：安装前（一次安装可能长达 10 分钟，不该在预算将尽时开跑）
+            abortedByBudget = true;
+            result = ModuleProbeResult.skippedByBudget(module.id);
+          } else {
+            report(ProbePhase.installingDependency);
+            probe.setInstallLine(null);
+            final installed = await module.installDependencies(probe, missing);
+            if (probe.isCancelled) {
+              result = ModuleProbeResult.cancelled(module.id);
+            } else if (!installed) {
+              result = ModuleProbeResult.failed(
+                module.id,
+                failure: NoticeFailure.dependencyInstallFailed,
+                detail: missing.first,
+              );
+            } else {
+              missing = await module.checkDependencies(probe);
+              if (missing.isNotEmpty) {
+                result = ModuleProbeResult.failed(
+                  module.id,
+                  failure: NoticeFailure.toolchainMissing,
+                  detail: missing.first,
+                );
+              }
+            }
+            probe.setInstallLine(null);
+          }
+        }
+
+        // 动作 3：执行探测（只有前两步没有失败/跳过时才探测）
+        if (result.status != ModuleProbeStatus.ok) {
+          // 依赖安装失败 / 预算跳过 / 已取消：不再执行探测
+        } else if (probe.isCancelled) {
+          result = ModuleProbeResult.cancelled(module.id);
+        } else if (probe.isBudgetExceeded) {
+          abortedByBudget = true;
+          result = ModuleProbeResult.skippedByBudget(module.id);
+        } else {
+          report(ProbePhase.probing);
+          result = await module.probe(probe);
+        }
+      } catch (e, stack) {
+        if (probe.isCancelled) {
+          result = ModuleProbeResult.cancelled(module.id);
+        } else {
+          debugPrint('[ProjectTaskDispatcher] ${module.id} 探测异常: $e\n$stack');
+          result = ModuleProbeResult.failed(
+            module.id,
+            failure: NoticeFailure.executionFailed,
+            detail: '$e',
+          );
+        }
+      }
+
+      results[module.id] = result;
+      onModuleResult?.call(module, result);
+
+      // 无论成功/失败都继续下一个（除非被取消）
+      if (probe.isCancelled) break;
+    }
+
+    // 用户取消：队列里剩下的模块统一标记为"已取消"，确保完整结算与状态收尾
+    if (probe.isCancelled) {
+      while (queue.isNotEmpty) {
+        final skippedModule = queue.removeFirst();
+        final cancelledResult = ModuleProbeResult.cancelled(skippedModule.id);
+        results[skippedModule.id] = cancelledResult;
+        onModuleResult?.call(skippedModule, cancelledResult);
+      }
+    }
+
+    // 预算中止：队列里剩下的模块统一标记为"预算跳过"，并让 UI 收掉它们的进度卡片
+    if (abortedByBudget) {
+      debugPrint('[ProjectTaskDispatcher] 探测超出时间预算(${probe.budget})，'
+          '跳过剩余 ${queue.length} 个模块');
+      while (queue.isNotEmpty) {
+        final skippedModule = queue.removeFirst();
+        final skippedResult = ModuleProbeResult.skippedByBudget(skippedModule.id);
+        results[skippedModule.id] = skippedResult;
+        onModuleResult?.call(skippedModule, skippedResult);
+      }
+    }
+
+    // 3. 汇总（含"当前打开文件的单文件运行"任务，置于最前）
+    probe.reportProgress(ProbeProgress(
+      phase: ProbePhase.finalizing,
+      queue: refs,
+    ));
+
+    final tasks = <RunTask>[];
+    for (final module in active) {
+      final result = results[module.id];
+      if (result == null || result.status != ModuleProbeStatus.ok) continue;
+      tasks.addAll(result.tasks);
+    }
+
+    final currentFilePath = probe.currentFilePath;
+    if (!probe.isCancelled && currentFilePath != null && currentFilePath.isNotEmpty) {
+      final single = detectSingleFileTask(projectDir.path, currentFilePath);
+      if (single != null) tasks.insert(0, single);
+    }
+
+    probe.progress.value = null;
+
+    return ProjectProbeReport(
+      systemName: probe.systemName,
+      detectedTasks: probe.isCancelled ? const <RunTask>[] : tasks,
+      moduleResults: results,
+      finishedAt: DateTime.now(),
+      totalModules: refs.length,
+      abortedByBudget: abortedByBudget,
+    );
+  }
+
+  List<ProjectModule> _resolveActiveModules(Directory projectDir, String? onlyModuleId) {
+    if (onlyModuleId == null) return getActiveModules(projectDir);
+    final module = getModule(onlyModuleId);
+    if (module == null || !module.shouldActivate(projectDir)) return const [];
+    return [module];
+  }
+
+  /// 便捷入口：只关心任务列表时使用
   Future<List<RunTask>> detect({
     required String projectRoot,
     String? currentFilePath,
-    String systemName = 'ubuntu',
-    RunTaskStorageService? storageService,
+    String? systemName,
     DistroManager? distroManager,
-    bool forceRefresh = false,
     String? onlyModuleId,
   }) async {
-    final List<RunTask> tasks = [];
-    final projectDir = Directory(projectRoot);
-    if (!projectDir.existsSync()) {
-      return tasks;
-    }
-
-    final context = ProjectModuleContext(
-      projectDir: projectDir,
+    final probe = createProbe(
+      projectRoot: projectRoot,
       currentFilePath: currentFilePath,
       systemName: systemName,
-      storageService: storageService ?? RunTaskStorageService(),
-      distroManager: distroManager ?? DistroManager(),
+      distroManager: distroManager,
+      onlyModuleId: onlyModuleId,
     );
-
-    // 1. 如果指定只探测某一模块
-    if (onlyModuleId != null) {
-      final module = getModule(onlyModuleId);
-      if (module != null && module.shouldActivate(projectDir)) {
-        try {
-          final moduleTasks = await module.detect(context, forceRefresh: forceRefresh);
-          tasks.addAll(moduleTasks);
-        } catch (e, stack) {
-          debugPrint('[ProjectTaskDispatcher] Module $onlyModuleId detect error: $e\n$stack');
-        }
-      }
-      return tasks;
-    }
-
-    // 2. 并行调度所有命中的项目模块
-    final activeModules = getActiveModules(projectDir);
-    final results = await Future.wait(
-      activeModules.map((m) async {
-        try {
-          return await m.detect(context, forceRefresh: forceRefresh);
-        } catch (e, stack) {
-          debugPrint('[ProjectTaskDispatcher] Module ${m.id} detect error: $e\n$stack');
-          return <RunTask>[];
-        }
-      }),
-    );
-
-    for (final moduleTasks in results) {
-      tasks.addAll(moduleTasks);
-    }
-
-    // 3. 当前活跃文件（单文件运行）检测并置顶
-    if (currentFilePath != null && currentFilePath.isNotEmpty) {
-      final singleTask = detectSingleFileTask(projectRoot, currentFilePath);
-      if (singleTask != null) {
-        tasks.insert(0, singleTask);
-      }
-    }
-
-    return tasks;
+    final report = await run(probe);
+    probe.dispose();
+    return report.detectedTasks;
   }
 
-  /// 针对单个模块执行显式重新同步
-  Future<List<RunTask>> syncModule({
+  /// 单模块重新同步（系统探测的特例：只跑一个模块）
+  Future<ProjectProbeReport> syncModule({
     required String moduleId,
     required String projectRoot,
     String? currentFilePath,
-    String systemName = 'ubuntu',
-    RunTaskStorageService? storageService,
+    String? systemName,
     DistroManager? distroManager,
-  }) async {
-    final module = getModule(moduleId);
-    if (module == null) return [];
-
-    final projectDir = Directory(projectRoot);
-    if (!projectDir.existsSync()) return [];
-
-    final context = ProjectModuleContext(
-      projectDir: projectDir,
+    void Function(ProjectModule module, ModuleProbeResult result)? onModuleResult,
+  }) {
+    final probe = createProbe(
+      projectRoot: projectRoot,
       currentFilePath: currentFilePath,
       systemName: systemName,
-      storageService: storageService ?? RunTaskStorageService(),
-      distroManager: distroManager ?? DistroManager(),
+      distroManager: distroManager,
+      onlyModuleId: moduleId,
     );
-
-    return module.detect(context, forceRefresh: true);
+    return run(probe, onModuleResult: onModuleResult).whenComplete(probe.dispose);
   }
 
-  /// 探测单文件运行指令（基于当前打开的文件）
-  static RunTask? detectSingleFileTask(String projectRoot, String currentFilePath) {
-    final file = File(currentFilePath);
-    if (!file.existsSync()) return null;
-
-    final fileName = p.basename(currentFilePath);
-    final ext = p.extension(currentFilePath).toLowerCase();
-
-    // 转换相对容器的路径（在容器内 /workspace 下执行）
-    String relPath = p.relative(currentFilePath, from: projectRoot).replaceAll(r'\', '/');
-    if (!relPath.startsWith('./') && !relPath.startsWith('/')) {
-      relPath = './$relPath';
-    }
-
-    switch (ext) {
-      case '.py':
-        return RunTask(
-          id: 'detected_single_python',
-          name: 'Python: $fileName',
-          command: 'python3 "$relPath"',
-          source: TaskSource.detected,
-          description: 'Run current Python script',
-          group: 'single_file',
-          icon: Icons.code,
-        );
-      case '.c':
-        return RunTask(
-          id: 'detected_single_c',
-          name: 'GCC: $fileName',
-          command: 'gcc "$relPath" -o /tmp/a.out && /tmp/a.out',
-          source: TaskSource.detected,
-          description: 'Compile and execute current C source file',
-          group: 'single_file',
-          icon: Icons.terminal,
-        );
-      case '.cpp':
-      case '.cc':
-      case '.cxx':
-        return RunTask(
-          id: 'detected_single_cpp',
-          name: 'G++: $fileName',
-          command: 'g++ "$relPath" -o /tmp/a.out && /tmp/a.out',
-          source: TaskSource.detected,
-          description: 'Compile and execute current C++ source file',
-          group: 'single_file',
-          icon: Icons.terminal,
-        );
-      case '.sh':
-      case '.bash':
-        return RunTask(
-          id: 'detected_single_sh',
-          name: 'Shell: $fileName',
-          command: 'sh "$relPath"',
-          source: TaskSource.detected,
-          description: 'Run current Shell script',
-          group: 'single_file',
-          icon: Icons.terminal,
-        );
-      case '.dart':
-        return RunTask(
-          id: 'detected_single_dart',
-          name: 'Dart: $fileName',
-          command: 'dart run "$relPath"',
-          source: TaskSource.detected,
-          description: 'Run current Dart file',
-          group: 'single_file',
-          icon: Icons.code,
-        );
-      case '.go':
-        return RunTask(
-          id: 'detected_single_go',
-          name: 'Go: $fileName',
-          command: 'go run "$relPath"',
-          source: TaskSource.detected,
-          description: 'Run current Go source file',
-          group: 'single_file',
-          icon: Icons.code,
-        );
-      case '.rs':
-        return RunTask(
-          id: 'detected_single_rust',
-          name: 'Rust: $fileName',
-          command: 'rustc "$relPath" -o /tmp/a.out && /tmp/a.out',
-          source: TaskSource.detected,
-          description: 'Compile and execute current Rust source file',
-          group: 'single_file',
-          icon: Icons.code,
-        );
-      case '.js':
-        return RunTask(
-          id: 'detected_single_js',
-          name: 'Node: $fileName',
-          command: 'node "$relPath"',
-          source: TaskSource.detected,
-          description: 'Run current JavaScript script',
-          group: 'single_file',
-          icon: Icons.javascript,
-        );
-      default:
-        return null;
+  /// 判断给定系统名是否可用于执行探测：
+  /// 1. 名称必须非空；
+  /// 2. 必须是一个「已安装就绪」的系统实例（rootfs 内具备 etc 与 bin）；
+  /// 3. 平台信息不可用（如单元测试环境）时按不可用处理，宁可不探测也不误探测。
+  static Future<bool> isUsableSystem(DistroManager manager, String? systemName) async {
+    final name = systemName?.trim();
+    if (name == null || name.isEmpty) return false;
+    try {
+      return await manager.isSystemInstalled(name);
+    } catch (e) {
+      debugPrint('[ProjectTaskDispatcher] 系统可用性校验失败 (systemName=$name): $e');
+      return false;
     }
   }
+
+  /// 探测单文件运行指令（基于当前打开的文件），已独立封装至 [SingleFileTaskDetector]
+  static RunTask? detectSingleFileTask(String projectRoot, String currentFilePath) =>
+      SingleFileTaskDetector.detect(projectRoot, currentFilePath);
 }
