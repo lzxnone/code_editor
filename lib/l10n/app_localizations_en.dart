@@ -558,10 +558,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get distroManagementTitle => 'System Management';
 
   @override
-  String get installedStatus => 'Installed';
+  String get installedStatus => 'Ready';
 
   @override
-  String get notInstalledStatus => 'Not Installed';
+  String get notInstalledStatus => 'Component Not Installed';
 
   @override
   String get downloadingStatus => 'Downloading';
@@ -1534,4 +1534,121 @@ class AppLocalizationsEn extends AppLocalizations {
   String importFilesFailed(String error) {
     return 'Failed to import files: $error';
   }
+
+  @override
+  String get codeCompletionManagement => 'Code Completion Management';
+
+  @override
+  String get codeCompletionSubtitle =>
+      'Manage language servers and code intelligence toolchains';
+
+  @override
+  String get internalEngineTitle =>
+      'Internal Code Intelligence Engine (Alpine)';
+
+  @override
+  String get internalEngineStatusReady => 'Engine Ready';
+
+  @override
+  String get internalEngineStatusNotReady => 'Engine Not Ready';
+
+  @override
+  String get internalEngineExtracting =>
+      'Preparing internal code intelligence engine...';
+
+  @override
+  String get installComponent => 'Install Component';
+
+  @override
+  String installingComponent(String pkg) {
+    return 'Installing $pkg...';
+  }
+
+  @override
+  String installComponentSuccess(String name) {
+    return '$name component installed successfully';
+  }
+
+  @override
+  String installComponentFailed(String error) {
+    return 'Failed to install component: $error';
+  }
+
+  @override
+  String get editLanguageConfig => 'Edit Language Configuration';
+
+  @override
+  String get addLanguageConfig => 'Add Language Configuration';
+
+  @override
+  String get deleteLanguageConfirmTitle => 'Delete Language Configuration';
+
+  @override
+  String deleteLanguageConfirmMessage(String name) {
+    return 'Are you sure you want to delete code completion config for $name?';
+  }
+
+  @override
+  String get resetDefaultLanguages => 'Reset to Defaults';
+
+  @override
+  String get resetDefaultLanguagesConfirm =>
+      'Are you sure you want to reset all language configurations to defaults?';
+
+  @override
+  String get languageDisplayName => 'Language Name';
+
+  @override
+  String get languageDisplayNameHint => 'e.g. C / C++';
+
+  @override
+  String get languageIdField => 'Language ID';
+
+  @override
+  String get languageIdFieldHint =>
+      'For LSP protocol identification, e.g. cpp, rust';
+
+  @override
+  String get fileExtensionsField => 'File Extensions';
+
+  @override
+  String get fileExtensionsFieldHint => 'Comma-separated, e.g. .c, .cpp, .h';
+
+  @override
+  String get serverCommandField => 'Server Command';
+
+  @override
+  String get serverCommandFieldHint => 'e.g. clangd';
+
+  @override
+  String get serverArgsField => 'Server Arguments';
+
+  @override
+  String get serverArgsFieldHint => 'Space or comma separated';
+
+  @override
+  String get apkPackageField => 'Alpine APK Package';
+
+  @override
+  String get apkPackageFieldHint =>
+      'For one-click install, e.g. clang-extra-tools';
+
+  @override
+  String lspPackageMissingTitle(String language) {
+    return '$language code intelligence component not installed';
+  }
+
+  @override
+  String lspPackageMissingMessage(String pkg, String command) {
+    return 'Install $pkg ($command) to enable code completion and error diagnostics';
+  }
+
+  @override
+  String get installNow => 'Install Now';
+
+  @override
+  String get fieldRequired => 'This field is required';
+
+  @override
+  String get languageConfigSaved => 'Language configuration saved';
 }

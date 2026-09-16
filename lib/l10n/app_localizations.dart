@@ -1073,13 +1073,13 @@ abstract class AppLocalizations {
   /// No description provided for @installedStatus.
   ///
   /// In zh, this message translates to:
-  /// **'已安装'**
+  /// **'已就绪'**
   String get installedStatus;
 
   /// No description provided for @notInstalledStatus.
   ///
   /// In zh, this message translates to:
-  /// **'未安装'**
+  /// **'未安装组件'**
   String get notInstalledStatus;
 
   /// No description provided for @downloadingStatus.
@@ -2533,6 +2533,204 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'导入文件失败: {error}'**
   String importFilesFailed(String error);
+
+  /// No description provided for @codeCompletionManagement.
+  ///
+  /// In zh, this message translates to:
+  /// **'代码补全管理'**
+  String get codeCompletionManagement;
+
+  /// No description provided for @codeCompletionSubtitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'管理各编程语言的智能补全与报错工具链'**
+  String get codeCompletionSubtitle;
+
+  /// No description provided for @internalEngineTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'内部代码智能引擎 (Alpine)'**
+  String get internalEngineTitle;
+
+  /// No description provided for @internalEngineStatusReady.
+  ///
+  /// In zh, this message translates to:
+  /// **'引擎已就绪'**
+  String get internalEngineStatusReady;
+
+  /// No description provided for @internalEngineStatusNotReady.
+  ///
+  /// In zh, this message translates to:
+  /// **'引擎未就绪'**
+  String get internalEngineStatusNotReady;
+
+  /// No description provided for @internalEngineExtracting.
+  ///
+  /// In zh, this message translates to:
+  /// **'正在准备内置代码智能引擎...'**
+  String get internalEngineExtracting;
+
+  /// No description provided for @installComponent.
+  ///
+  /// In zh, this message translates to:
+  /// **'安装组件'**
+  String get installComponent;
+
+  /// No description provided for @installingComponent.
+  ///
+  /// In zh, this message translates to:
+  /// **'正在安装 {pkg}...'**
+  String installingComponent(String pkg);
+
+  /// No description provided for @installComponentSuccess.
+  ///
+  /// In zh, this message translates to:
+  /// **'{name} 组件安装成功'**
+  String installComponentSuccess(String name);
+
+  /// No description provided for @installComponentFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'组件安装失败: {error}'**
+  String installComponentFailed(String error);
+
+  /// No description provided for @editLanguageConfig.
+  ///
+  /// In zh, this message translates to:
+  /// **'编辑语言配置'**
+  String get editLanguageConfig;
+
+  /// No description provided for @addLanguageConfig.
+  ///
+  /// In zh, this message translates to:
+  /// **'新增语言配置'**
+  String get addLanguageConfig;
+
+  /// No description provided for @deleteLanguageConfirmTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'删除语言配置'**
+  String get deleteLanguageConfirmTitle;
+
+  /// No description provided for @deleteLanguageConfirmMessage.
+  ///
+  /// In zh, this message translates to:
+  /// **'确定要删除 {name} 的代码补全配置吗？'**
+  String deleteLanguageConfirmMessage(String name);
+
+  /// No description provided for @resetDefaultLanguages.
+  ///
+  /// In zh, this message translates to:
+  /// **'恢复默认配置'**
+  String get resetDefaultLanguages;
+
+  /// No description provided for @resetDefaultLanguagesConfirm.
+  ///
+  /// In zh, this message translates to:
+  /// **'确定将所有语言配置重置为官方默认预设吗？'**
+  String get resetDefaultLanguagesConfirm;
+
+  /// No description provided for @languageDisplayName.
+  ///
+  /// In zh, this message translates to:
+  /// **'语言名称'**
+  String get languageDisplayName;
+
+  /// No description provided for @languageDisplayNameHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'例如: C / C++'**
+  String get languageDisplayNameHint;
+
+  /// No description provided for @languageIdField.
+  ///
+  /// In zh, this message translates to:
+  /// **'语言标识 (Language ID)'**
+  String get languageIdField;
+
+  /// No description provided for @languageIdFieldHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'用于 LSP 协议识别，如 cpp, rust'**
+  String get languageIdFieldHint;
+
+  /// No description provided for @fileExtensionsField.
+  ///
+  /// In zh, this message translates to:
+  /// **'文件后缀'**
+  String get fileExtensionsField;
+
+  /// No description provided for @fileExtensionsFieldHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'以逗号分隔，如 .c, .cpp, .h'**
+  String get fileExtensionsFieldHint;
+
+  /// No description provided for @serverCommandField.
+  ///
+  /// In zh, this message translates to:
+  /// **'服务启动命令'**
+  String get serverCommandField;
+
+  /// No description provided for @serverCommandFieldHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'例如: clangd'**
+  String get serverCommandFieldHint;
+
+  /// No description provided for @serverArgsField.
+  ///
+  /// In zh, this message translates to:
+  /// **'启动参数'**
+  String get serverArgsField;
+
+  /// No description provided for @serverArgsFieldHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'多个参数以空格或逗号分隔'**
+  String get serverArgsFieldHint;
+
+  /// No description provided for @apkPackageField.
+  ///
+  /// In zh, this message translates to:
+  /// **'Alpine 依赖包名'**
+  String get apkPackageField;
+
+  /// No description provided for @apkPackageFieldHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'用于一键安装，如 clang-extra-tools'**
+  String get apkPackageFieldHint;
+
+  /// No description provided for @lspPackageMissingTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'未安装 {language} 代码智能组件'**
+  String lspPackageMissingTitle(String language);
+
+  /// No description provided for @lspPackageMissingMessage.
+  ///
+  /// In zh, this message translates to:
+  /// **'安装 {pkg} ({command}) 即可获得精准代码补全与错误检查'**
+  String lspPackageMissingMessage(String pkg, String command);
+
+  /// No description provided for @installNow.
+  ///
+  /// In zh, this message translates to:
+  /// **'一键安装'**
+  String get installNow;
+
+  /// No description provided for @fieldRequired.
+  ///
+  /// In zh, this message translates to:
+  /// **'此项不能为空'**
+  String get fieldRequired;
+
+  /// No description provided for @languageConfigSaved.
+  ///
+  /// In zh, this message translates to:
+  /// **'语言配置已保存'**
+  String get languageConfigSaved;
 }
 
 class _AppLocalizationsDelegate

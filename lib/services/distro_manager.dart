@@ -51,24 +51,37 @@ enum DistroFamily {
 class HeadlessCancelToken {
   Process? _process;
   bool _cancelled = false;
+  Directory? _rootDir;
 
   bool get isCancelled => _cancelled;
 
-  void _attach(Process process) {
+  void _attach(Process process, {Directory? rootDir}) {
     _process = process;
+    _rootDir = rootDir;
     if (_cancelled) {
       try {
         process.kill(ProcessSignal.sigkill);
       } catch (_) {}
+      if (rootDir != null) {
+        DistroManager().cleanStaleLocks(rootDir);
+      }
     }
   }
 
-  /// 取消：标记状态并杀掉当前子进程（若有）
+  /// 取消：标记状态并先尝试发送 SIGINT 优雅退出，随后超时强杀并清理陈旧锁
   void cancel() {
     _cancelled = true;
     try {
-      _process?.kill(ProcessSignal.sigkill);
+      _process?.kill(ProcessSignal.sigint);
     } catch (_) {}
+    Future<void>.delayed(const Duration(milliseconds: 300), () {
+      try {
+        _process?.kill(ProcessSignal.sigkill);
+      } catch (_) {}
+      if (_rootDir != null) {
+        DistroManager().cleanStaleLocks(_rootDir!);
+      }
+    });
   }
 }
 
@@ -373,6 +386,7 @@ class DistroManager {
     String? workspacePath,
     String prootPath = 'proot',
     String? customCommand,
+    Directory? customRootDir,
   }) async {
     // 1. 本地 Shell 特殊处理
     if (systemName == 'host') {
@@ -393,7 +407,7 @@ class DistroManager {
     }
 
     // 2. Linux 容器 (PRoot 隔离环境)
-    final rootDir = await getSystemRootDir(systemName);
+    final rootDir = customRootDir ?? await getSystemRootDir(systemName);
     // 前置守卫：rootfs 必须先真实存在。否则下方一系列 ensure*（DNS/CA 证书/shm/l2s/sysdata）
     // 会 recursive 地创建出一套空壳目录，把"并不存在的系统"伪造成系统选择器里的已安装项。
     if (!rootDir.existsSync()) {
@@ -419,13 +433,13 @@ class DistroManager {
     await DistroInstaller.ensureJavaConfiguration(rootDir);
 
     // 确保独立的 /dev/shm 目录存在（对标 proot-distro shm.py，解决 POSIX 共享内存缺失）
-    final shmDir = await _ensureShmDir(systemName);
+    final shmDir = await _ensureShmDir(systemName, customBaseDir: customRootDir?.parent);
 
     // 确保独立的 .l2s 硬链接目录存在（对标 proot-distro --link2symlink 规范）
-    final l2sDir = await _ensureL2sDir(systemName);
+    final l2sDir = await _ensureL2sDir(systemName, customBaseDir: customRootDir?.parent);
 
     // 确保独立的 sysdata 桩目录存在（对标 proot-distro sysdata.py，提供 SELinux 与 Proc 补充数据）
-    final sysdataDir = await _ensureSysdataDir(systemName);
+    final sysdataDir = await _ensureSysdataDir(systemName, customBaseDir: customRootDir?.parent);
 
     String tmpPath = '/tmp';
     try {
@@ -610,9 +624,9 @@ class DistroManager {
   }
 
   /// 确保容器实例拥有独立的 POSIX 共享内存目录（对标 proot-distro shm.py）
-  Future<Directory?> _ensureShmDir(String systemName) async {
+  Future<Directory?> _ensureShmDir(String systemName, {Directory? customBaseDir}) async {
     try {
-      final baseDir = await getBaseDistrosDir();
+      final baseDir = customBaseDir ?? await getBaseDistrosDir();
       final shmDir = Directory(p.join(baseDir.path, systemName, 'shm'));
       if (!shmDir.existsSync()) {
         shmDir.createSync(recursive: true);
@@ -625,9 +639,9 @@ class DistroManager {
   }
 
   /// 确保容器实例拥有独立的 .l2s 硬链接跟踪目录（对标 proot-distro login/__init__.py）
-  Future<Directory?> _ensureL2sDir(String systemName) async {
+  Future<Directory?> _ensureL2sDir(String systemName, {Directory? customBaseDir}) async {
     try {
-      final baseDir = await getBaseDistrosDir();
+      final baseDir = customBaseDir ?? await getBaseDistrosDir();
       final l2sDir = Directory(p.join(baseDir.path, systemName, '.l2s'));
       if (!l2sDir.existsSync()) {
         l2sDir.createSync(recursive: true);
@@ -640,9 +654,9 @@ class DistroManager {
   }
 
   /// 确保容器实例拥有独立的 sysdata 桩目录与 SELinux 覆盖节点（对标 proot-distro sysdata.py）
-  Future<Directory?> _ensureSysdataDir(String systemName) async {
+  Future<Directory?> _ensureSysdataDir(String systemName, {Directory? customBaseDir}) async {
     try {
-      final baseDir = await getBaseDistrosDir();
+      final baseDir = customBaseDir ?? await getBaseDistrosDir();
       final sysdataDir = Directory(p.join(baseDir.path, systemName, 'sysdata'));
       if (!sysdataDir.existsSync()) {
         sysdataDir.createSync(recursive: true);
@@ -824,9 +838,14 @@ class DistroManager {
     }
   }
 
-  /// 清理此前异常崩溃或中断留下的陈旧锁文件（防止 groupadd/useradd 等报 /etc/*.lock 锁占用或找不到）
+  /// 清理此前异常崩溃或中断留下的陈旧锁文件（防止 groupadd/useradd 等报 /etc/*.lock 锁占用，以及 APT/APK 包管理器死锁）
+  void cleanStaleLocks(Directory rootDir) {
+    _cleanStaleLocks(rootDir);
+  }
+
   void _cleanStaleLocks(Directory rootDir) {
     try {
+      // 1. /etc 目录下的陈旧锁文件与备份文件（防止 groupadd/useradd 等报 /etc/*.lock 锁占用或找不到）
       final etcDir = Directory(p.join(rootDir.path, 'etc'));
       if (etcDir.existsSync()) {
         for (final entry in etcDir.listSync(followLinks: false)) {
@@ -842,6 +861,41 @@ class DistroManager {
             } catch (_) {}
           }
         }
+      }
+
+      // 2. Debian / Ubuntu (APT / dpkg) 核心锁文件
+      final dpkgLockFiles = [
+        p.join(rootDir.path, 'var', 'lib', 'dpkg', 'lock'),
+        p.join(rootDir.path, 'var', 'lib', 'dpkg', 'lock-frontend'),
+        p.join(rootDir.path, 'var', 'lib', 'apt', 'lists', 'lock'),
+        p.join(rootDir.path, 'var', 'cache', 'apt', 'archives', 'lock'),
+      ];
+      for (final filePath in dpkgLockFiles) {
+        final f = File(filePath);
+        if (f.existsSync()) {
+          try {
+            f.deleteSync();
+            debugPrint('[DistroManager] 清理 APT/dpkg 陈旧锁文件: $filePath');
+          } catch (_) {}
+        }
+      }
+
+      // 3. Alpine Linux (APK) 锁文件
+      final apkLock = File(p.join(rootDir.path, 'lib', 'apk', 'db', 'lock'));
+      if (apkLock.existsSync()) {
+        try {
+          apkLock.deleteSync();
+          debugPrint('[DistroManager] 清理 APK 陈旧锁文件: ${apkLock.path}');
+        } catch (_) {}
+      }
+
+      // 4. Fedora / RPM 锁文件
+      final rpmLock = File(p.join(rootDir.path, 'var', 'lib', 'rpm', '.rpm.lock'));
+      if (rpmLock.existsSync()) {
+        try {
+          rpmLock.deleteSync();
+          debugPrint('[DistroManager] 清理 RPM 陈旧锁文件: ${rpmLock.path}');
+        } catch (_) {}
       }
     } catch (e) {
       debugPrint('[DistroManager] 清理陈旧锁文件异常 (非阻塞): $e');
@@ -862,12 +916,15 @@ class DistroManager {
     Duration timeout = const Duration(seconds: 120),
     HeadlessCancelToken? cancelToken,
     void Function(String chunk)? onStdout,
+    Directory? customRootDir,
   }) async {
     try {
+      final rootDir = customRootDir ?? (await getSystemRootDir(systemName));
       final config = await buildLaunchConfig(
         systemName: systemName,
         workspacePath: workspacePath,
         customCommand: command,
+        customRootDir: customRootDir,
       );
 
       final process = await Process.start(
@@ -876,11 +933,12 @@ class DistroManager {
         environment: config.environment,
         workingDirectory: config.workingDirectory,
       );
-      cancelToken?._attach(process);
+      cancelToken?._attach(process, rootDir: rootDir);
       if (cancelToken?.isCancelled ?? false) {
         try {
           process.kill(ProcessSignal.sigkill);
         } catch (_) {}
+        _cleanStaleLocks(rootDir);
         return null;
       }
 
@@ -903,6 +961,7 @@ class DistroManager {
           try {
             process.kill(ProcessSignal.sigkill);
           } catch (_) {}
+          _cleanStaleLocks(rootDir);
           return -1;
         },
       );
@@ -913,6 +972,7 @@ class DistroManager {
       );
 
       if (cancelToken?.isCancelled ?? false) {
+        _cleanStaleLocks(rootDir);
         return null;
       }
 

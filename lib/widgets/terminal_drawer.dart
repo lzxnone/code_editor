@@ -1,8 +1,8 @@
 import 'package:code_editor/l10n/app_localizations.dart';
+import 'package:code_editor/models/distro_manifest.dart';
 import 'package:code_editor/providers/distro_provider.dart';
 import 'package:code_editor/providers/project_provider.dart';
 import 'package:code_editor/providers/terminal_provider.dart';
-import 'package:code_editor/utils/dialog_utils.dart';
 import 'package:code_editor/widgets/terminal_session_item_widget.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -56,12 +56,9 @@ class TerminalDrawer extends StatelessWidget {
                       ),
                       onPressed: () {
                         final distroProvider = context.read<DistroProvider?>();
-                        final currentSystem = distroProvider?.selectedSystem;
-                        if (currentSystem == null) {
-                          DialogUtils.showToast(context, l10n.noSystemSelectedWarning);
-                          return;
-                        }
-                        // 基于当前选择的系统创建新终端并直接激活进入
+                        final currentSystem = distroProvider?.selectedSystem ?? DistroRepository.defaultSystemName;
+
+                        // 基于当前系统（默认 Ubuntu）创建新终端并直接激活进入
                         final projectRoot = context.read<ProjectProvider?>()?.rootPath;
                         provider.createSession(
                           name: l10n.sessionDefaultName,

@@ -545,10 +545,10 @@ class AppLocalizationsZh extends AppLocalizations {
   String get distroManagementTitle => '系统管理';
 
   @override
-  String get installedStatus => '已安装';
+  String get installedStatus => '已就绪';
 
   @override
-  String get notInstalledStatus => '未安装';
+  String get notInstalledStatus => '未安装组件';
 
   @override
   String get downloadingStatus => '下载中';
@@ -1491,4 +1491,115 @@ class AppLocalizationsZh extends AppLocalizations {
   String importFilesFailed(String error) {
     return '导入文件失败: $error';
   }
+
+  @override
+  String get codeCompletionManagement => '代码补全管理';
+
+  @override
+  String get codeCompletionSubtitle => '管理各编程语言的智能补全与报错工具链';
+
+  @override
+  String get internalEngineTitle => '内部代码智能引擎 (Alpine)';
+
+  @override
+  String get internalEngineStatusReady => '引擎已就绪';
+
+  @override
+  String get internalEngineStatusNotReady => '引擎未就绪';
+
+  @override
+  String get internalEngineExtracting => '正在准备内置代码智能引擎...';
+
+  @override
+  String get installComponent => '安装组件';
+
+  @override
+  String installingComponent(String pkg) {
+    return '正在安装 $pkg...';
+  }
+
+  @override
+  String installComponentSuccess(String name) {
+    return '$name 组件安装成功';
+  }
+
+  @override
+  String installComponentFailed(String error) {
+    return '组件安装失败: $error';
+  }
+
+  @override
+  String get editLanguageConfig => '编辑语言配置';
+
+  @override
+  String get addLanguageConfig => '新增语言配置';
+
+  @override
+  String get deleteLanguageConfirmTitle => '删除语言配置';
+
+  @override
+  String deleteLanguageConfirmMessage(String name) {
+    return '确定要删除 $name 的代码补全配置吗？';
+  }
+
+  @override
+  String get resetDefaultLanguages => '恢复默认配置';
+
+  @override
+  String get resetDefaultLanguagesConfirm => '确定将所有语言配置重置为官方默认预设吗？';
+
+  @override
+  String get languageDisplayName => '语言名称';
+
+  @override
+  String get languageDisplayNameHint => '例如: C / C++';
+
+  @override
+  String get languageIdField => '语言标识 (Language ID)';
+
+  @override
+  String get languageIdFieldHint => '用于 LSP 协议识别，如 cpp, rust';
+
+  @override
+  String get fileExtensionsField => '文件后缀';
+
+  @override
+  String get fileExtensionsFieldHint => '以逗号分隔，如 .c, .cpp, .h';
+
+  @override
+  String get serverCommandField => '服务启动命令';
+
+  @override
+  String get serverCommandFieldHint => '例如: clangd';
+
+  @override
+  String get serverArgsField => '启动参数';
+
+  @override
+  String get serverArgsFieldHint => '多个参数以空格或逗号分隔';
+
+  @override
+  String get apkPackageField => 'Alpine 依赖包名';
+
+  @override
+  String get apkPackageFieldHint => '用于一键安装，如 clang-extra-tools';
+
+  @override
+  String lspPackageMissingTitle(String language) {
+    return '未安装 $language 代码智能组件';
+  }
+
+  @override
+  String lspPackageMissingMessage(String pkg, String command) {
+    return '安装 $pkg ($command) 即可获得精准代码补全与错误检查';
+  }
+
+  @override
+  String get installNow => '一键安装';
+
+  @override
+  String get fieldRequired => '此项不能为空';
+
+  @override
+  String get languageConfigSaved => '语言配置已保存';
 }

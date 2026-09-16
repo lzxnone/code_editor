@@ -19,8 +19,15 @@ class ToolchainRequirement {
     required this.installCommands,
   });
 
-  /// 获取指定发行版家族下的安装命令
-  String? getInstallCommand(DistroFamily family) => installCommands[family];
+  /// 获取指定发行版家族下的安装命令（对于 Ubuntu/Debian 自动前置 dpkg 自愈修复，防止前序中断报错）
+  String? getInstallCommand(DistroFamily family) {
+    final cmd = installCommands[family];
+    if (cmd == null) return null;
+    if (family == DistroFamily.ubuntu || family == DistroFamily.debian) {
+      return 'DEBIAN_FRONTEND=noninteractive dpkg --configure -a 2>/dev/null || true; $cmd';
+    }
+    return cmd;
+  }
 }
 
 /// 预编译软件源与工具链检测/安装适配服务

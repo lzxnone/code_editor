@@ -824,5 +824,85 @@
         "type": "String"
       }
     }
-  }
+  },
+  "codeCompletionManagement": "Code Completion Management",
+  "codeCompletionSubtitle": "Manage language servers and code intelligence toolchains",
+  "internalEngineTitle": "Internal Code Intelligence Engine (Alpine)",
+  "internalEngineStatusReady": "Engine Ready",
+  "internalEngineStatusNotReady": "Engine Not Ready",
+  "internalEngineExtracting": "Preparing internal code intelligence engine...",
+  "installedStatus": "Ready",
+  "notInstalledStatus": "Component Not Installed",
+  "installComponent": "Install Component",
+  "installingComponent": "Installing {pkg}...",
+  "@installingComponent": {
+    "placeholders": {
+      "pkg": {
+        "type": "String"
+      }
+    }
+  },
+  "installComponentSuccess": "{name} component installed successfully",
+  "@installComponentSuccess": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "installComponentFailed": "Failed to install component: {error}",
+  "@installComponentFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "editLanguageConfig": "Edit Language Configuration",
+  "addLanguageConfig": "Add Language Configuration",
+  "deleteLanguageConfirmTitle": "Delete Language Configuration",
+  "deleteLanguageConfirmMessage": "Are you sure you want to delete code completion config for {name}?",
+  "@deleteLanguageConfirmMessage": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "resetDefaultLanguages": "Reset to Defaults",
+  "resetDefaultLanguagesConfirm": "Are you sure you want to reset all language configurations to defaults?",
+  "languageDisplayName": "Language Name",
+  "languageDisplayNameHint": "e.g. C / C++",
+  "languageIdField": "Language ID",
+  "languageIdFieldHint": "For LSP protocol identification, e.g. cpp, rust",
+  "fileExtensionsField": "File Extensions",
+  "fileExtensionsFieldHint": "Comma-separated, e.g. .c, .cpp, .h",
+  "serverCommandField": "Server Command",
+  "serverCommandFieldHint": "e.g. clangd",
+  "serverArgsField": "Server Arguments",
+  "serverArgsFieldHint": "Space or comma separated",
+  "apkPackageField": "Alpine APK Package",
+  "apkPackageFieldHint": "For one-click install, e.g. clang-extra-tools",
+  "lspPackageMissingTitle": "{language} code intelligence component not installed",
+  "@lspPackageMissingTitle": {
+    "placeholders": {
+      "language": {
+        "type": "String"
+      }
+    }
+  },
+  "lspPackageMissingMessage": "Install {pkg} ({command}) to enable code completion and error diagnostics",
+  "@lspPackageMissingMessage": {
+    "placeholders": {
+      "pkg": {
+        "type": "String"
+      },
+      "command": {
+        "type": "String"
+      }
+    }
+  },
+  "installNow": "Install Now",
+  "fieldRequired": "This field is required",
+  "languageConfigSaved": "Language configuration saved"
 }

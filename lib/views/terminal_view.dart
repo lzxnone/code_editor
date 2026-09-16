@@ -9,7 +9,6 @@ import 'package:code_editor/providers/settings_provider.dart';
 import 'package:code_editor/providers/terminal_provider.dart';
 import 'package:code_editor/utils/terminal_theme_helper.dart';
 import 'package:code_editor/widgets/distro_extract_dialog.dart';
-import 'package:code_editor/widgets/distro_selector_dialog.dart';
 import 'package:code_editor/widgets/terminal_drawer.dart';
 import 'package:code_editor/widgets/terminal_keyboard_sink.dart';
 import 'package:code_editor/widgets/terminal_modifier_state.dart';
@@ -150,14 +149,7 @@ class _TerminalViewState extends State<TerminalView> {
           ],
         ),
         actions: [
-          // 系统选择与管理按钮（位于会话列表左侧）
-          IconButton(
-            icon: const Icon(Icons.dns_outlined),
-            tooltip: l10n.systemManagementTooltip,
-            onPressed: () {
-              DistroSelectorDialog.show(context);
-            },
-          ),
+          // 系统选择与管理入口已收敛隐藏，统一使用默认主系统 (Ubuntu)
           IconButton(
             icon: const Icon(Icons.format_list_bulleted),
             tooltip: l10n.sessionListTooltip,

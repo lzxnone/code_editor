@@ -22,8 +22,12 @@ import 'package:code_editor/widgets/distro_selector_dialog.dart';
 import 'package:code_editor/widgets/notice_host.dart';
 import 'package:code_editor/widgets/probe_cancel_guard.dart';
 import 'package:code_editor/widgets/run_tasks_dialog.dart';
+import 'package:code_editor/models/lsp_language_config.dart';
+import 'package:code_editor/services/internal_engine_service.dart';
+import 'package:code_editor/services/lsp_config_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:path/path.dart' as p;
 import 'package:provider/provider.dart';
 
 class MainView extends StatefulWidget {
@@ -38,6 +42,76 @@ class _MainViewState extends State<MainView> {
 
   /// 最近一次已触发探测的 (工程, 系统) 组合，用于去重与"系统就绪后补探测"
   String? _lastProbeKey;
+
+  String? _lastActiveFile;
+  static final Set<String> _promptedLspLanguages = {};
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        InternalEngineService.instance.ensureEngineReady(context);
+        LspConfigService.instance.loadConfigs();
+      }
+    });
+  }
+
+  void _checkLspForFile(String filePath) async {
+    final ext = p.extension(filePath);
+    if (ext.isEmpty) return;
+    await LspConfigService.instance.loadConfigs();
+    final config = LspConfigService.instance.findByExtension(ext);
+    if (config == null) return;
+
+    if (!await InternalEngineService.instance.isEngineInstalled()) return;
+
+    final isInstalled = await InternalEngineService.instance.isCommandInstalled(config.serverCommand);
+    if (!isInstalled && mounted) {
+      if (!_promptedLspLanguages.contains(config.id)) {
+        _promptedLspLanguages.add(config.id);
+        _promptInstallLspComponent(config);
+      }
+    }
+  }
+
+  Future<void> _promptInstallLspComponent(LspLanguageConfig config) async {
+    final l10n = AppLocalizations.of(context);
+    if (l10n == null || !mounted) return;
+
+    final install = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(l10n.lspPackageMissingTitle(config.name)),
+        content: Text(l10n.lspPackageMissingMessage(config.apkPackage, config.serverCommand)),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: Text(l10n.cancel),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: Text(l10n.installNow),
+          ),
+        ],
+      ),
+    );
+
+    if (install == true && mounted) {
+      final success = await DialogUtils.showSyncLoadingDialog<bool>(
+        context,
+        message: l10n.installingComponent(config.apkPackage),
+        task: () => InternalEngineService.instance.installPackage(config.apkPackage),
+      );
+      if (!mounted) return;
+
+      if (success) {
+        DialogUtils.showSuccessToast(context, l10n.installComponentSuccess(config.name));
+      } else {
+        DialogUtils.showErrorToast(context, l10n.installComponentFailed('apk add exit with non-zero'));
+      }
+    }
+  }
 
   static ProjectProvider _getProjectProvider(BuildContext context, {bool listen = false}) {
     return listen ? context.watch<ProjectProvider>() : context.read<ProjectProvider>();
@@ -406,6 +480,15 @@ class _MainViewState extends State<MainView> {
     // 冷启动时系统尚未就绪会先跳过，等 DistroProvider 就绪后自动补探测一次。
     final systemName = _getDistroProvider(context, listen: true)?.selectedSystem;
     final probeKey = (rootPath == null || systemName == null) ? null : '$rootPath|$systemName';
+
+    if (currentFile != null && currentFile != _lastActiveFile) {
+      _lastActiveFile = currentFile;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          _checkLspForFile(currentFile);
+        }
+      });
+    }
 
     if (rootPath == null) {
       if (_lastProjectRoot != null) {

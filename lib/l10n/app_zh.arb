@@ -824,5 +824,85 @@
         "type": "String"
       }
     }
-  }
+  },
+  "codeCompletionManagement": "代码补全管理",
+  "codeCompletionSubtitle": "管理各编程语言的智能补全与报错工具链",
+  "internalEngineTitle": "内部代码智能引擎 (Alpine)",
+  "internalEngineStatusReady": "引擎已就绪",
+  "internalEngineStatusNotReady": "引擎未就绪",
+  "internalEngineExtracting": "正在准备内置代码智能引擎...",
+  "installedStatus": "已就绪",
+  "notInstalledStatus": "未安装组件",
+  "installComponent": "安装组件",
+  "installingComponent": "正在安装 {pkg}...",
+  "@installingComponent": {
+    "placeholders": {
+      "pkg": {
+        "type": "String"
+      }
+    }
+  },
+  "installComponentSuccess": "{name} 组件安装成功",
+  "@installComponentSuccess": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "installComponentFailed": "组件安装失败: {error}",
+  "@installComponentFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "editLanguageConfig": "编辑语言配置",
+  "addLanguageConfig": "新增语言配置",
+  "deleteLanguageConfirmTitle": "删除语言配置",
+  "deleteLanguageConfirmMessage": "确定要删除 {name} 的代码补全配置吗？",
+  "@deleteLanguageConfirmMessage": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "resetDefaultLanguages": "恢复默认配置",
+  "resetDefaultLanguagesConfirm": "确定将所有语言配置重置为官方默认预设吗？",
+  "languageDisplayName": "语言名称",
+  "languageDisplayNameHint": "例如: C / C++",
+  "languageIdField": "语言标识 (Language ID)",
+  "languageIdFieldHint": "用于 LSP 协议识别，如 cpp, rust",
+  "fileExtensionsField": "文件后缀",
+  "fileExtensionsFieldHint": "以逗号分隔，如 .c, .cpp, .h",
+  "serverCommandField": "服务启动命令",
+  "serverCommandFieldHint": "例如: clangd",
+  "serverArgsField": "启动参数",
+  "serverArgsFieldHint": "多个参数以空格或逗号分隔",
+  "apkPackageField": "Alpine 依赖包名",
+  "apkPackageFieldHint": "用于一键安装，如 clang-extra-tools",
+  "lspPackageMissingTitle": "未安装 {language} 代码智能组件",
+  "@lspPackageMissingTitle": {
+    "placeholders": {
+      "language": {
+        "type": "String"
+      }
+    }
+  },
+  "lspPackageMissingMessage": "安装 {pkg} ({command}) 即可获得精准代码补全与错误检查",
+  "@lspPackageMissingMessage": {
+    "placeholders": {
+      "pkg": {
+        "type": "String"
+      },
+      "command": {
+        "type": "String"
+      }
+    }
+  },
+  "installNow": "一键安装",
+  "fieldRequired": "此项不能为空",
+  "languageConfigSaved": "语言配置已保存"
 }

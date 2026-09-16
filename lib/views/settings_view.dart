@@ -7,6 +7,7 @@ import 'package:code_editor/providers/settings_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../widgets/color_palette_dialog.dart';
+import 'code_completion_management_view.dart';
 import 'virtual_keyboard_config_view.dart';
 
 /// 设置页面
@@ -58,6 +59,7 @@ class SettingsView extends StatelessWidget {
           _buildPinLineNumbersTile(context, provider, l10n),
           _buildVirtualKeyboardTile(context, provider, l10n),
           _buildVirtualKeyboardConfigTile(context, provider, l10n),
+          _buildCodeCompletionManagementTile(context, l10n),
 
           const Divider(height: 32, indent: 16, endIndent: 16),
 
@@ -957,6 +959,28 @@ class SettingsView extends StatelessWidget {
             builder: (_) => const VirtualKeyboardConfigView(
               scope: KeyboardScope.editor,
             ),
+          ),
+        );
+      },
+    );
+  }
+
+  /// 编辑区：代码补全与语言服务管理条目
+  Widget _buildCodeCompletionManagementTile(
+    BuildContext context,
+    AppLocalizations l10n,
+  ) {
+    final theme = Theme.of(context);
+
+    return ListTile(
+      leading: Icon(Icons.psychology_outlined, color: theme.colorScheme.primary),
+      title: Text(l10n.codeCompletionManagement),
+      subtitle: Text(l10n.codeCompletionSubtitle),
+      trailing: const Icon(Icons.chevron_right),
+      onTap: () {
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (_) => const CodeCompletionManagementView(),
           ),
         );
       },
