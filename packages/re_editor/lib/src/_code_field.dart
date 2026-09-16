@@ -330,6 +330,7 @@ class _CodeFieldRender extends RenderBox implements MouseTrackerAnnotation {
     _textStyle = value;
     if (comparison.index >= RenderComparison.layout.index) {
       _calculatePreferredLineHeight();
+      _displayParagraphs.clear();
       markNeedsLayout();
     } else {
       markNeedsPaint();
@@ -1342,9 +1343,24 @@ class _CodeFieldRender extends RenderBox implements MouseTrackerAnnotation {
       if (target <= paddingTop) {
         startIndex = 0;
       } else {
-        startIndex = min(((target - paddingTop) / _preferredLineHeight).ceil(), max(0, _codes.length - 1));
+        startIndex = min(((target - paddingTop) / _preferredLineHeight).floor(), max(0, _codes.length - 1));
       }
       _displayParagraphs.addAll(_buildDisplayRenderParagraphs(startIndex, effectiveWidth));
+    } else if (_horizontalViewport != null) {
+      // In horizontal scrolling (unwrapped) mode, every line has height == _preferredLineHeight.
+      // There is no line wrapping, so delta is strictly 0 and viewport correction should never occur.
+      final int startIndex;
+      if (target <= paddingTop) {
+        startIndex = 0;
+      } else {
+        startIndex = min(((target - paddingTop) / _preferredLineHeight).floor(), max(0, _codes.length - 1));
+      }
+      if (_displayParagraphs.first.index != startIndex ||
+          target < _displayParagraphs.first.top ||
+          target + size.height > _displayParagraphs.last.bottom) {
+        _displayParagraphs.clear();
+        _displayParagraphs.addAll(_buildDisplayRenderParagraphs(startIndex, effectiveWidth));
+      }
     } else {
       if (_codes.length <= _displayParagraphs.first.index) {
         _displayParagraphs.clear();
@@ -1364,7 +1380,11 @@ class _CodeFieldRender extends RenderBox implements MouseTrackerAnnotation {
             break;
           }
         }
-        _verticalViewport.correctBy(delta);
+        final bool isPinchLocked = _verticalViewport is CodeEditorScrollPosition &&
+            (_verticalViewport as CodeEditorScrollPosition).isPinchLocked;
+        if (!isPinchLocked) {
+          _verticalViewport.correctBy(delta);
+        }
         _displayParagraphs.clear();
         _displayParagraphs.addAll(_buildDisplayRenderParagraphs(startIndex, effectiveWidth));
       } else if (target > _displayParagraphs.last.bottom) {
@@ -1372,7 +1392,7 @@ class _CodeFieldRender extends RenderBox implements MouseTrackerAnnotation {
         if (target <= paddingTop) {
           startIndex = 0;
         } else {
-          startIndex = min((target / _preferredLineHeight).floor(), max(0, _codes.length - 1));
+          startIndex = min(((target - paddingTop) / _preferredLineHeight).floor(), max(0, _codes.length - 1));
         }
         _displayParagraphs.clear();
         _displayParagraphs.addAll(_buildDisplayRenderParagraphs(startIndex, effectiveWidth));
@@ -1387,7 +1407,11 @@ class _CodeFieldRender extends RenderBox implements MouseTrackerAnnotation {
           delta += paragraph.paragraph.height - _preferredLineHeight;
         }
         assert(startIndex >= 0);
-        _verticalViewport.correctBy(-delta);
+        final bool isPinchLocked = _verticalViewport is CodeEditorScrollPosition &&
+            (_verticalViewport as CodeEditorScrollPosition).isPinchLocked;
+        if (!isPinchLocked) {
+          _verticalViewport.correctBy(-delta);
+        }
         _displayParagraphs.clear();
         _displayParagraphs.addAll(_buildDisplayRenderParagraphs(startIndex, effectiveWidth));
       }
@@ -1405,7 +1429,11 @@ class _CodeFieldRender extends RenderBox implements MouseTrackerAnnotation {
     final double extraBottom = _extraVerticalScroll ?? max(0.0, size.height * 0.5);
     _verticalViewportSize = max(0, totalHeight - size.height + extraBottom);
     if (_verticalViewport.pixels > _verticalViewportSize!) {
-      _verticalViewport.correctBy(_verticalViewportSize! - _verticalViewport.pixels);
+      final bool isPinchLocked = _verticalViewport is CodeEditorScrollPosition &&
+          (_verticalViewport as CodeEditorScrollPosition).isPinchLocked;
+      if (!isPinchLocked) {
+        _verticalViewport.correctBy(_verticalViewportSize! - _verticalViewport.pixels);
+      }
     }
     _verticalViewport.applyContentDimensions(0, _verticalViewportSize!);
     if (_horizontalViewport != null) {
@@ -1757,7 +1785,7 @@ class _CodeCursorLinePainter extends _CodeFieldExtraPainter {
 
   @override
   void paint(Canvas canvas, Size size, _CodeFieldRender render) {
-    if (_color == null || _color == Colors.transparent || _color!.alpha == 0) {
+    if (_color == null || _color == Colors.transparent || _color!.a == 0.0) {
       return;
     }
     if (!_selection.isCollapsed) {
@@ -1811,7 +1839,7 @@ abstract class _CodeFieldSelectionsPainter extends _CodeFieldExtraPainter {
 
   @override
   void paint(Canvas canvas, Size size, _CodeFieldRender render) {
-    if (_color == Colors.transparent || _color.alpha == 0) {
+    if (_color == Colors.transparent || _color.a == 0.0) {
       return;
     }
     final List<CodeLineRenderParagraph> paragraphs = render.displayParagraphs;
@@ -1971,7 +1999,7 @@ class _CodeFieldCursorPainter extends _CodeFieldExtraPainter {
 
   @override
   void paint(Canvas canvas, Size size, _CodeFieldRender render) {
-    if (!_visible || !_willDraw || _color == Colors.transparent || _color.alpha == 0) {
+    if (!_visible || !_willDraw || _color == Colors.transparent || _color.a == 0.0) {
       return;
     }
     final CodeLineRenderParagraph? paragraph = render.findDisplayParagraphByLineIndex(_position.index);
@@ -2053,7 +2081,7 @@ class _CodeFieldFloatingCursorPainter extends _CodeFieldExtraPainter {
 
   @override
   void paint(Canvas canvas, Size size, _CodeFieldRender render) {
-    if (!_position.isActive() || _color == Colors.transparent || _color.alpha == 0) {
+    if (!_position.isActive() || _color == Colors.transparent || _color.a == 0.0) {
       return;
     }
     _drawFloatingCaret(canvas, _position.floatingCursorOffset!, size);

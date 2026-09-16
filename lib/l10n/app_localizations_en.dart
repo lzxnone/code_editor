@@ -281,6 +281,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get terminalFontPreview => '\$ git status -s # terminal font preview';
 
   @override
+  String get terminalFontSize => 'Terminal Font Size';
+
+  @override
+  String get terminalFontSizeDialogTitle => 'Terminal Font Size';
+
+  @override
   String fontName(String font) {
     String _temp0 = intl.Intl.selectLogic(font, {
       'system_default': 'System Default',

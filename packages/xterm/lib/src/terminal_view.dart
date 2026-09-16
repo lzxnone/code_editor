@@ -300,6 +300,7 @@ class TerminalViewState extends State<TerminalView> {
       terminalView: this,
       terminalController: _controller,
       onTapUp: _onTapUp,
+      onSingleTapUp: _onSingleTapUp,
       onTapDown: _onTapDown,
       onSecondaryTapDown:
           widget.onSecondaryTapDown != null ? _onSecondaryTapDown : null,
@@ -345,8 +346,8 @@ class TerminalViewState extends State<TerminalView> {
     widget.onTapUp?.call(details, offset);
   }
 
-  void _onTapDown(_) {
-    if (_controller.selection != null) {
+  void _onSingleTapUp(TapUpDetails details) {
+    if (_controller.selection != null && !_controller.selection!.isCollapsed) {
       _controller.clearSelection();
     } else {
       if (!widget.hardwareKeyboardOnly) {
@@ -355,6 +356,13 @@ class TerminalViewState extends State<TerminalView> {
         _focusNode.requestFocus();
       }
     }
+    final offset = renderTerminal.getCellOffset(details.localPosition);
+    widget.onTapUp?.call(details, offset);
+  }
+
+  void _onTapDown(_) {
+    // Intentionally empty: tapping down (PointerDown) must not open the soft keyboard,
+    // ensuring long-press can select text without triggering keyboard pop-up or scroll jumps.
   }
 
   void _onSecondaryTapDown(TapDownDetails details) {
@@ -431,7 +439,8 @@ class TerminalViewState extends State<TerminalView> {
   }
 
   void _onKeyboardShow() {
-    if (_focusNode.hasFocus) {
+    if (_focusNode.hasFocus &&
+        (_controller.selection == null || _controller.selection!.isCollapsed)) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         _scrollToBottom();
       });

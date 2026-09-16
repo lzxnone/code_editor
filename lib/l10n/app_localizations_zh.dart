@@ -277,6 +277,12 @@ class AppLocalizationsZh extends AppLocalizations {
   String get terminalFontPreview => '\$ git status -s # 终端字体预览';
 
   @override
+  String get terminalFontSize => '终端字号';
+
+  @override
+  String get terminalFontSizeDialogTitle => '终端字号';
+
+  @override
   String fontName(String font) {
     String _temp0 = intl.Intl.selectLogic(font, {
       'system_default': '系统默认',

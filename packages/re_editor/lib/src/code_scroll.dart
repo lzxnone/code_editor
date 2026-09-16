@@ -13,6 +13,7 @@ typedef CodeScrollbarBuilder = Widget Function(BuildContext context, Widget chil
 /// to swipe twice horizontally to start horizontal scrolling. Overriding
 /// [shouldIgnorePointer] to return false allows bidirectional scroll gestures to
 /// seamlessly take over on the very first swipe.
+
 class CodeEditorScrollPosition extends ScrollPositionWithSingleContext {
   CodeEditorScrollPosition({
     required super.physics,
@@ -22,6 +23,24 @@ class CodeEditorScrollPosition extends ScrollPositionWithSingleContext {
     super.keepScrollOffset,
     super.debugLabel,
   });
+
+  bool _isPinchLocked = false;
+  bool get isPinchLocked => _isPinchLocked;
+  set isPinchLocked(bool value) {
+    if (_isPinchLocked == value) return;
+    _isPinchLocked = value;
+    if (value) {
+      stopScrolling();
+    }
+  }
+
+  @override
+  void applyUserOffset(double delta) {
+    if (_isPinchLocked) {
+      return;
+    }
+    super.applyUserOffset(delta);
+  }
 
   @override
   bool get shouldIgnorePointer => false;
@@ -49,13 +68,25 @@ class CodeEditorScrollController extends ScrollController {
     super.onDetach,
   });
 
+  bool _isPinchLocked = false;
+  bool get isPinchLocked => _isPinchLocked;
+  set isPinchLocked(bool value) {
+    if (_isPinchLocked == value) return;
+    _isPinchLocked = value;
+    for (final position in positions) {
+      if (position is CodeEditorScrollPosition) {
+        position.isPinchLocked = value;
+      }
+    }
+  }
+
   @override
   ScrollPosition createScrollPosition(
     ScrollPhysics physics,
     ScrollContext context,
     ScrollPosition? oldPosition,
   ) {
-    return CodeEditorScrollPosition(
+    final position = CodeEditorScrollPosition(
       physics: physics,
       context: context,
       initialPixels: delegate?.initialScrollOffset ?? initialScrollOffset,
@@ -63,11 +94,16 @@ class CodeEditorScrollController extends ScrollController {
       oldPosition: oldPosition,
       debugLabel: delegate?.debugLabel ?? debugLabel,
     );
+    position.isPinchLocked = _isPinchLocked;
+    return position;
   }
 
   @override
   void attach(ScrollPosition position) {
     super.attach(position);
+    if (position is CodeEditorScrollPosition) {
+      position.isPinchLocked = _isPinchLocked;
+    }
     if (delegate != null && !delegate!.positions.contains(position)) {
       delegate!.attach(position);
     }
@@ -86,7 +122,7 @@ class CodeEditorScrollController extends ScrollController {
     for (final position in positions) {
       if (position is CodeEditorScrollPosition) {
         position.stopScrolling();
-      } else if (position is ScrollPositionWithSingleContext && position.activity?.isScrolling == true) {
+      } else if (position is ScrollPositionWithSingleContext) {
         position.goIdle();
       }
     }

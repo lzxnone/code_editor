@@ -84,6 +84,8 @@
   "terminalFont": "Terminal Font",
   "selectTerminalFont": "Select Terminal Font",
   "terminalFontPreview": "$ git status -s # terminal font preview",
+  "terminalFontSize": "Terminal Font Size",
+  "terminalFontSizeDialogTitle": "Terminal Font Size",
   "fontName": "{font, select, system_default{System Default} sans_serif{Sans-Serif} serif{Serif (Songti)} monospace{System Monospace} consolas{Consolas} courier_new{Courier New} menlo{Menlo / Monaco} jetbrains_mono{JetBrains Mono} fira_code{Fira Code} other{{font}}}",
   "@fontName": {
     "placeholders": {

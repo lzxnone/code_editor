@@ -26,6 +26,7 @@ class SettingsProvider extends ChangeNotifier {
 
   //终端
   static const String _keyTerminalFont = 'terminal_font_family'; //终端字体
+  static const String _keyTerminalFontSize = 'terminal_font_size'; //终端字号
   static const String _keyTerminalBackgroundColor = 'terminal_background_color'; //终端背景颜色
   static const String _keyEnableTerminalVirtualKeyboard = 'enable_terminal_virtual_keyboard'; //终端小键盘启用
   static const String _keyTerminalKeyboardConfig = 'terminal_virtual_keyboard_config'; //终端小键盘配置JSON
@@ -46,6 +47,7 @@ class SettingsProvider extends ChangeNotifier {
   String _editorFontId = 'jetbrains_mono';
   String _terminalFontId = 'jetbrains_mono';
   Color _terminalBackgroundColor = const Color(0xFF1E1E1E);
+  double _terminalFontSize = 13.0;
   double _fontSize = 14.0;
   int _indentSize = 4;
   bool _wordWrap = false;
@@ -77,6 +79,7 @@ class SettingsProvider extends ChangeNotifier {
   String get terminalFontId => _terminalFontId;
   AppFontItem get terminalFont => AppFonts.getTerminalFont(_terminalFontId);
   Color get terminalBackgroundColor => _terminalBackgroundColor;
+  double get terminalFontSize => _terminalFontSize;
 
   double get fontSize => _fontSize;
   int get indentSize => _indentSize;
@@ -277,6 +280,11 @@ class SettingsProvider extends ChangeNotifier {
         _terminalBackgroundColor = Color(savedTerminalBackground);
       }
 
+      final savedTerminalFontSize = prefs.getDouble(_keyTerminalFontSize);
+      if (savedTerminalFontSize != null) {
+        _terminalFontSize = savedTerminalFontSize.clamp(8.0, 32.0);
+      }
+
       //设置项目配置
       final savedShowHiddenFiles = prefs.getBool(_keyShowHiddenFiles);
       if (savedShowHiddenFiles != null) {
@@ -448,6 +456,18 @@ class SettingsProvider extends ChangeNotifier {
     try {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setInt(_keyTerminalBackgroundColor, color.toARGB32());
+    } catch (_) {}
+  }
+
+  /// 设置终端字体大小
+  Future<void> setTerminalFontSize(double size) async {
+    final clamped = size.clamp(8.0, 32.0);
+    if (_terminalFontSize == clamped) return;
+    _terminalFontSize = clamped;
+    notifyListeners();
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setDouble(_keyTerminalFontSize, clamped);
     } catch (_) {}
   }
 

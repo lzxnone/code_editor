@@ -215,6 +215,103 @@ class _TerminalSessionBodyState extends State<_TerminalSessionBody> {
   TerminalInputHandler? _delegateInputHandler;
   void Function(String)? _delegateOnOutput;
 
+  // 双指捏合缩放终端字号状态
+  final Map<int, Offset> _pointerPositions = {};
+  double? _initialPinchDistance;
+  double? _initialPinchFontSize;
+  double? _activeZoomFontSize;
+  bool _isPinching = false;
+  Offset? _initialLocalFocal;
+  double _initialScrollV = 0.0;
+
+  void _handlePointerDown(PointerDownEvent event, double currentFontSize) {
+    _pointerPositions[event.pointer] = event.position;
+    if (_pointerPositions.length == 2) {
+      final points = _pointerPositions.values.toList();
+      _initialPinchDistance = (points[0] - points[1]).distance;
+      _initialPinchFontSize = _activeZoomFontSize ?? currentFontSize;
+
+      final globalFocal = (points[0] + points[1]) / 2;
+      final renderBox = context.findRenderObject() as RenderBox?;
+      _initialLocalFocal = renderBox != null ? renderBox.globalToLocal(globalFocal) : globalFocal;
+      _initialScrollV = _terminalScrollController.hasClients ? _terminalScrollController.offset : 0.0;
+
+      // 双指缩放开始时，清除可能残留的选区，避免手柄或菜单错位
+      _terminalController.clearSelection();
+
+      setState(() {
+        _isPinching = true;
+      });
+    }
+  }
+
+  void _handlePointerMove(PointerMoveEvent event) {
+    if (!_pointerPositions.containsKey(event.pointer)) return;
+    _pointerPositions[event.pointer] = event.position;
+
+    if (_pointerPositions.length >= 2 &&
+        _initialPinchDistance != null &&
+        _initialPinchDistance! > 10.0 &&
+        _initialPinchFontSize != null &&
+        _initialLocalFocal != null) {
+      final points = _pointerPositions.values.toList();
+      final currentDistance = (points[0] - points[1]).distance;
+      final scale = currentDistance / _initialPinchDistance!;
+      final rawFontSize = (_initialPinchFontSize! * scale).clamp(8.0, 32.0);
+      final newFontSize = (rawFontSize * 10).round() / 10.0;
+      final fontScale = newFontSize / _initialPinchFontSize!;
+
+      final currentGlobalFocal = (points[0] + points[1]) / 2;
+      final renderBox = context.findRenderObject() as RenderBox?;
+      final currentLocalFocal = renderBox != null
+          ? renderBox.globalToLocal(currentGlobalFocal)
+          : currentGlobalFocal;
+
+      if (_terminalScrollController.hasClients && _terminalScrollController.position.maxScrollExtent > 0) {
+        final targetScrollV = (_initialScrollV + _initialLocalFocal!.dy) * fontScale - currentLocalFocal.dy;
+        _terminalScrollController.jumpTo(targetScrollV.clamp(0.0, _terminalScrollController.position.maxScrollExtent));
+      }
+
+      if (_activeZoomFontSize != newFontSize) {
+        setState(() {
+          _activeZoomFontSize = newFontSize;
+        });
+      }
+    }
+  }
+
+  void _handlePointerUp(PointerUpEvent event) {
+    _pointerPositions.remove(event.pointer);
+    if (_pointerPositions.length < 2 && _isPinching) {
+      _finishPinchZoom();
+    }
+  }
+
+  void _handlePointerCancel(PointerCancelEvent event) {
+    _pointerPositions.remove(event.pointer);
+    if (_pointerPositions.length < 2 && _isPinching) {
+      _finishPinchZoom();
+    }
+  }
+
+  void _finishPinchZoom() {
+    final finalSize = _activeZoomFontSize;
+    if (finalSize != null) {
+      try {
+        final settings = context.read<SettingsProvider?>();
+        settings?.setTerminalFontSize(finalSize.roundToDouble());
+      } catch (_) {}
+    }
+    setState(() {
+      _isPinching = false;
+      _initialPinchDistance = null;
+      _initialPinchFontSize = null;
+      _activeZoomFontSize = null;
+      _initialLocalFocal = null;
+      _initialScrollV = 0.0;
+    });
+  }
+
   @override
   void initState() {
     super.initState();
@@ -255,9 +352,11 @@ class _TerminalSessionBodyState extends State<_TerminalSessionBody> {
     final session = widget.session;
     final settings = context.watch<SettingsProvider?>();
     final terminalFont = settings?.terminalFont ?? AppFonts.terminalMonospace;
+    final currentBaseFontSize = settings?.terminalFontSize ?? 13.0;
+    final displayFontSize = _activeZoomFontSize ?? currentBaseFontSize;
 
     final terminalStyle = xterm.TerminalStyle(
-      fontSize: 13.0,
+      fontSize: displayFontSize,
       fontFamily: terminalFont.fontFamily ?? 'monospace',
       fontFamilyFallback: terminalFont.fallback,
     );
@@ -276,23 +375,30 @@ class _TerminalSessionBodyState extends State<_TerminalSessionBody> {
         child: Column(
           children: [
             Expanded(
-              child: TerminalSelectionOverlay(
-                terminal: session.terminal,
-                controller: _terminalController,
-                terminalViewKey: _terminalViewKey,
-                scrollController: _terminalScrollController,
-                focusNode: session.focusNode,
-                child: xterm.TerminalView(
-                  session.terminal,
-                  key: _terminalViewKey,
+              child: Listener(
+                behavior: HitTestBehavior.translucent,
+                onPointerDown: (e) => _handlePointerDown(e, currentBaseFontSize),
+                onPointerMove: _handlePointerMove,
+                onPointerUp: _handlePointerUp,
+                onPointerCancel: _handlePointerCancel,
+                child: TerminalSelectionOverlay(
+                  terminal: session.terminal,
                   controller: _terminalController,
+                  terminalViewKey: _terminalViewKey,
                   scrollController: _terminalScrollController,
                   focusNode: session.focusNode,
-                  autofocus: true,
-                  theme: terminalThemeWithBackground(backgroundColor),
-                  textStyle: terminalStyle,
-                  cursorType: xterm.TerminalCursorType.block,
-                  padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 8.0),
+                  child: xterm.TerminalView(
+                    session.terminal,
+                    key: _terminalViewKey,
+                    controller: _terminalController,
+                    scrollController: _terminalScrollController,
+                    focusNode: session.focusNode,
+                    autofocus: true,
+                    theme: terminalThemeWithBackground(backgroundColor),
+                    textStyle: terminalStyle,
+                    cursorType: xterm.TerminalCursorType.block,
+                    padding: const EdgeInsets.fromLTRB(10.0, 8.0, 10.0, 20.0),
+                  ),
                 ),
               ),
             ),

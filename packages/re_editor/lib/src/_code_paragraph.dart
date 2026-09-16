@@ -21,9 +21,12 @@ class _ParagraphImpl extends IParagraph {
     required this.paragraph,
     required bool trucated,
     required double preferredLineHeight,
+    bool isSingleLine = false,
   }) : _trucated = trucated,
     _preferredLineHeight = preferredLineHeight,
-    _lineCount = (paragraph.height / preferredLineHeight).ceil();
+    _lineCount = isSingleLine
+        ? 1
+        : max(1, (paragraph.height / preferredLineHeight).round());
 
   int get runeLength => text.runes.length;
 
@@ -314,12 +317,14 @@ class _CodeParagraphProvider {
     span.build(builder);
     final ui.Paragraph paragraph = builder.build();
     paragraph.layout(_constraints!);
+    final bool isSingleLine = _constraints!.width.isInfinite;
     return _ParagraphImpl(
       text: plainText,
       span: span,
       paragraph: paragraph,
       trucated: trucated,
       preferredLineHeight: _preferredLineHeight!,
+      isSingleLine: isSingleLine,
     );
   }
 

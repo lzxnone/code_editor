@@ -69,6 +69,7 @@ class SettingsView extends StatelessWidget {
           _buildTerminalVirtualKeyboardTile(context, provider, l10n),
           _buildTerminalVirtualKeyboardConfigTile(context, provider, l10n),
           _buildTerminalFontTile(context, provider),
+          _buildTerminalFontSizeTile(context, provider, l10n),
 
           const Divider(height: 32, indent: 16, endIndent: 16),
 
@@ -273,6 +274,121 @@ class SettingsView extends StatelessWidget {
           previewSample: l10n.terminalFontPreview,
           showRecommendation: true,
           onSelected: (id) => provider.setTerminalFontId(id),
+        );
+      },
+    );
+  }
+
+  /// 终端：终端字号条目
+  Widget _buildTerminalFontSizeTile(
+    BuildContext context,
+    SettingsProvider provider,
+    AppLocalizations l10n,
+  ) {
+    final theme = Theme.of(context);
+
+    return ListTile(
+      leading: Icon(Icons.format_size, color: theme.colorScheme.primary),
+      title: Text(l10n.terminalFontSize),
+      subtitle: Text('${provider.terminalFontSize.toInt()} pt'),
+      trailing: SizedBox(
+        width: 150,
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.end,
+          children: [
+            IconButton(
+              icon: const Icon(Icons.remove, size: 18),
+              visualDensity: VisualDensity.compact,
+              tooltip: l10n.decreaseFontSize,
+              onPressed: provider.terminalFontSize > 8.0
+                  ? () => provider.setTerminalFontSize(provider.terminalFontSize - 1)
+                  : null,
+            ),
+            Text(
+              '${provider.terminalFontSize.toInt()}',
+              style: const TextStyle(fontWeight: FontWeight.bold),
+            ),
+            IconButton(
+              icon: const Icon(Icons.add, size: 18),
+              visualDensity: VisualDensity.compact,
+              tooltip: l10n.increaseFontSize,
+              onPressed: provider.terminalFontSize < 32.0
+                  ? () => provider.setTerminalFontSize(provider.terminalFontSize + 1)
+                  : null,
+            ),
+          ],
+        ),
+      ),
+      onTap: () {
+        _showTerminalFontSizeDialog(context, provider, l10n);
+      },
+    );
+  }
+
+  void _showTerminalFontSizeDialog(
+    BuildContext context,
+    SettingsProvider provider,
+    AppLocalizations l10n,
+  ) {
+    double tempSize = provider.terminalFontSize;
+    final terminalFont = provider.terminalFont;
+
+    showDialog<void>(
+      context: context,
+      builder: (dialogContext) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              title: Text(l10n.terminalFontSizeDialogTitle),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    '${tempSize.toInt()} pt',
+                    style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 16),
+                  Slider(
+                    value: tempSize.clamp(8.0, 32.0),
+                    min: 8.0,
+                    max: 32.0,
+                    divisions: 24,
+                    label: '${tempSize.toInt()}',
+                    onChanged: (val) {
+                      setDialogState(() {
+                        tempSize = val;
+                      });
+                      provider.setTerminalFontSize(val);
+                    },
+                  ),
+                  const SizedBox(height: 8),
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: provider.terminalBackgroundColor,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text(
+                      l10n.terminalFontPreview,
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: tempSize,
+                        fontFamily: terminalFont.fontFamily ?? 'monospace',
+                        fontFamilyFallback: terminalFont.fallback,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              actions: [
+                FilledButton(
+                  onPressed: () => Navigator.of(dialogContext).pop(),
+                  child: Text(l10n.done),
+                ),
+              ],
+            );
+          },
         );
       },
     );

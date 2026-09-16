@@ -84,6 +84,8 @@
   "terminalFont": "终端字体",
   "selectTerminalFont": "选择终端字体",
   "terminalFontPreview": "$ git status -s # 终端字体预览",
+  "terminalFontSize": "终端字号",
+  "terminalFontSizeDialogTitle": "终端字号",
   "fontName": "{font, select, system_default{系统默认} sans_serif{无衬线体} serif{衬线体（宋体）} monospace{系统等宽} consolas{Consolas} courier_new{Courier New} menlo{Menlo / Monaco} jetbrains_mono{JetBrains Mono} fira_code{Fira Code} other{{font}}}",
   "@fontName": {
     "placeholders": {

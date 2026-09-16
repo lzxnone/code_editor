@@ -52,39 +52,50 @@ class _CodeEditorWidgetState extends State<CodeEditorWidget> {
   int? _currentIndentSize;
   bool _isShowingConflictDialog = false;
 
-  // 双指捏合缩放字号及中心锚定状态
+  // 双指捏合实时缩放字号及中心锚定状态
   final GlobalKey _editorContainerKey = GlobalKey();
   final Map<int, Offset> _pointerPositions = {};
+  int? _pinchPointer1;
+  int? _pinchPointer2;
   double? _initialPinchDistance;
   double? _initialPinchFontSize;
   double? _activeZoomFontSize;
   bool _isPinching = false;
   CodeLineSelection? _pinchSelection;
   Offset? _initialLocalFocal;
+  Offset? _currentLocalFocal;
   double _initialScrollV = 0.0;
   double _initialScrollH = 0.0;
 
   void _handlePointerDown(PointerDownEvent event, double currentFontSize) {
     _pointerPositions[event.pointer] = event.position;
-    if (_pointerPositions.length == 2) {
-      final points = _pointerPositions.values.toList();
-      _initialPinchDistance = (points[0] - points[1]).distance;
-      _initialPinchFontSize = _activeZoomFontSize ?? currentFontSize;
+    if (_pointerPositions.length >= 2 && !_isPinching) {
+      final keys = _pointerPositions.keys.toList();
+      _pinchPointer1 = keys[0];
+      _pinchPointer2 = keys[1];
 
-      // 停止当前的惯性滚动，保证锚定基准平稳
+      final p1 = _pointerPositions[_pinchPointer1]!;
+      final p2 = _pointerPositions[_pinchPointer2]!;
+
+      _initialPinchDistance = (p1 - p2).distance;
+      _initialPinchFontSize = _activeZoomFontSize ?? currentFontSize;
+      _activeZoomFontSize = _initialPinchFontSize;
+
+      // 锁定底层滚动控制器并停止惯性滚动，彻底阻断单指拖拽识别器与内部 viewport 修正干扰
       final vScroller = _scrollController?.verticalScroller;
       if (vScroller is CodeEditorScrollController) {
-        vScroller.stopScrolling();
+        vScroller.isPinchLocked = true;
       }
       final hScroller = _scrollController?.horizontalScroller;
       if (hScroller is CodeEditorScrollController) {
-        hScroller.stopScrolling();
+        hScroller.isPinchLocked = true;
       }
 
-      final globalFocal = (points[0] + points[1]) / 2;
+      final globalFocal = (p1 + p2) / 2;
       final renderBox = _editorContainerKey.currentContext?.findRenderObject() as RenderBox?;
       final localFocal = renderBox != null ? renderBox.globalToLocal(globalFocal) : globalFocal;
       _initialLocalFocal = localFocal;
+      _currentLocalFocal = localFocal;
 
       _initialScrollV = (_scrollController?.verticalScroller.hasClients == true)
           ? _scrollController!.verticalScroller.offset
@@ -110,32 +121,53 @@ class _CodeEditorWidgetState extends State<CodeEditorWidget> {
     if (!_pointerPositions.containsKey(event.pointer)) return;
     _pointerPositions[event.pointer] = event.position;
 
-    if (_pointerPositions.length >= 2 &&
+    if (_isPinching &&
+        _pinchPointer1 != null &&
+        _pinchPointer2 != null &&
+        _pointerPositions.containsKey(_pinchPointer1) &&
+        _pointerPositions.containsKey(_pinchPointer2) &&
         _initialPinchDistance != null &&
         _initialPinchDistance! > 10.0 &&
         _initialPinchFontSize != null &&
         _initialLocalFocal != null) {
-      final points = _pointerPositions.values.toList();
-      final currentDistance = (points[0] - points[1]).distance;
-      final scale = currentDistance / _initialPinchDistance!;
-      final rawFontSize = (_initialPinchFontSize! * scale).clamp(10.0, 30.0);
-      final newFontSize = (rawFontSize * 10).round() / 10.0;
-      final fontScale = newFontSize / _initialPinchFontSize!;
+      final p1 = _pointerPositions[_pinchPointer1]!;
+      final p2 = _pointerPositions[_pinchPointer2]!;
 
-      final currentGlobalFocal = (points[0] + points[1]) / 2;
+      final currentDistance = (p1 - p2).distance;
+      final rawScale = currentDistance / _initialPinchDistance!;
+
+      // 边界弹性阻尼（10.0 ~ 30.0）
+      final minScale = 10.0 / _initialPinchFontSize!;
+      final maxScale = 30.0 / _initialPinchFontSize!;
+      final clampedScale = rawScale.clamp(minScale * 0.9, maxScale * 1.1);
+
+      final currentGlobalFocal = (p1 + p2) / 2;
       final renderBox = _editorContainerKey.currentContext?.findRenderObject() as RenderBox?;
       final currentLocalFocal = renderBox != null
           ? renderBox.globalToLocal(currentGlobalFocal)
           : currentGlobalFocal;
+      _currentLocalFocal = currentLocalFocal;
 
-      final targetScrollV = (_initialScrollV + _initialLocalFocal!.dy) * fontScale - currentLocalFocal.dy;
-      final targetScrollH = (_initialScrollH + _initialLocalFocal!.dx) * fontScale - currentLocalFocal.dx;
+      // 连续高精度浮点字号（避免 0.1 离散跳变造成的阶梯式顿挫）
+      final continuousFontSize = ((_initialPinchFontSize! * clampedScale) * 100).round() / 100.0;
+      final newFontSize = continuousFontSize.clamp(10.0, 30.0);
+      final fontRatio = newFontSize / _initialPinchFontSize!;
+
+      // 焦心连续锚定公式：保持手指焦心下的代码行与手指相对位置绝对静止
+      final targetScrollV = (_initialScrollV + _initialLocalFocal!.dy) * fontRatio - currentLocalFocal.dy;
+      final targetScrollH = (_initialScrollH + _initialLocalFocal!.dx) * fontRatio - currentLocalFocal.dx;
 
       if (_scrollController?.verticalScroller.hasClients == true) {
-        _scrollController!.verticalScroller.jumpTo(max(0.0, targetScrollV));
+        final pos = _scrollController!.verticalScroller.position;
+        final maxV = max(0.0, pos.maxScrollExtent);
+        final clampedV = targetScrollV.clamp(0.0, maxV);
+        _scrollController!.verticalScroller.jumpTo(clampedV);
       }
       if (_scrollController?.horizontalScroller.hasClients == true) {
-        _scrollController!.horizontalScroller.jumpTo(max(0.0, targetScrollH));
+        final pos = _scrollController!.horizontalScroller.position;
+        final maxH = max(0.0, pos.maxScrollExtent);
+        final clampedH = targetScrollH.clamp(0.0, maxH);
+        _scrollController!.horizontalScroller.jumpTo(clampedH);
       }
 
       if (_activeZoomFontSize != newFontSize) {
@@ -148,15 +180,32 @@ class _CodeEditorWidgetState extends State<CodeEditorWidget> {
 
   void _handlePointerUp(PointerUpEvent event) {
     _pointerPositions.remove(event.pointer);
-    if (_pointerPositions.length < 2 && _isPinching) {
+    if (_isPinching && (event.pointer == _pinchPointer1 || event.pointer == _pinchPointer2 || _pointerPositions.length < 2)) {
       _finishPinchZoom();
+    }
+    if (_pointerPositions.isEmpty) {
+      _unlockPinch();
     }
   }
 
   void _handlePointerCancel(PointerCancelEvent event) {
     _pointerPositions.remove(event.pointer);
-    if (_pointerPositions.length < 2 && _isPinching) {
+    if (_isPinching && (event.pointer == _pinchPointer1 || event.pointer == _pinchPointer2 || _pointerPositions.length < 2)) {
       _finishPinchZoom();
+    }
+    if (_pointerPositions.isEmpty) {
+      _unlockPinch();
+    }
+  }
+
+  void _unlockPinch() {
+    final vScroller = _scrollController?.verticalScroller;
+    if (vScroller is CodeEditorScrollController) {
+      vScroller.isPinchLocked = false;
+    }
+    final hScroller = _scrollController?.horizontalScroller;
+    if (hScroller is CodeEditorScrollController) {
+      hScroller.isPinchLocked = false;
     }
   }
 
@@ -165,19 +214,48 @@ class _CodeEditorWidgetState extends State<CodeEditorWidget> {
     final savedSelection = _pinchSelection;
     _pinchSelection = null;
 
-    if (finalSize != null) {
+    final initialFontSize = _initialPinchFontSize;
+    final initialLocalFocal = _initialLocalFocal;
+    final currentLocalFocal = _currentLocalFocal ?? initialLocalFocal;
+    final initialScrollV = _initialScrollV;
+    final initialScrollH = _initialScrollH;
+
+    if (finalSize != null && initialFontSize != null && initialLocalFocal != null && currentLocalFocal != null) {
+      // 手势释放后定格为整数（如 16.0），持久化到用户设置
+      final double targetFontSize = finalSize.clamp(10.0, 30.0).roundToDouble();
+      final double fontRatio = targetFontSize / initialFontSize;
+
+      final targetScrollV = (initialScrollV + initialLocalFocal.dy) * fontRatio - currentLocalFocal.dy;
+      final targetScrollH = (initialScrollH + initialLocalFocal.dx) * fontRatio - currentLocalFocal.dx;
+
       try {
         final settings = _getSettingsProvider(context);
-        settings.setFontSize(finalSize.roundToDouble());
+        settings.setFontSize(targetFontSize);
       } catch (_) {}
+
+      if (_scrollController?.verticalScroller.hasClients == true) {
+        final pos = _scrollController!.verticalScroller.position;
+        final maxV = max(0.0, pos.maxScrollExtent);
+        final clampedV = targetScrollV.clamp(0.0, maxV);
+        _scrollController!.verticalScroller.jumpTo(clampedV);
+      }
+      if (_scrollController?.horizontalScroller.hasClients == true) {
+        final pos = _scrollController!.horizontalScroller.position;
+        final maxH = max(0.0, pos.maxScrollExtent);
+        final clampedH = targetScrollH.clamp(0.0, maxH);
+        _scrollController!.horizontalScroller.jumpTo(clampedH);
+      }
     }
 
     setState(() {
       _isPinching = false;
+      _pinchPointer1 = null;
+      _pinchPointer2 = null;
       _initialPinchDistance = null;
       _initialPinchFontSize = null;
       _activeZoomFontSize = null;
       _initialLocalFocal = null;
+      _currentLocalFocal = null;
       _initialScrollV = 0.0;
       _initialScrollH = 0.0;
     });
@@ -529,11 +607,13 @@ class _CodeEditorWidgetState extends State<CodeEditorWidget> {
               onPointerCancel: _handlePointerCancel,
               child: Stack(
                 children: [
-                  CodeEditor(
-                    key: ValueKey(_currentLoadedPath),
-                    controller: controller,
-                    focusNode: _focusNode,
-                    scrollController: _scrollController,
+                  IgnorePointer(
+                    ignoring: _isPinching,
+                    child: CodeEditor(
+                      key: ValueKey(_currentLoadedPath),
+                      controller: controller,
+                      focusNode: _focusNode,
+                      scrollController: _scrollController,
                       wordWrap: activeWordWrap,
                       pinLineNumbers: pinLineNumbers,
                       toolbarController: _toolbarController,
@@ -593,6 +673,43 @@ class _CodeEditorWidgetState extends State<CodeEditorWidget> {
                               );
                             }
                           : null,
+                    ),
+                  ),
+                  // 双指缩放实时字号悬浮胶囊提示
+                  if (_isPinching && _activeZoomFontSize != null)
+                    Positioned(
+                      top: 16,
+                      left: 0,
+                      right: 0,
+                      child: Center(
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: activeTheme.backgroundColor.computeLuminance() > 0.5
+                                ? Colors.black.withValues(alpha: 0.75)
+                                : Colors.white.withValues(alpha: 0.85),
+                            borderRadius: BorderRadius.circular(16),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withValues(alpha: 0.2),
+                                blurRadius: 8,
+                                offset: const Offset(0, 2),
+                              ),
+                            ],
+                          ),
+                          child: Text(
+                            '${_activeZoomFontSize!.round()} px',
+                            style: TextStyle(
+                              color: activeTheme.backgroundColor.computeLuminance() > 0.5
+                                  ? Colors.white
+                                  : Colors.black87,
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                              letterSpacing: 0.3,
+                            ),
+                          ),
+                        ),
+                      ),
                     ),
                 ],
               ),

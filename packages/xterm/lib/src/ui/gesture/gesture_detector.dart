@@ -64,6 +64,13 @@ class _TerminalGestureDetectorState extends State<TerminalGestureDetector> {
   // subsequent tap up / tap hold of the same tap.
   bool _isDoubleTap = false;
 
+  @override
+  void dispose() {
+    _doubleTapTimer?.cancel();
+    _doubleTapTimer = null;
+    super.dispose();
+  }
+
   // The down handler is force-run on success of a single tap and optimistically
   // run before a long press success.
   void _handleTapDown(TapDownDetails details) {
@@ -84,9 +91,16 @@ class _TerminalGestureDetectorState extends State<TerminalGestureDetector> {
   void _handleTapUp(TapUpDetails details) {
     if (!_isDoubleTap) {
       widget.onSingleTapUp?.call(details);
+      widget.onTapUp?.call(details);
       _lastTapOffset = details.globalPosition;
       _doubleTapTimer = Timer(kDoubleTapTimeout, _doubleTapTimeout);
     }
+    _isDoubleTap = false;
+  }
+
+  void _handleTapCancel() {
+    _doubleTapTimer?.cancel();
+    _doubleTapTimeout();
     _isDoubleTap = false;
   }
 
@@ -115,6 +129,7 @@ class _TerminalGestureDetectorState extends State<TerminalGestureDetector> {
         instance
           ..onTapDown = _handleTapDown
           ..onTapUp = _handleTapUp
+          ..onTapCancel = _handleTapCancel
           ..onSecondaryTapDown = widget.onSecondaryTapDown
           ..onSecondaryTapUp = widget.onSecondaryTapUp
           ..onTertiaryTapDown = widget.onTertiaryTapDown

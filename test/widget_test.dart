@@ -2908,16 +2908,104 @@ void main() {
       await gesture2.moveTo(const Offset(200, 500));
       await tester.pump();
 
-      // Without focal anchor, vScroller.offset would remain 0.0, causing bottom text to fly down.
-      // With focal anchor, vScroller.offset is compensated to keep the focal point steady.
+      // Real-time live continuous zoom updates both scroll offset and displays HUD badge
+      expect(find.text('21 px'), findsOneWidget);
       expect(vScroller.offset, greaterThan(100.0));
 
       await gesture1.up();
       await gesture2.up();
       await tester.pumpAndSettle();
 
+      // On gesture completion, font size is committed and scroll offset is compensated to anchor focal point.
       expect(settingsProvider.fontSize, 21.0);
       expect(vScroller.offset, greaterThan(100.0));
+      expect(find.text('21 px'), findsNothing);
+
+      try {
+        tempDir.deleteSync(recursive: true);
+      } catch (_) {}
+    });
+
+    testWidgets('CodeEditorWidget pinch-to-zoom out does not jump or teleport when lines scroll into or out of viewport', (tester) async {
+      final tempDir = Directory.systemTemp.createTempSync('editor_zoom_out_smooth_test');
+      final lines = List.generate(100, (i) => 'Line $i: const value = "test-$i";').join('\n');
+      final testFile = File('${tempDir.path}/test.dart')..writeAsStringSync(lines);
+
+      final settingsProvider = SettingsProvider();
+      await settingsProvider.init();
+      await settingsProvider.setFontSize(20.0);
+
+      final tabProvider = TabProvider();
+      await tabProvider.init();
+      tabProvider.openTabs.add(
+        EditorTabItem(
+          path: testFile.path,
+          content: lines,
+          originalContent: lines,
+          isLoaded: true,
+          isModified: false,
+        ),
+      );
+
+      await tester.pumpWidget(
+        MultiProvider(
+          providers: [
+            ChangeNotifierProvider.value(value: settingsProvider),
+            ChangeNotifierProvider.value(value: tabProvider),
+          ],
+          child: MaterialApp(
+            home: Scaffold(
+              body: SizedBox(
+                width: 400,
+                height: 500,
+                child: CodeEditorWidget(
+                  rootPath: tempDir.path,
+                  filePath: testFile.path,
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final codeEditor = tester.widget<CodeEditor>(find.byType(CodeEditor));
+      final scrollController = codeEditor.scrollController!;
+      final vScroller = scrollController.verticalScroller;
+
+      // Scroll down to line 20 first
+      vScroller.jumpTo(300.0);
+      await tester.pumpAndSettle();
+      expect(vScroller.offset, 300.0);
+
+      final gesture1 = await tester.createGesture();
+      final gesture2 = await tester.createGesture();
+
+      // Down with 2 fingers distance 200.0
+      await gesture1.down(const Offset(200, 150));
+      await gesture2.down(const Offset(200, 350));
+      await tester.pump();
+
+      // Zoom out gradually in multiple steps crossing multiple line boundaries
+      double prevOffset = vScroller.offset;
+      for (int step = 1; step <= 5; step++) {
+        final newY = 350.0 - step * 15.0; // Distance decreases from 200 -> 185 -> 170 -> 155...
+        await gesture2.moveTo(Offset(200, newY));
+        await tester.pump();
+
+        final currentOffset = vScroller.offset;
+        // As we zoom out, text shrinks so focal anchor moves offset downward smoothly (less scroll offset needed)
+        expect(currentOffset, lessThanOrEqualTo(prevOffset));
+        // Ensure no sudden teleportation jump (each step moves smoothly and never jumps by a full line height reversal)
+        expect(prevOffset - currentOffset, lessThan(100.0));
+        prevOffset = currentOffset;
+      }
+
+      await gesture1.up();
+      await gesture2.up();
+      await tester.pumpAndSettle();
+
+      expect(settingsProvider.fontSize, lessThan(20.0));
 
       try {
         tempDir.deleteSync(recursive: true);

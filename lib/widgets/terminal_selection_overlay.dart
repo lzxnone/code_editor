@@ -298,7 +298,10 @@ class _TerminalSelectionOverlayState extends State<TerminalSelectionOverlay> {
           onCopy: _handleCopy,
           onPaste: _handlePaste,
           onSelectAll: _handleSelectAll,
-          onDismiss: _hideMenu,
+          onDismiss: () {
+            _hideMenu();
+            widget.controller.clearSelection();
+          },
         );
       },
     );

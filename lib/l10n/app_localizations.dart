@@ -602,6 +602,18 @@ abstract class AppLocalizations {
   /// **'\$ git status -s # 终端字体预览'**
   String get terminalFontPreview;
 
+  /// No description provided for @terminalFontSize.
+  ///
+  /// In zh, this message translates to:
+  /// **'终端字号'**
+  String get terminalFontSize;
+
+  /// No description provided for @terminalFontSizeDialogTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'终端字号'**
+  String get terminalFontSizeDialogTitle;
+
   /// No description provided for @fontName.
   ///
   /// In zh, this message translates to:
