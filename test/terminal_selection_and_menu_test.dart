@@ -485,5 +485,148 @@ void main() {
       expect(scrollController.position.pixels, equals(scrollPixelsBeforeRelease));
       expect(find.text('复制'), findsOneWidget);
     });
+
+    testWidgets('执行 clear（含 ESC[3J 清空回滚缓冲）之后仍可正常框选、手柄与复制可用', (tester) async {
+      for (int i = 0; i < 60; i++) {
+        terminal.write('Line $i\r\n');
+      }
+
+      await tester.pumpWidget(buildTestWidget(height: 300));
+      await tester.pumpAndSettle();
+
+      // shell 的 clear / Ctrl+L：清屏 + 清空回滚缓冲（xterm-256color 带 E3 能力）
+      terminal.write('\x1b[H\x1b[2J\x1b[3J');
+      terminal.write('Hello Clear World\r\n');
+      await tester.pumpAndSettle();
+
+      final terminalTopLeft = tester.getTopLeft(find.byType(xterm.TerminalView));
+      final gesture = await tester.startGesture(
+        terminalTopLeft + const Offset(15, 15),
+        kind: PointerDeviceKind.mouse,
+      );
+      await tester.pump();
+      await gesture.moveBy(const Offset(60, 0));
+      await tester.pump();
+      await gesture.up();
+      await tester.pumpAndSettle();
+
+      // 选区行号必须落在真实缓冲区范围内（补丁前行号会整体偏移出界，选区根本无法绘制）
+      expect(controller.selection, isNotNull);
+      expect(controller.selection!.isCollapsed, isFalse);
+      expect(controller.selection!.begin.y, lessThan(terminal.buffer.height));
+      expect(controller.selection!.end.y, lessThan(terminal.buffer.height));
+
+      final handleFinder = find.byWidgetPredicate(
+        (w) => w.runtimeType.toString() == '_TerminalSelectionHandle',
+      );
+      expect(handleFinder, findsNWidgets(2));
+      expect(find.text('复制'), findsOneWidget);
+
+      // 复制内容真实有效（补丁前 getText(selection) 会得到空串）
+      await tester.tap(find.text('复制'));
+      await tester.pump();
+      await tester.pump(const Duration(seconds: 3));
+      await tester.pumpAndSettle();
+
+      final clipData = await Clipboard.getData(Clipboard.kTextPlain);
+      expect(clipData?.text?.trim(), isNotEmpty);
+      expect(terminal.buffer.getText(), contains(clipData!.text!.trim()));
+    });
+
+    testWidgets('执行 clear 使选区所在行被裁掉后，残留手柄与菜单会被自动清理', (tester) async {
+      for (int i = 0; i < 60; i++) {
+        terminal.write('Line $i\r\n');
+      }
+      final scrollController = ScrollController();
+      addTearDown(scrollController.dispose);
+
+      await tester.pumpWidget(buildTestWidget(scrollController: scrollController, height: 300));
+      await tester.pumpAndSettle();
+
+      // 滚到顶部，使首行位于可见视口内
+      scrollController.jumpTo(0.0);
+      await tester.pumpAndSettle();
+
+      // 先建立选区：手柄与菜单出现
+      controller.setSelection(
+        terminal.buffer.createAnchor(0, 0),
+        terminal.buffer.createAnchor(5, 0),
+      );
+      await tester.pumpAndSettle();
+
+      final handleFinder = find.byWidgetPredicate(
+        (w) => w.runtimeType.toString() == '_TerminalSelectionHandle',
+      );
+      expect(handleFinder, findsNWidgets(2));
+      expect(find.text('复制'), findsOneWidget);
+
+      // 清空回滚缓冲：选区锚点随被裁掉的行一起失效
+      terminal.write('\x1b[3J');
+      await tester.pumpAndSettle();
+
+      expect(controller.selection, isNull);
+      expect(handleFinder, findsNothing);
+      expect(find.text('复制'), findsNothing);
+    });
+
+    testWidgets('多行选区整体位于可见视口下方时，菜单贴视口底边而不是屏幕顶部', (tester) async {
+      for (int i = 0; i < 60; i++) {
+        terminal.write('Line $i\r\n');
+      }
+      final scrollController = ScrollController();
+      addTearDown(scrollController.dispose);
+
+      await tester.pumpWidget(buildTestWidget(scrollController: scrollController, height: 300));
+      await tester.pumpAndSettle();
+
+      scrollController.jumpTo(0.0);
+      await tester.pumpAndSettle();
+
+      final render = terminalViewKey.currentState!.renderTerminal;
+      final lastVisibleRow = render.getCellOffset(Offset(0, render.size.height)).y;
+
+      // 跨 3 行、且整体位于可见视口下方
+      controller.setSelection(
+        terminal.buffer.createAnchor(0, lastVisibleRow + 3),
+        terminal.buffer.createAnchor(5, lastVisibleRow + 5),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('复制'), findsOneWidget);
+      final menuBottom = tester.getBottomLeft(find.byType(Material).last).dy;
+      final menuTop = tester.getTopLeft(find.byType(Material).last).dy;
+
+      // 参考编辑区 EditorToolbarPlacement.bottom：贴视口底边（safeBottom = 300 - 6 = 294）
+      expect(menuBottom, closeTo(290.0, 10.0));
+      expect(menuTop, greaterThan(200.0), reason: '不得被钉在屏幕顶部');
+    });
+
+    testWidgets('单行选区整体位于可见视口下方时，菜单同样贴视口底边显示', (tester) async {
+      for (int i = 0; i < 60; i++) {
+        terminal.write('Line $i\r\n');
+      }
+      final scrollController = ScrollController();
+      addTearDown(scrollController.dispose);
+
+      await tester.pumpWidget(buildTestWidget(scrollController: scrollController, height: 300));
+      await tester.pumpAndSettle();
+
+      scrollController.jumpTo(0.0);
+      await tester.pumpAndSettle();
+
+      final render = terminalViewKey.currentState!.renderTerminal;
+      final lastVisibleRow = render.getCellOffset(Offset(0, render.size.height)).y;
+
+      controller.setSelection(
+        terminal.buffer.createAnchor(0, lastVisibleRow + 3),
+        terminal.buffer.createAnchor(5, lastVisibleRow + 3),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('复制'), findsOneWidget);
+      final copyRect = tester.getRect(find.text('复制'));
+      expect(copyRect.top, greaterThan(200.0), reason: '不得被钉在屏幕顶部');
+      expect(copyRect.bottom, closeTo(290.0 - 9.0, 12.0), reason: '应贴视口底边');
+    });
   });
 }

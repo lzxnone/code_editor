@@ -15,6 +15,10 @@ enum TerminalToolbarPlacement {
   aboveStart,
   belowEnd,
   top,
+
+  /// 选区整体位于可见视口下方时：贴视口底边（紧贴软键盘 / 虚拟按键栏上方）显示，
+  /// 与代码编辑区的 `EditorToolbarPlacement.bottom` 行为一致
+  bottom,
   smart,
 }
 
@@ -51,6 +55,11 @@ class _TerminalSelectionOverlayState extends State<TerminalSelectionOverlay> {
   bool _isPointerSelecting = false;
   Offset? _lastActiveAnchor;
 
+  /// 记录上一次构建时是否存在有效选区：
+  /// 用于在缓冲区变更（clear / ESC[3J 裁掉选区所在行）导致锚点失效时，
+  /// 及时收起残留的手柄与菜单，同时避免高频输出的额外开销。
+  bool _lastHadSelection = false;
+
   // 拖动手柄时的自动滚动引擎（参考 re_editor 架构，采用带严格 guard 条件的循环与全局指针路由保底）
   bool _isAutoScrolling = false;
   Offset? _lastDragGlobalPosition;
@@ -62,6 +71,10 @@ class _TerminalSelectionOverlayState extends State<TerminalSelectionOverlay> {
   void initState() {
     super.initState();
     widget.controller.addListener(_onSelectionChanged);
+    // 监听底层终端缓冲区变化：shell 的 clear / Ctrl+L（ESC[3J 清除回滚缓冲）会让
+    // 选区锚点随被裁掉的行一起失效，此时 controller 本身不会收到通知，
+    // 必须由这里主动清理，否则会残留悬空的拖动手柄与浮动菜单。
+    widget.terminal.addListener(_onTerminalBufferChanged);
     // 注入全局指针路由：无论手柄被何种异常情况打断，只要系统检测到任何 PointerUp 或 PointerCancel，立即停止滚动！
     GestureBinding.instance.pointerRouter.addGlobalRoute(_handleGlobalPointerEvent);
   }
@@ -73,6 +86,10 @@ class _TerminalSelectionOverlayState extends State<TerminalSelectionOverlay> {
       oldWidget.controller.removeListener(_onSelectionChanged);
       widget.controller.addListener(_onSelectionChanged);
     }
+    if (oldWidget.terminal != widget.terminal) {
+      oldWidget.terminal.removeListener(_onTerminalBufferChanged);
+      widget.terminal.addListener(_onTerminalBufferChanged);
+    }
   }
 
   @override
@@ -80,6 +97,7 @@ class _TerminalSelectionOverlayState extends State<TerminalSelectionOverlay> {
     GestureBinding.instance.pointerRouter.removeGlobalRoute(_handleGlobalPointerEvent);
     _stopAutoScroll();
     widget.controller.removeListener(_onSelectionChanged);
+    widget.terminal.removeListener(_onTerminalBufferChanged);
     _hideMenu();
     super.dispose();
   }
@@ -136,10 +154,13 @@ class _TerminalSelectionOverlayState extends State<TerminalSelectionOverlay> {
     if (!mounted) return;
     final selection = widget.controller.selection;
     if (selection == null || selection.isCollapsed) {
+      _lastHadSelection = false;
       _hideMenu();
       setState(() {});
       return;
     }
+
+    _lastHadSelection = true;
 
     // 若非正在拖动手柄或滑动，展示菜单
     if (_dragging == _DraggingHandle.none && !_isScrolling && !_isPointerSelecting) {
@@ -147,6 +168,25 @@ class _TerminalSelectionOverlayState extends State<TerminalSelectionOverlay> {
       _showMenu();
     }
     setState(() {});
+  }
+
+  /// 底层终端缓冲区发生变化（可能是普通输出，也可能是 clear / ESC[3J 裁掉选区所在行）。
+  /// 一旦选区锚点失效，controller 不会收到通知，需在此清理残留的手柄与菜单。
+  void _onTerminalBufferChanged() {
+    if (!mounted) return;
+    // 快速短路：当前没有任何选区相关 UI 时，完全不做额外工作（高频输出场景零成本）
+    if (!_lastHadSelection && _menuOverlayEntry == null) {
+      return;
+    }
+    final selection = widget.controller.selection;
+    if (selection != null && !selection.isCollapsed) {
+      _lastHadSelection = true;
+      return;
+    }
+    _lastHadSelection = false;
+    _hideMenu();
+    // clearSelection() 会通知 controller，从而走 _onSelectionChanged 收起手柄并重建
+    widget.controller.clearSelection();
   }
 
   void _updateLastActiveAnchorDefault() {
@@ -178,28 +218,75 @@ class _TerminalSelectionOverlayState extends State<TerminalSelectionOverlay> {
     if (render == null || !render.hasSize) return;
 
     final range = selection.normalized;
+
+    // 防御：若缓冲区曾被裁剪/重建导致锚点行号越界，视为无效选区并清理
+    if (range.begin.y >= widget.terminal.buffer.height ||
+        range.end.y >= widget.terminal.buffer.height) {
+      widget.controller.clearSelection();
+      return;
+    }
+
+    final double lineHeight = render.cellSize.height;
+    final terminalRect = _getTerminalRect();
+
+    // --- 端点可见性判定（与编辑区 _MobileToolbarLayoutDelegate 的定位决策保持一致） ---
+    final Offset startLocal = render.getOffset(range.begin) + Offset(0, lineHeight);
+    final Offset endLocal = render.getOffset(range.end) + Offset(0, lineHeight);
+    bool isEndpointOnScreen(Offset local) {
+      return local.dy >= -1.0 &&
+          local.dy <= render.size.height + 1.0 &&
+          local.dx >= -1.0 &&
+          local.dx <= render.size.width + 1.0;
+    }
+
+    final bool isStartOnScreen = isEndpointOnScreen(startLocal);
+    final bool isEndOnScreen = isEndpointOnScreen(endLocal);
+    final bool isNeitherEndpointOnScreen = !isStartOnScreen && !isEndOnScreen;
+
+    final int lastVisibleRow = render.getCellOffset(Offset(0, render.size.height)).y;
+    final int firstVisibleRow = render.getCellOffset(Offset.zero).y;
+
+    /// 选区整体位于可见视口下方（屏幕下方）
+    final bool isEntirelyBelowViewport =
+        isNeitherEndpointOnScreen && range.begin.y > lastVisibleRow;
+
+    /// 选区整体位于可见视口上方
+    final bool isEntirelyAboveViewport =
+        isNeitherEndpointOnScreen && range.end.y < firstVisibleRow;
+
     final bool isMultiline = (range.end.y - range.begin.y) >= 2;
 
-    TerminalToolbarPlacement effectivePlacement = placement ??
-        (isMultiline ? TerminalToolbarPlacement.top : TerminalToolbarPlacement.smart);
+    TerminalToolbarPlacement effectivePlacement;
 
-    Offset effectiveAnchor;
-    if (targetAnchor != null) {
-      effectiveAnchor = targetAnchor;
-    } else if (effectivePlacement == TerminalToolbarPlacement.top) {
-      final terminalRect = _getTerminalRect();
-      effectiveAnchor = terminalRect != null
-          ? Offset(terminalRect.center.dx, terminalRect.top)
-          : render.localToGlobal(render.getOffset(range.begin));
+    if (placement != null && placement != TerminalToolbarPlacement.smart) {
+      // 调用方显式指定（拖动手柄松手、全选等）：原样尊重
+      effectivePlacement = placement;
+    } else if (isEntirelyBelowViewport) {
+      // 选区整体在屏幕下方：贴视口底部显示，避免把菜单钉到顶部或压在选区文字上
+      effectivePlacement = TerminalToolbarPlacement.bottom;
+    } else if (isEntirelyAboveViewport) {
+      // 选区整体在屏幕上方：置于顶部安全区
+      effectivePlacement = TerminalToolbarPlacement.top;
+    } else if (placement == TerminalToolbarPlacement.smart || !isMultiline) {
+      // 单行选区 / 指针抬起：靠近选区端点，由布局代理就近翻转避让
+      effectivePlacement = TerminalToolbarPlacement.smart;
     } else {
-      final endPointInRender = render.getOffset(range.end) + Offset(0, render.cellSize.height);
-      effectiveAnchor = render.localToGlobal(endPointInRender);
+      // 多行选区：置于顶部安全区，绝不遮挡多行文本（既有行为）
+      effectivePlacement = TerminalToolbarPlacement.top;
     }
+
+    final Offset effectiveAnchor = targetAnchor ??
+        _resolvePlacementAnchor(
+          placement: effectivePlacement,
+          render: render,
+          beginOffset: range.begin,
+          terminalRect: terminalRect,
+          startLocal: startLocal,
+          endLocal: endLocal,
+        );
     _lastActiveAnchor = effectiveAnchor;
 
     final overlayState = Overlay.of(context, rootOverlay: true);
-    final terminalRect = _getTerminalRect();
-    final lineHeight = render.cellSize.height;
 
     _menuOverlayEntry = OverlayEntry(
       builder: (context) {
@@ -217,6 +304,32 @@ class _TerminalSelectionOverlayState extends State<TerminalSelectionOverlay> {
     );
 
     overlayState.insert(_menuOverlayEntry!);
+  }
+
+  /// 依据展示位置策略换算菜单锚点（全局坐标）
+  Offset _resolvePlacementAnchor({
+    required TerminalToolbarPlacement placement,
+    required RenderTerminal render,
+    required xterm.CellOffset beginOffset,
+    required Rect? terminalRect,
+    required Offset startLocal,
+    required Offset endLocal,
+  }) {
+    switch (placement) {
+      case TerminalToolbarPlacement.top:
+        return terminalRect != null
+            ? Offset(terminalRect.center.dx, terminalRect.top)
+            : render.localToGlobal(render.getOffset(beginOffset));
+      case TerminalToolbarPlacement.bottom:
+        return terminalRect != null
+            ? Offset(terminalRect.center.dx, terminalRect.bottom)
+            : render.localToGlobal(endLocal);
+      case TerminalToolbarPlacement.aboveStart:
+        return render.localToGlobal(startLocal);
+      case TerminalToolbarPlacement.belowEnd:
+      case TerminalToolbarPlacement.smart:
+        return render.localToGlobal(endLocal);
+    }
   }
 
   Future<void> _handleCopy() async {
@@ -821,6 +934,13 @@ class _TerminalToolbarLayoutDelegate extends SingleChildLayoutDelegate {
         } else {
           y = anchor.dy - lineHeight - childSize.height - 8.0;
         }
+        break;
+
+      case TerminalToolbarPlacement.bottom:
+        // 选区整体在视口下方：贴视口底边显示（紧贴软键盘 / 虚拟按键栏上方），
+        // 与代码编辑区的 EditorToolbarPlacement.bottom 完全一致
+        x = safeLeft + (availableWidth - childSize.width) / 2.0;
+        y = max(screenTop, safeBottom - childSize.height - 4.0);
         break;
 
       case TerminalToolbarPlacement.smart:

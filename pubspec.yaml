@@ -27,7 +27,10 @@ dependencies:
   permission_handler: ^13.0.2
   path_provider: ^2.1.5
   archive: ^3.6.1
-  xterm: ^4.0.0
+  # 内置副本：上游 4.0.0 的 IndexAwareCircularBuffer.trimStart() 会破坏行索引不变式，
+  # 导致 shell 的 clear / Ctrl+L（ESC[3J）之后终端框选失效。补丁说明见 packages/xterm/PATCHES.md
+  xterm:
+    path: packages/xterm
   flutter_pty: ^0.4.1
 
 dev_dependencies:
