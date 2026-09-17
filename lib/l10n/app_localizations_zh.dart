@@ -1767,4 +1767,13 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get chrootFailedFallbackToProot => 'Chroot 挂载或权限失败，已自动降级为 PRoot 运行模式';
+
+  @override
+  String get drawerTabExplorer => '文件';
+
+  @override
+  String get drawerTabSearch => '搜索';
+
+  @override
+  String get drawerTabGit => '源代码管理';
 }

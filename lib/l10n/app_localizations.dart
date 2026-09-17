@@ -3025,6 +3025,24 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'Chroot 挂载或权限失败，已自动降级为 PRoot 运行模式'**
   String get chrootFailedFallbackToProot;
+
+  /// No description provided for @drawerTabExplorer.
+  ///
+  /// In zh, this message translates to:
+  /// **'文件'**
+  String get drawerTabExplorer;
+
+  /// No description provided for @drawerTabSearch.
+  ///
+  /// In zh, this message translates to:
+  /// **'搜索'**
+  String get drawerTabSearch;
+
+  /// No description provided for @drawerTabGit.
+  ///
+  /// In zh, this message translates to:
+  /// **'源代码管理'**
+  String get drawerTabGit;
 }
 
 class _AppLocalizationsDelegate

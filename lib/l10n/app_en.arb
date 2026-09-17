@@ -1009,5 +1009,8 @@
     }
   },
   "chrootDisabledNoRoot": "Unavailable without Root permission",
-  "chrootFailedFallbackToProot": "Chroot mount or permission failed, automatically fell back to PRoot"
+  "chrootFailedFallbackToProot": "Chroot mount or permission failed, automatically fell back to PRoot",
+  "drawerTabExplorer": "Explorer",
+  "drawerTabSearch": "Search",
+  "drawerTabGit": "Source Control"
 }

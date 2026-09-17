@@ -1827,4 +1827,13 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get chrootFailedFallbackToProot =>
       'Chroot mount or permission failed, automatically fell back to PRoot';
+
+  @override
+  String get drawerTabExplorer => 'Explorer';
+
+  @override
+  String get drawerTabSearch => 'Search';
+
+  @override
+  String get drawerTabGit => 'Source Control';
 }

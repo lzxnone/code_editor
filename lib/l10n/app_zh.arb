@@ -1009,5 +1009,8 @@
     }
   },
   "chrootDisabledNoRoot": "未授予 Root 权限不可用",
-  "chrootFailedFallbackToProot": "Chroot 挂载或权限失败，已自动降级为 PRoot 运行模式"
+  "chrootFailedFallbackToProot": "Chroot 挂载或权限失败，已自动降级为 PRoot 运行模式",
+  "drawerTabExplorer": "文件",
+  "drawerTabSearch": "搜索",
+  "drawerTabGit": "源代码管理"
 }
