@@ -2,12 +2,15 @@ import 'dart:async';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:path/path.dart' as p;
+import 'package:provider/provider.dart';
 
 import '../l10n/app_localizations.dart';
 import '../models/distro_manifest.dart';
+import '../providers/terminal_provider.dart';
 import '../widgets/distro_extract_dialog.dart';
 import 'distro_installer.dart';
 import 'distro_manager.dart';
+import 'lsp/lsp_manager.dart';
 
 /// 代码智能与运行时引擎服务（基于统一主系统 Ubuntu 24.04）
 class InternalEngineService extends ChangeNotifier {
@@ -81,6 +84,63 @@ class InternalEngineService extends ChangeNotifier {
       _isChecking = false;
       notifyListeners();
       debugPrint('解压 Ubuntu 引擎失败: $e');
+      return false;
+    }
+  }
+
+  /// 彻底销毁并重建内置 Ubuntu 容器
+  Future<bool> rebuildEngine(BuildContext context) async {
+    _isChecking = true;
+    notifyListeners();
+
+    TerminalProvider? terminalProvider;
+    try {
+      terminalProvider = Provider.of<TerminalProvider>(context, listen: false);
+    } catch (_) {}
+
+    try {
+      // 1. 关闭所有运行中的后台语言服务会话
+      await LspManager.instance.disposeAll();
+
+      // 2. 清理终端中属于 ubuntu 的活跃会话
+      terminalProvider?.removeSessionsForDistro(DistroRepository.defaultSystemName);
+
+      // 3. 彻底删除 ubuntu 容器目录
+      if (customEngineDir != null) {
+        if (customEngineDir!.existsSync()) {
+          customEngineDir!.deleteSync(recursive: true);
+        }
+      } else {
+        await DistroManager().deleteSystem(DistroRepository.defaultSystemName);
+      }
+
+      if (!context.mounted) {
+        _isChecking = false;
+        notifyListeners();
+        return false;
+      }
+
+      final l10n = AppLocalizations.of(context);
+
+      // 4. 唤起解压弹窗重新从内置资源解压 Ubuntu
+      final success = await DistroExtractDialog.show(
+        context: context,
+        systemName: l10n?.internalEngineTitle ?? '代码运行与智能补全引擎 (Ubuntu)',
+        task: (onProgress, isCancelled) async {
+          await extractEngine(
+            onProgress: onProgress,
+            isCancelled: isCancelled,
+          );
+        },
+      );
+
+      _isChecking = false;
+      notifyListeners();
+      return success;
+    } catch (e) {
+      _isChecking = false;
+      notifyListeners();
+      debugPrint('重建 Ubuntu 引擎失败: $e');
       return false;
     }
   }

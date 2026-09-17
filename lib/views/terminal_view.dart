@@ -249,7 +249,7 @@ class _TerminalSessionBodyState extends State<_TerminalSessionBody> {
       final points = _pointerPositions.values.toList();
       final currentDistance = (points[0] - points[1]).distance;
       final scale = currentDistance / _initialPinchDistance!;
-      final rawFontSize = (_initialPinchFontSize! * scale).clamp(8.0, 32.0);
+      final rawFontSize = (_initialPinchFontSize! * scale).clamp(SettingsProvider.minFontSize, SettingsProvider.maxFontSize);
       final newFontSize = (rawFontSize * 10).round() / 10.0;
       final fontScale = newFontSize / _initialPinchFontSize!;
 
@@ -367,31 +367,73 @@ class _TerminalSessionBodyState extends State<_TerminalSessionBody> {
         child: Column(
           children: [
             Expanded(
-              child: Listener(
-                behavior: HitTestBehavior.translucent,
-                onPointerDown: (e) => _handlePointerDown(e, currentBaseFontSize),
-                onPointerMove: _handlePointerMove,
-                onPointerUp: _handlePointerUp,
-                onPointerCancel: _handlePointerCancel,
-                child: TerminalSelectionOverlay(
-                  terminal: session.terminal,
-                  controller: _terminalController,
-                  terminalViewKey: _terminalViewKey,
-                  scrollController: _terminalScrollController,
-                  focusNode: session.focusNode,
-                  child: xterm.TerminalView(
-                    session.terminal,
-                    key: _terminalViewKey,
-                    controller: _terminalController,
-                    scrollController: _terminalScrollController,
-                    focusNode: session.focusNode,
-                    autofocus: true,
-                    theme: terminalThemeWithBackground(backgroundColor),
-                    textStyle: terminalStyle,
-                    cursorType: xterm.TerminalCursorType.block,
-                    padding: const EdgeInsets.fromLTRB(10.0, 8.0, 10.0, 20.0),
+              child: Stack(
+                children: [
+                  Positioned.fill(
+                    child: Listener(
+                      behavior: HitTestBehavior.translucent,
+                      onPointerDown: (e) => _handlePointerDown(e, currentBaseFontSize),
+                      onPointerMove: _handlePointerMove,
+                      onPointerUp: _handlePointerUp,
+                      onPointerCancel: _handlePointerCancel,
+                      child: TerminalSelectionOverlay(
+                        terminal: session.terminal,
+                        controller: _terminalController,
+                        terminalViewKey: _terminalViewKey,
+                        scrollController: _terminalScrollController,
+                        focusNode: session.focusNode,
+                        child: xterm.TerminalView(
+                          session.terminal,
+                          key: _terminalViewKey,
+                          controller: _terminalController,
+                          scrollController: _terminalScrollController,
+                          focusNode: session.focusNode,
+                          autofocus: true,
+                          theme: terminalThemeWithBackground(backgroundColor),
+                          textStyle: terminalStyle,
+                          cursorType: xterm.TerminalCursorType.block,
+                          padding: const EdgeInsets.fromLTRB(10.0, 8.0, 10.0, 20.0),
+                        ),
+                      ),
+                    ),
                   ),
-                ),
+                  // 双指缩放实时字号悬浮胶囊提示
+                  if (_isPinching && _activeZoomFontSize != null)
+                    Positioned(
+                      top: 16,
+                      left: 0,
+                      right: 0,
+                      child: Center(
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: backgroundColor.computeLuminance() > 0.5
+                                ? Colors.black.withValues(alpha: 0.75)
+                                : Colors.white.withValues(alpha: 0.85),
+                            borderRadius: BorderRadius.circular(16),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withValues(alpha: 0.2),
+                                blurRadius: 8,
+                                offset: const Offset(0, 2),
+                              ),
+                            ],
+                          ),
+                          child: Text(
+                            '${_activeZoomFontSize!.round()} pt',
+                            style: TextStyle(
+                              color: backgroundColor.computeLuminance() > 0.5
+                                  ? Colors.white
+                                  : Colors.black87,
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                              letterSpacing: 0.3,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                ],
               ),
             ),
             if (keyboardEnabled && keyboardConfig != null && keyboardConfig.hasKeys)

@@ -1756,4 +1756,48 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get emptyLspLanguagesSubtitle =>
       'Open any source file to trigger installation on demand, or click \"+\" to add manually';
+
+  @override
+  String lspQuickFixTitle(int line) {
+    return 'Code Issues & Fixes (Line $line)';
+  }
+
+  @override
+  String get lspNoFixAvailable => 'No automated fixes available';
+
+  @override
+  String diagnosticLinePrefix(int line, String message) {
+    return 'Line $line: $message';
+  }
+
+  @override
+  String get quickFixButton => 'Fix';
+
+  @override
+  String get containerSection => 'Container';
+
+  @override
+  String get destroyAndRebuildContainer => 'Destroy and Rebuild Container';
+
+  @override
+  String get destroyAndRebuildContainerSubtitle =>
+      'Clear installed environments in container and re-extract clean container';
+
+  @override
+  String get destroyContainerConfirmTitle => 'Destroy and Rebuild Container';
+
+  @override
+  String get destroyContainerConfirmMessage =>
+      'This will permanently delete all installed packages and configurations in the Ubuntu container (project files will not be affected) and re-extract a clean container system. Continue?';
+
+  @override
+  String get destroyContainerButton => 'Destroy & Rebuild';
+
+  @override
+  String get containerRebuiltSuccess => 'Container rebuilt successfully';
+
+  @override
+  String containerRebuildFailed(String error) {
+    return 'Failed to rebuild container: $error';
+  }
 }

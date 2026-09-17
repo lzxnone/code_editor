@@ -958,5 +958,41 @@
   "installingStatus": "正在安装…",
   "uninstallingStatus": "正在卸载…",
   "emptyLspLanguagesTitle": "暂无已安装的代码智能组件",
-  "emptyLspLanguagesSubtitle": "在编辑器中打开代码文件即可按需触发安装，或点击右上角 \"+\" 手动添加"
+  "emptyLspLanguagesSubtitle": "在编辑器中打开代码文件即可按需触发安装，或点击右上角 \"+\" 手动添加",
+  "lspQuickFixTitle": "代码问题与修复 (第 {line} 行)",
+  "@lspQuickFixTitle": {
+    "placeholders": {
+      "line": {
+        "type": "int"
+      }
+    }
+  },
+  "lspNoFixAvailable": "当前报错未提供自动修复动作",
+  "diagnosticLinePrefix": "行 {line}: {message}",
+  "@diagnosticLinePrefix": {
+    "placeholders": {
+      "line": {
+        "type": "int"
+      },
+      "message": {
+        "type": "String"
+      }
+    }
+  },
+  "quickFixButton": "修复",
+  "containerSection": "容器",
+  "destroyAndRebuildContainer": "销毁并重建容器",
+  "destroyAndRebuildContainerSubtitle": "清空容器内已安装环境并重新解压纯净容器",
+  "destroyContainerConfirmTitle": "销毁并重建容器",
+  "destroyContainerConfirmMessage": "此操作将永久清空当前 Ubuntu 容器内的所有已安装软件包和环境配置（工程文件不受影响），并重新解压纯净容器系统。确定要继续吗？",
+  "destroyContainerButton": "销毁并重建",
+  "containerRebuiltSuccess": "容器已成功重建",
+  "containerRebuildFailed": "容器重建失败: {error}",
+  "@containerRebuildFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  }
 }

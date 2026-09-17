@@ -2905,6 +2905,78 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'在编辑器中打开代码文件即可按需触发安装，或点击右上角 \"+\" 手动添加'**
   String get emptyLspLanguagesSubtitle;
+
+  /// No description provided for @lspQuickFixTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'代码问题与修复 (第 {line} 行)'**
+  String lspQuickFixTitle(int line);
+
+  /// No description provided for @lspNoFixAvailable.
+  ///
+  /// In zh, this message translates to:
+  /// **'当前报错未提供自动修复动作'**
+  String get lspNoFixAvailable;
+
+  /// No description provided for @diagnosticLinePrefix.
+  ///
+  /// In zh, this message translates to:
+  /// **'行 {line}: {message}'**
+  String diagnosticLinePrefix(int line, String message);
+
+  /// No description provided for @quickFixButton.
+  ///
+  /// In zh, this message translates to:
+  /// **'修复'**
+  String get quickFixButton;
+
+  /// No description provided for @containerSection.
+  ///
+  /// In zh, this message translates to:
+  /// **'容器'**
+  String get containerSection;
+
+  /// No description provided for @destroyAndRebuildContainer.
+  ///
+  /// In zh, this message translates to:
+  /// **'销毁并重建容器'**
+  String get destroyAndRebuildContainer;
+
+  /// No description provided for @destroyAndRebuildContainerSubtitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'清空容器内已安装环境并重新解压纯净容器'**
+  String get destroyAndRebuildContainerSubtitle;
+
+  /// No description provided for @destroyContainerConfirmTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'销毁并重建容器'**
+  String get destroyContainerConfirmTitle;
+
+  /// No description provided for @destroyContainerConfirmMessage.
+  ///
+  /// In zh, this message translates to:
+  /// **'此操作将永久清空当前 Ubuntu 容器内的所有已安装软件包和环境配置（工程文件不受影响），并重新解压纯净容器系统。确定要继续吗？'**
+  String get destroyContainerConfirmMessage;
+
+  /// No description provided for @destroyContainerButton.
+  ///
+  /// In zh, this message translates to:
+  /// **'销毁并重建'**
+  String get destroyContainerButton;
+
+  /// No description provided for @containerRebuiltSuccess.
+  ///
+  /// In zh, this message translates to:
+  /// **'容器已成功重建'**
+  String get containerRebuiltSuccess;
+
+  /// No description provided for @containerRebuildFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'容器重建失败: {error}'**
+  String containerRebuildFailed(String error);
 }
 
 class _AppLocalizationsDelegate

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:code_editor/widgets/code_autocomplete_view.dart';
+import 'package:code_editor/services/code_completion/smart_prompts_builder.dart';
 import 'package:re_editor/re_editor.dart';
 
 void main() {
@@ -201,6 +202,181 @@ void main() {
       await tester.pumpWidget(const SizedBox());
       await tester.pump(const Duration(milliseconds: 600));
       controller.dispose();
+    });
+
+    testWidgets('CodeAutocompleteView supports bidirectional scrolling without horizontal truncation', (tester) async {
+      const longWord = 'extremelyLongMethodNameWithManyArgumentsAndParameters(int foo, String bar, double baz, List<Map<String, dynamic>> nestedOptions)';
+      final notifier = ValueNotifier<CodeAutocompleteEditingValue>(
+        CodeAutocompleteEditingValue(
+          input: '',
+          prompts: [
+            const CodeKeywordPrompt(word: 'short_item'),
+            const CodeKeywordPrompt(word: longWord),
+            for (int i = 0; i < 8; i++) CodeKeywordPrompt(word: 'vertical_item_$i'),
+          ],
+          index: 0,
+        ),
+      );
+
+      String? selectedWord;
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: Center(
+              child: SizedBox(
+                width: 270.0,
+                height: 150.0,
+                child: CodeAutocompleteView(
+                  notifier: notifier,
+                  onSelected: (result) {
+                    selectedWord = (result as dynamic).word as String?;
+                  },
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+
+      // Verify both horizontal and vertical SingleChildScrollViews are present
+      final scrollViews = find.byType(SingleChildScrollView);
+      expect(scrollViews, findsNWidgets(2));
+
+      // Drag horizontally to test horizontal scrolling
+      final horizontalFinder = find.byWidgetPredicate(
+        (w) => w is SingleChildScrollView && w.scrollDirection == Axis.horizontal,
+      );
+      expect(horizontalFinder, findsOneWidget);
+
+      await tester.drag(horizontalFinder, const Offset(-120.0, 0.0));
+      await tester.pumpAndSettle();
+
+      final SingleChildScrollView hView = tester.widget(horizontalFinder);
+      expect(hView.controller!.offset, greaterThan(0.0));
+
+      // Drag vertically at visible center to test vertical scrolling
+      final verticalFinder = find.byWidgetPredicate(
+        (w) => w is SingleChildScrollView && w.scrollDirection == Axis.vertical,
+      );
+      expect(verticalFinder, findsOneWidget);
+
+      await tester.drag(find.byType(CodeAutocompleteView), const Offset(0.0, -100.0));
+      await tester.pumpAndSettle();
+
+      final SingleChildScrollView vView = tester.widget(verticalFinder);
+      expect(vView.controller!.offset, greaterThan(0.0));
+
+      // Tap on a visible item after scrolling
+      expect(find.text('vertical_item_3'), findsOneWidget);
+      await tester.tap(find.text('vertical_item_3'));
+      await tester.pump();
+
+      expect(selectedWord, equals('vertical_item_3'));
+
+      await tester.pumpWidget(const SizedBox());
+      notifier.dispose();
+    });
+
+    testWidgets('CodeAutocompleteView renders SmartPrompt with long type without ellipsis and allows horizontal scrolling', (tester) async {
+      final notifier = ValueNotifier<CodeAutocompleteEditingValue>(
+        CodeAutocompleteEditingValue(
+          input: '',
+          prompts: [
+            SmartPrompt(
+              word: 'veryLongAsyncMethodWithArguments',
+              type: 'Future<Map<String, List<CustomModelDefinition>>>',
+              kind: SmartPromptKind.function,
+            ),
+          ],
+          index: 0,
+        ),
+      );
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: Center(
+              child: SizedBox(
+                width: 270.0,
+                height: 100.0,
+                child: CodeAutocompleteView(
+                  notifier: notifier,
+                  onSelected: (_) {},
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+
+      final horizontalFinder = find.byWidgetPredicate(
+        (w) => w is SingleChildScrollView && w.scrollDirection == Axis.horizontal,
+      );
+      final SingleChildScrollView hView = tester.widget(horizontalFinder);
+      expect(hView.controller!.offset, equals(0.0));
+
+      // Scroll to the right
+      await tester.drag(find.byType(CodeAutocompleteView), const Offset(-200.0, 0.0));
+      await tester.pumpAndSettle();
+
+      expect(hView.controller!.offset, greaterThan(0.0));
+
+      await tester.pumpWidget(const SizedBox());
+      notifier.dispose();
+    });
+
+    testWidgets('CodeAutocompleteView places typeText immediately adjacent to word without pushing to far right', (tester) async {
+      final notifier = ValueNotifier<CodeAutocompleteEditingValue>(
+        CodeAutocompleteEditingValue(
+          input: '',
+          prompts: [
+            SmartPrompt(
+              word: 'foo',
+              type: 'int',
+              kind: SmartPromptKind.field,
+            ),
+            SmartPrompt(
+              word: 'extremelyLongMethodNameThatExpandsTheMenuWidthSignificantly(...)',
+              type: 'void',
+              kind: SmartPromptKind.function,
+            ),
+          ],
+          index: 0,
+        ),
+      );
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: Center(
+              child: SizedBox(
+                width: 270.0,
+                height: 100.0,
+                child: CodeAutocompleteView(
+                  notifier: notifier,
+                  onSelected: (_) {},
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+
+      final fooFinder = find.text('foo');
+      final intFinder = find.text('int');
+      expect(fooFinder, findsOneWidget);
+      expect(intFinder, findsOneWidget);
+
+      final fooTopRight = tester.getTopRight(fooFinder);
+      final intTopLeft = tester.getTopLeft(intFinder);
+
+      // The gap between 'foo' and 'int' should be exactly 8.0 (adjacent), not pushed hundreds of pixels away
+      final gap = intTopLeft.dx - fooTopRight.dx;
+      expect(gap, closeTo(8.0, 1.0));
+
+      await tester.pumpWidget(const SizedBox());
+      notifier.dispose();
     });
   });
 }

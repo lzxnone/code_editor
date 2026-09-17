@@ -1,6 +1,7 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:re_editor/re_editor.dart';
+import '../../l10n/app_localizations.dart';
 import '../../services/lsp/lsp_diagnostics_store.dart';
 import '../../services/lsp/lsp_protocol.dart';
 import '../lsp_quick_fix_dialog.dart';
@@ -117,6 +118,11 @@ class EditorDiagnosticController {
     final isErr = diags.any((d) => d.severity == LspDiagnosticSeverity.error);
     final color = isErr ? Colors.redAccent : Colors.amber;
     final icon = isErr ? Icons.error_outline : Icons.warning_amber_outlined;
+    final l10n = AppLocalizations.of(context);
+    final displayText = l10n != null
+        ? l10n.diagnosticLinePrefix(lineIndex + 1, first.message)
+        : 'Line ${lineIndex + 1}: ${first.message}';
+    final fixButtonText = l10n?.quickFixButton ?? 'Fix';
 
     return Material(
       color: Theme.of(context).colorScheme.surfaceContainerHighest,
@@ -146,7 +152,7 @@ class EditorDiagnosticController {
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
-                  '行 ${lineIndex + 1}: ${first.message}',
+                  displayText,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
@@ -164,12 +170,12 @@ class EditorDiagnosticController {
                 ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
-                  children: const [
-                    Icon(Icons.lightbulb, size: 12, color: Colors.amber),
-                    SizedBox(width: 2),
+                  children: [
+                    const Icon(Icons.lightbulb, size: 12, color: Colors.amber),
+                    const SizedBox(width: 2),
                     Text(
-                      '修复',
-                      style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Colors.amber),
+                      fixButtonText,
+                      style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Colors.amber),
                     ),
                   ],
                 ),

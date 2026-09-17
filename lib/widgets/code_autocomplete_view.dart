@@ -37,6 +37,7 @@ class CodeAutocompleteView extends StatefulWidget implements PreferredSizeWidget
 
 class _CodeAutocompleteViewState extends State<CodeAutocompleteView> {
   final ScrollController _scrollController = ScrollController();
+  final ScrollController _horizontalScrollController = ScrollController();
 
   @override
   void initState() {
@@ -57,6 +58,7 @@ class _CodeAutocompleteViewState extends State<CodeAutocompleteView> {
   void dispose() {
     widget.notifier.removeListener(_handleValueChanged);
     _scrollController.dispose();
+    _horizontalScrollController.dispose();
     super.dispose();
   }
 
@@ -73,6 +75,9 @@ class _CodeAutocompleteViewState extends State<CodeAutocompleteView> {
       } else if (targetOffset > maxView) {
         _scrollController.jumpTo(math.max(0.0, targetOffset - viewportDimension + CodeAutocompleteView.itemHeight + CodeAutocompleteView.verticalPadding));
       }
+    }
+    if (value.index == 0 && _horizontalScrollController.hasClients) {
+      _horizontalScrollController.jumpTo(0.0);
     }
     setState(() {});
   }
@@ -103,17 +108,39 @@ class _CodeAutocompleteViewState extends State<CodeAutocompleteView> {
         ],
       ),
       clipBehavior: Clip.antiAlias,
-      child: ListView.builder(
+      child: Scrollbar(
         controller: _scrollController,
-        physics: const ClampingScrollPhysics(),
-        padding: const EdgeInsets.symmetric(vertical: 4.0),
-        itemCount: prompts.length,
-        itemExtent: CodeAutocompleteView.itemHeight,
-        itemBuilder: (context, index) {
-          final prompt = prompts[index];
-          final isSelected = index == value.index;
-          return _buildPromptItem(context, prompt, isSelected, index, theme, isDark);
-        },
+        notificationPredicate: (notification) => notification.metrics.axis == Axis.vertical,
+        child: Scrollbar(
+          controller: _horizontalScrollController,
+          notificationPredicate: (notification) => notification.metrics.axis == Axis.horizontal,
+          child: SingleChildScrollView(
+            controller: _horizontalScrollController,
+            scrollDirection: Axis.horizontal,
+            physics: const ClampingScrollPhysics(),
+            child: ConstrainedBox(
+              constraints: BoxConstraints(
+                minWidth: math.max(0.0, widget.width - 2.0),
+              ),
+              child: IntrinsicWidth(
+                child: SingleChildScrollView(
+                  controller: _scrollController,
+                  scrollDirection: Axis.vertical,
+                  physics: const ClampingScrollPhysics(),
+                  padding: const EdgeInsets.symmetric(vertical: 4.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      for (int index = 0; index < prompts.length; index++)
+                        _buildPromptItem(context, prompts[index], index == value.index, index, theme, isDark),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
       ),
     );
   }
@@ -144,13 +171,13 @@ class _CodeAutocompleteViewState extends State<CodeAutocompleteView> {
         color: isSelected ? highlightBg : defaultBg,
         padding: const EdgeInsets.symmetric(horizontal: 10.0),
         child: Row(
+          mainAxisSize: MainAxisSize.min,
           children: [
             _buildKindIcon(kind, theme),
             const SizedBox(width: 8.0),
-            Expanded(
-              child: _buildHighlightedText(prompt.word, matchedIndices, theme, isSelected),
-            ),
-            if (typeText.isNotEmpty)
+            _buildHighlightedText(prompt.word, matchedIndices, theme, isSelected),
+            if (typeText.isNotEmpty) ...[
+              const SizedBox(width: 8.0),
               Text(
                 typeText,
                 style: TextStyle(
@@ -159,8 +186,9 @@ class _CodeAutocompleteViewState extends State<CodeAutocompleteView> {
                   fontFamily: 'monospace',
                 ),
                 maxLines: 1,
-                overflow: TextOverflow.ellipsis,
+                softWrap: false,
               ),
+            ],
           ],
         ),
       ),
@@ -216,7 +244,7 @@ class _CodeAutocompleteViewState extends State<CodeAutocompleteView> {
           fontFamily: 'monospace',
         ),
         maxLines: 1,
-        overflow: TextOverflow.ellipsis,
+        softWrap: false,
       );
     }
 
@@ -246,7 +274,7 @@ class _CodeAutocompleteViewState extends State<CodeAutocompleteView> {
         children: spans,
       ),
       maxLines: 1,
-      overflow: TextOverflow.ellipsis,
+      softWrap: false,
     );
   }
 }

@@ -26,7 +26,7 @@ void main() {
 
       expect(provider.terminalFontSize, 16.0);
 
-      // Updates and clamps between 8.0 and 32.0
+      // Updates and clamps between 8.0 and 30.0
       await provider.setTerminalFontSize(20.0);
       expect(provider.terminalFontSize, 20.0);
 
@@ -34,10 +34,10 @@ void main() {
       expect(provider.terminalFontSize, 8.0);
 
       await provider.setTerminalFontSize(50.0);
-      expect(provider.terminalFontSize, 32.0);
+      expect(provider.terminalFontSize, 30.0);
 
       final prefs = await SharedPreferences.getInstance();
-      expect(prefs.getDouble('terminal_font_size'), 32.0);
+      expect(prefs.getDouble('terminal_font_size'), 30.0);
     });
 
     test('L10n: terminalFontSize strings exist in both zh and en', () {

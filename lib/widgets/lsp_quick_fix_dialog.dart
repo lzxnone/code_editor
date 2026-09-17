@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:re_editor/re_editor.dart';
+import '../l10n/app_localizations.dart';
 import '../services/lsp/lsp_manager.dart';
 import '../services/lsp/lsp_protocol.dart';
 import '../services/lsp/lsp_workspace_edit_applier.dart';
@@ -38,6 +39,7 @@ class LspQuickFixDialog {
         borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
       ),
       builder: (ctx) {
+        final l10n = AppLocalizations.of(ctx) ?? AppLocalizations.of(context)!;
         return SafeArea(
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -61,7 +63,7 @@ class LspQuickFixDialog {
                     const Icon(Icons.lightbulb, color: Colors.amber, size: 20),
                     const SizedBox(width: 8),
                     Text(
-                      '代码问题与修复 (第 ${lineIndex + 1} 行)',
+                      l10n.lspQuickFixTitle(lineIndex + 1),
                       style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
                     ),
                   ],
@@ -114,7 +116,7 @@ class LspQuickFixDialog {
                         ),
                         const SizedBox(width: 8),
                         Text(
-                          '当前报错未提供自动修复动作',
+                          l10n.lspNoFixAvailable,
                           style: TextStyle(
                             fontSize: 13,
                             color: Theme.of(context).colorScheme.onSurfaceVariant,
@@ -129,7 +131,7 @@ class LspQuickFixDialog {
                       contentPadding: EdgeInsets.zero,
                       leading: const Icon(Icons.auto_fix_high, color: Colors.blueAccent),
                       title: Text(act.title, style: const TextStyle(fontSize: 14)),
-                      trailing: act.isPreferred ? const Chip(label: Text('推荐', style: TextStyle(fontSize: 11))) : null,
+                      trailing: act.isPreferred ? Chip(label: Text(l10n.recommended, style: const TextStyle(fontSize: 11))) : null,
                       onTap: () {
                         Navigator.pop(ctx);
                         if (act.edit != null) {

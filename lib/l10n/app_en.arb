@@ -958,5 +958,41 @@
   "installingStatus": "Installing…",
   "uninstallingStatus": "Uninstalling…",
   "emptyLspLanguagesTitle": "No code intelligence components installed",
-  "emptyLspLanguagesSubtitle": "Open any source file to trigger installation on demand, or click \"+\" to add manually"
+  "emptyLspLanguagesSubtitle": "Open any source file to trigger installation on demand, or click \"+\" to add manually",
+  "lspQuickFixTitle": "Code Issues & Fixes (Line {line})",
+  "@lspQuickFixTitle": {
+    "placeholders": {
+      "line": {
+        "type": "int"
+      }
+    }
+  },
+  "lspNoFixAvailable": "No automated fixes available",
+  "diagnosticLinePrefix": "Line {line}: {message}",
+  "@diagnosticLinePrefix": {
+    "placeholders": {
+      "line": {
+        "type": "int"
+      },
+      "message": {
+        "type": "String"
+      }
+    }
+  },
+  "quickFixButton": "Fix",
+  "containerSection": "Container",
+  "destroyAndRebuildContainer": "Destroy and Rebuild Container",
+  "destroyAndRebuildContainerSubtitle": "Clear installed environments in container and re-extract clean container",
+  "destroyContainerConfirmTitle": "Destroy and Rebuild Container",
+  "destroyContainerConfirmMessage": "This will permanently delete all installed packages and configurations in the Ubuntu container (project files will not be affected) and re-extract a clean container system. Continue?",
+  "destroyContainerButton": "Destroy & Rebuild",
+  "containerRebuiltSuccess": "Container rebuilt successfully",
+  "containerRebuildFailed": "Failed to rebuild container: {error}",
+  "@containerRebuildFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  }
 }

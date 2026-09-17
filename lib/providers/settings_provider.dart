@@ -39,6 +39,13 @@ class SettingsProvider extends ChangeNotifier {
   //语言
   static const String _keyAppLocale = 'app_locale';
 
+  /// 字号配置常量（编辑区与终端统一）
+  static const double minFontSize = 8.0;
+  static const double maxFontSize = 30.0;
+  static const double defaultFontSize = 14.0;
+  static const double defaultTerminalFontSize = 13.0;
+  static const int fontSizeDivisions = 22; // (maxFontSize - minFontSize).toInt()
+
   ThemeMode _appThemeMode = ThemeMode.system;
   Color _appThemeColor = Colors.blue;
   String _uiFontId = 'system_default';
@@ -46,8 +53,8 @@ class SettingsProvider extends ChangeNotifier {
   String _editorFontId = 'jetbrains_mono';
   String _terminalFontId = 'jetbrains_mono';
   Color _terminalBackgroundColor = const Color(0xFF1E1E1E);
-  double _terminalFontSize = 13.0;
-  double _fontSize = 14.0;
+  double _terminalFontSize = defaultTerminalFontSize;
+  double _fontSize = defaultFontSize;
   int _indentSize = 4;
   bool _wordWrap = false;
   bool _showLineNumbers = true;
@@ -200,7 +207,7 @@ class SettingsProvider extends ChangeNotifier {
 
       
       final savedFontSize = prefs.getDouble(_keyEditorFontSize);
-      if(savedFontSize != null && savedFontSize >= 10 && savedFontSize <= 32) {
+      if(savedFontSize != null && savedFontSize >= minFontSize && savedFontSize <= maxFontSize) {
         _fontSize = savedFontSize;
       }
 
@@ -282,7 +289,7 @@ class SettingsProvider extends ChangeNotifier {
 
       final savedTerminalFontSize = prefs.getDouble(_keyTerminalFontSize);
       if (savedTerminalFontSize != null) {
-        _terminalFontSize = savedTerminalFontSize.clamp(8.0, 32.0);
+        _terminalFontSize = savedTerminalFontSize.clamp(minFontSize, maxFontSize);
       }
 
       //设置项目配置
@@ -341,7 +348,7 @@ class SettingsProvider extends ChangeNotifier {
   }
   
   Future<void> setFontSize(double size) async {
-    final clamped = size.clamp(10.0, 30.0);
+    final clamped = size.clamp(minFontSize, maxFontSize);
     if(_fontSize == clamped) return;
     _fontSize = clamped;
     notifyListeners();
@@ -461,7 +468,7 @@ class SettingsProvider extends ChangeNotifier {
 
   /// 设置终端字体大小
   Future<void> setTerminalFontSize(double size) async {
-    final clamped = size.clamp(8.0, 32.0);
+    final clamped = size.clamp(minFontSize, maxFontSize);
     if (_terminalFontSize == clamped) return;
     _terminalFontSize = clamped;
     notifyListeners();

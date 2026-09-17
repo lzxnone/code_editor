@@ -239,9 +239,9 @@ class _CodeEditorWidgetState extends State<CodeEditorWidget> {
       final currentDistance = (p1 - p2).distance;
       final rawScale = currentDistance / _initialPinchDistance!;
 
-      // 边界弹性阻尼（10.0 ~ 30.0）
-      final minScale = 10.0 / _initialPinchFontSize!;
-      final maxScale = 30.0 / _initialPinchFontSize!;
+      // 边界弹性阻尼（SettingsProvider.minFontSize ~ SettingsProvider.maxFontSize）
+      final minScale = SettingsProvider.minFontSize / _initialPinchFontSize!;
+      final maxScale = SettingsProvider.maxFontSize / _initialPinchFontSize!;
       final clampedScale = rawScale.clamp(minScale * 0.9, maxScale * 1.1);
 
       final currentGlobalFocal = (p1 + p2) / 2;
@@ -252,7 +252,7 @@ class _CodeEditorWidgetState extends State<CodeEditorWidget> {
       _currentLocalFocal = currentLocalFocal;
 
       final continuousFontSize = ((_initialPinchFontSize! * clampedScale) * 10).round() / 10.0;
-      final newFontSize = continuousFontSize.clamp(10.0, 30.0);
+      final newFontSize = continuousFontSize.clamp(SettingsProvider.minFontSize, SettingsProvider.maxFontSize);
 
       AppFontItem activeEditorFont = AppFonts.editorJetBrainsMono;
       try {
@@ -331,7 +331,7 @@ class _CodeEditorWidgetState extends State<CodeEditorWidget> {
 
     if (finalSize != null && initialFontSize != null && initialLocalFocal != null && currentLocalFocal != null) {
       // 手势释放后定格为整数（如 16.0），持久化到用户设置
-      final double targetFontSize = finalSize.clamp(10.0, 30.0).roundToDouble();
+      final double targetFontSize = finalSize.clamp(SettingsProvider.minFontSize, SettingsProvider.maxFontSize).roundToDouble();
 
       AppFontItem activeEditorFont = AppFonts.editorJetBrainsMono;
       try {
@@ -871,14 +871,14 @@ class _CodeEditorWidgetState extends State<CodeEditorWidget> {
                                             },
                                             textStyle: TextStyle(
                                               color: activeTheme.gutterTextColor,
-                                              fontSize: (displayFontSize - 1).clamp(9.0, 30.0),
+                                              fontSize: (displayFontSize - 1).clamp(SettingsProvider.minFontSize - 1.0, SettingsProvider.maxFontSize),
                                               fontFamily: activeEditorFont.fontFamily,
                                               fontFamilyFallback: activeEditorFont.fallback,
                                               height: 1.4,
                                             ),
                                             focusedTextStyle: TextStyle(
                                               color: activeTheme.focusedGutterTextColor,
-                                              fontSize: (displayFontSize - 1).clamp(9.0, 30.0),
+                                              fontSize: (displayFontSize - 1).clamp(SettingsProvider.minFontSize - 1.0, SettingsProvider.maxFontSize),
                                               fontWeight: FontWeight.bold,
                                               fontFamily: activeEditorFont.fontFamily,
                                               fontFamilyFallback: activeEditorFont.fallback,

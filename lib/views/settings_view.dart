@@ -5,6 +5,7 @@ import 'package:code_editor/models/virtual_keyboard_config.dart';
 import 'package:code_editor/providers/settings_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../services/internal_engine_service.dart';
 import '../widgets/color_palette_dialog.dart';
 import 'code_completion_management_view.dart';
 import 'virtual_keyboard_config_view.dart';
@@ -50,8 +51,8 @@ class SettingsView extends StatelessWidget {
           // ==============================
           _buildSectionHeader(context, l10n.editorSection),
           _buildEditorThemeTile(context, provider, l10n),
-          _buildFontSizeTile(context, provider, l10n),
           _buildEditorFontTile(context, provider),
+          _buildFontSizeTile(context, provider, l10n),
           _buildIndentSizeTile(context, provider, l10n),
           _buildWordWrapTile(context, provider, l10n),
           _buildShowLineNumbersTile(context, provider, l10n),
@@ -67,10 +68,10 @@ class SettingsView extends StatelessWidget {
           // ==============================
           _buildSectionHeader(context, l10n.terminal),
           _buildTerminalBackgroundTile(context, provider, l10n),
-          _buildTerminalVirtualKeyboardTile(context, provider, l10n),
-          _buildTerminalVirtualKeyboardConfigTile(context, provider, l10n),
           _buildTerminalFontTile(context, provider),
           _buildTerminalFontSizeTile(context, provider, l10n),
+          _buildTerminalVirtualKeyboardTile(context, provider, l10n),
+          _buildTerminalVirtualKeyboardConfigTile(context, provider, l10n),
 
           const Divider(height: 32, indent: 16, endIndent: 16),
 
@@ -83,7 +84,15 @@ class SettingsView extends StatelessWidget {
           const Divider(height: 32, indent: 16, endIndent: 16),
 
           // ==============================
-          // 5. 语言分组 (Language)
+          // 5. 容器分组 (Container)
+          // ==============================
+          _buildSectionHeader(context, l10n.containerSection),
+          _buildRebuildContainerTile(context, l10n),
+
+          const Divider(height: 32, indent: 16, endIndent: 16),
+
+          // ==============================
+          // 6. 语言分组 (Language)
           // ==============================
           _buildSectionHeader(context, l10n.languageSection),
           _buildLanguageTile(context, provider, l10n),
@@ -293,7 +302,7 @@ class SettingsView extends StatelessWidget {
               icon: const Icon(Icons.remove, size: 18),
               visualDensity: VisualDensity.compact,
               tooltip: l10n.decreaseFontSize,
-              onPressed: provider.terminalFontSize > 8.0
+              onPressed: provider.terminalFontSize > SettingsProvider.minFontSize
                   ? () => provider.setTerminalFontSize(provider.terminalFontSize - 1)
                   : null,
             ),
@@ -305,7 +314,7 @@ class SettingsView extends StatelessWidget {
               icon: const Icon(Icons.add, size: 18),
               visualDensity: VisualDensity.compact,
               tooltip: l10n.increaseFontSize,
-              onPressed: provider.terminalFontSize < 32.0
+              onPressed: provider.terminalFontSize < SettingsProvider.maxFontSize
                   ? () => provider.setTerminalFontSize(provider.terminalFontSize + 1)
                   : null,
             ),
@@ -342,10 +351,10 @@ class SettingsView extends StatelessWidget {
                   ),
                   const SizedBox(height: 16),
                   Slider(
-                    value: tempSize.clamp(8.0, 32.0),
-                    min: 8.0,
-                    max: 32.0,
-                    divisions: 24,
+                    value: tempSize.clamp(SettingsProvider.minFontSize, SettingsProvider.maxFontSize),
+                    min: SettingsProvider.minFontSize,
+                    max: SettingsProvider.maxFontSize,
+                    divisions: SettingsProvider.fontSizeDivisions,
                     label: '${tempSize.toInt()}',
                     onChanged: (val) {
                       setDialogState(() {
@@ -692,7 +701,7 @@ class SettingsView extends StatelessWidget {
               icon: const Icon(Icons.remove, size: 18),
               visualDensity: VisualDensity.compact,
               tooltip: l10n.decreaseFontSize,
-              onPressed: provider.fontSize > 10.0
+              onPressed: provider.fontSize > SettingsProvider.minFontSize
                   ? () => provider.setFontSize(provider.fontSize - 1)
                   : null,
             ),
@@ -704,7 +713,7 @@ class SettingsView extends StatelessWidget {
               icon: const Icon(Icons.add, size: 18),
               visualDensity: VisualDensity.compact,
               tooltip: l10n.increaseFontSize,
-              onPressed: provider.fontSize < 30.0
+              onPressed: provider.fontSize < SettingsProvider.maxFontSize
                   ? () => provider.setFontSize(provider.fontSize + 1)
                   : null,
             ),
@@ -804,10 +813,10 @@ class SettingsView extends StatelessWidget {
                   ),
                   const SizedBox(height: 16),
                   Slider(
-                    value: tempSize.clamp(10.0, 30.0),
-                    min: 10.0,
-                    max: 30.0,
-                    divisions: 20,
+                    value: tempSize.clamp(SettingsProvider.minFontSize, SettingsProvider.maxFontSize),
+                    min: SettingsProvider.minFontSize,
+                    max: SettingsProvider.maxFontSize,
+                    divisions: SettingsProvider.fontSizeDivisions,
                     label: '${tempSize.toInt()}',
                     onChanged: (val) {
                       setDialogState(() {
@@ -1129,5 +1138,86 @@ class SettingsView extends StatelessWidget {
         provider.setShowHiddenFiles(val);
       },
     );
+  }
+
+  /// 容器：销毁并重建容器条目
+  Widget _buildRebuildContainerTile(
+    BuildContext context,
+    AppLocalizations l10n,
+  ) {
+    final theme = Theme.of(context);
+    final dangerColor = theme.colorScheme.error;
+
+    return ListTile(
+      leading: Icon(Icons.delete_forever_outlined, color: dangerColor),
+      title: Text(
+        l10n.destroyAndRebuildContainer,
+        style: TextStyle(
+          color: dangerColor,
+          fontWeight: FontWeight.w600,
+        ),
+      ),
+      subtitle: Text(
+        l10n.destroyAndRebuildContainerSubtitle,
+        style: TextStyle(
+          color: dangerColor.withValues(alpha: 0.8),
+          fontSize: 12,
+        ),
+      ),
+      onTap: () {
+        _showDestroyContainerDialog(context, l10n);
+      },
+    );
+  }
+
+  void _showDestroyContainerDialog(
+    BuildContext context,
+    AppLocalizations l10n,
+  ) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) {
+        final dialogTheme = Theme.of(dialogContext);
+        return AlertDialog(
+          title: Row(
+            children: [
+              Icon(Icons.warning_amber_rounded, color: dialogTheme.colorScheme.error),
+              const SizedBox(width: 8),
+              Expanded(child: Text(l10n.destroyContainerConfirmTitle)),
+            ],
+          ),
+          content: Text(l10n.destroyContainerConfirmMessage),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(false),
+              child: Text(l10n.cancel),
+            ),
+            FilledButton(
+              style: FilledButton.styleFrom(
+                backgroundColor: dialogTheme.colorScheme.error,
+                foregroundColor: dialogTheme.colorScheme.onError,
+              ),
+              onPressed: () => Navigator.of(dialogContext).pop(true),
+              child: Text(l10n.destroyContainerButton),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (confirmed == true && context.mounted) {
+      final success = await InternalEngineService.instance.rebuildEngine(context);
+      if (context.mounted) {
+        if (success) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(l10n.containerRebuiltSuccess)),
+          );
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(l10n.containerRebuildFailed(''))),
+          );
+        }
+      }
+    }
   }
 }

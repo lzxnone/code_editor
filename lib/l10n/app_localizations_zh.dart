@@ -1698,4 +1698,47 @@ class AppLocalizationsZh extends AppLocalizations {
   @override
   String get emptyLspLanguagesSubtitle =>
       '在编辑器中打开代码文件即可按需触发安装，或点击右上角 \"+\" 手动添加';
+
+  @override
+  String lspQuickFixTitle(int line) {
+    return '代码问题与修复 (第 $line 行)';
+  }
+
+  @override
+  String get lspNoFixAvailable => '当前报错未提供自动修复动作';
+
+  @override
+  String diagnosticLinePrefix(int line, String message) {
+    return '行 $line: $message';
+  }
+
+  @override
+  String get quickFixButton => '修复';
+
+  @override
+  String get containerSection => '容器';
+
+  @override
+  String get destroyAndRebuildContainer => '销毁并重建容器';
+
+  @override
+  String get destroyAndRebuildContainerSubtitle => '清空容器内已安装环境并重新解压纯净容器';
+
+  @override
+  String get destroyContainerConfirmTitle => '销毁并重建容器';
+
+  @override
+  String get destroyContainerConfirmMessage =>
+      '此操作将永久清空当前 Ubuntu 容器内的所有已安装软件包和环境配置（工程文件不受影响），并重新解压纯净容器系统。确定要继续吗？';
+
+  @override
+  String get destroyContainerButton => '销毁并重建';
+
+  @override
+  String get containerRebuiltSuccess => '容器已成功重建';
+
+  @override
+  String containerRebuildFailed(String error) {
+    return '容器重建失败: $error';
+  }
 }
