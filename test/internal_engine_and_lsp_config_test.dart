@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 import 'package:code_editor/l10n/app_localizations.dart';
+import 'package:code_editor/models/lsp_language_config.dart';
 import 'package:code_editor/services/internal_engine_service.dart';
 import 'package:code_editor/services/lsp_config_service.dart';
 import 'package:code_editor/views/code_completion_management_view.dart';
@@ -57,20 +58,18 @@ void main() {
   }
 
   group('LspConfigService Tests', () {
-    test('Initial load creates default presets and writes to disk', () async {
+    test('Initial load returns empty list and writes empty json to disk', () async {
       final configs = await lspConfigService.loadConfigs(forceReload: true);
-      expect(configs.isNotEmpty, isTrue);
-      expect(configs.any((c) => c.id == 'c_cpp'), isTrue);
-      expect(configs.any((c) => c.id == 'rust'), isTrue);
+      expect(configs.isEmpty, isTrue);
 
       final file = await lspConfigService.getConfigFile();
       expect(file.existsSync(), isTrue);
 
       final content = jsonDecode(file.readAsStringSync()) as List;
-      expect(content.length, equals(configs.length));
+      expect(content.isEmpty, isTrue);
     });
 
-    test('Incremental merge appends missing default presets without overwriting user configs', () async {
+    test('Loads pre-existing custom configs from disk without auto-injecting uninstalled presets', () async {
       final file = await lspConfigService.getConfigFile();
       // Write only custom Python config
       const customConfig = [
@@ -81,61 +80,99 @@ void main() {
           'fileExtensions': ['.py', '.pyw'],
           'serverCommand': 'my_pylsp',
           'serverArgs': ['--verbose'],
-          'apkPackage': 'py3-lsp-server',
+          'package': 'python3-pylsp',
           'enabled': true,
         }
       ];
       file.writeAsStringSync(jsonEncode(customConfig));
 
       final configs = await lspConfigService.loadConfigs(forceReload: true);
-      // User's custom python must be preserved
-      final pyConfig = configs.firstWhere((c) => c.id == 'python');
+      expect(configs.length, equals(1));
+      final pyConfig = configs.first;
+      expect(pyConfig.id, equals('python'));
       expect(pyConfig.name, equals('My Custom Python'));
       expect(pyConfig.serverCommand, equals('my_pylsp'));
 
-      // Missing presets like c_cpp, rust must be incrementally added
-      expect(configs.any((c) => c.id == 'c_cpp'), isTrue);
-      expect(configs.any((c) => c.id == 'rust'), isTrue);
-      expect(configs.any((c) => c.id == 'go'), isTrue);
+      // Missing presets like c_cpp, rust are NOT automatically added to installed list
+      expect(configs.any((c) => c.id == 'c_cpp'), isFalse);
+      expect(configs.any((c) => c.id == 'rust'), isFalse);
+      expect(configs.any((c) => c.id == 'go'), isFalse);
     });
 
-    test('findByExtension resolves language config correctly', () async {
+    test('LspLanguageConfig.findBuiltinByExtension resolves builtin templates correctly', () {
+      final cPreset = LspLanguageConfig.findBuiltinByExtension('.c');
+      expect(cPreset, isNotNull);
+      expect(cPreset!.id, equals('c_cpp'));
+
+      final cppPreset = LspLanguageConfig.findBuiltinByExtension('cpp');
+      expect(cppPreset, isNotNull);
+      expect(cppPreset!.id, equals('c_cpp'));
+
+      final pyPreset = LspLanguageConfig.findBuiltinByExtension('.py');
+      expect(pyPreset, isNotNull);
+      expect(pyPreset!.id, equals('python'));
+
+      final unknown = LspLanguageConfig.findBuiltinByExtension('.unknown');
+      expect(unknown, isNull);
+    });
+
+    test('LspConfigService.findByExtension only returns installed and enabled configs', () async {
       await lspConfigService.loadConfigs(forceReload: true);
 
-      final cConfig = lspConfigService.findByExtension('.c');
-      expect(cConfig, isNotNull);
-      expect(cConfig!.id, equals('c_cpp'));
+      // When no configs are installed, findByExtension must return null (not builtin preset)
+      expect(lspConfigService.findByExtension('.cpp'), isNull);
+      expect(lspConfigService.findByExtension('cpp'), isNull);
+      expect(lspConfigService.findByExtension('.py'), isNull);
 
-      final cppConfig = lspConfigService.findByExtension('cpp');
-      expect(cppConfig, isNotNull);
-      expect(cppConfig!.id, equals('c_cpp'));
+      // Install C/C++ config
+      const sample = LspLanguageConfig(
+        id: 'c_cpp',
+        name: 'C / C++',
+        languageId: 'cpp',
+        fileExtensions: ['.c', '.cpp', '.h'],
+        serverCommand: 'clangd',
+        package: 'clangd',
+      );
+      await lspConfigService.updateConfig(sample);
 
-      final pyConfig = lspConfigService.findByExtension('.py');
-      expect(pyConfig, isNotNull);
-      expect(pyConfig!.id, equals('python'));
+      // Now it should resolve
+      expect(lspConfigService.findByExtension('.cpp'), isNotNull);
+      expect(lspConfigService.findByExtension('cpp')!.id, equals('c_cpp'));
 
-      final unknown = lspConfigService.findByExtension('.unknown');
-      expect(unknown, isNull);
+      // If disabled, it should return null
+      final disabledSample = sample.copyWith(enabled: false);
+      await lspConfigService.updateConfig(disabledSample);
+      expect(lspConfigService.findByExtension('.cpp'), isNull);
     });
 
     test('updateConfig, deleteConfig and resetToDefaults work and persist to disk', () async {
       await lspConfigService.loadConfigs(forceReload: true);
 
-      // 1. Update config
-      final originalC = lspConfigService.configs.firstWhere((c) => c.id == 'c_cpp');
-      final modifiedC = originalC.copyWith(serverCommand: 'clangd-18');
-      await lspConfigService.updateConfig(modifiedC);
+      // 1. Add / Update config
+      const sample = LspLanguageConfig(
+        id: 'c_cpp',
+        name: 'C / C++',
+        languageId: 'cpp',
+        fileExtensions: ['.c', '.cpp', '.h'],
+        serverCommand: 'clangd',
+        package: 'clangd',
+      );
+      await lspConfigService.updateConfig(sample);
+      expect(lspConfigService.configs.any((c) => c.id == 'c_cpp'), isTrue);
 
+      final modifiedC = sample.copyWith(serverCommand: 'clangd-18');
+      await lspConfigService.updateConfig(modifiedC);
       expect(lspConfigService.configs.firstWhere((c) => c.id == 'c_cpp').serverCommand, equals('clangd-18'));
 
       // 2. Delete config
-      await lspConfigService.deleteConfig('shell');
-      expect(lspConfigService.configs.any((c) => c.id == 'shell'), isFalse);
+      await lspConfigService.deleteConfig('c_cpp');
+      expect(lspConfigService.configs.any((c) => c.id == 'c_cpp'), isFalse);
 
-      // 3. Reset to defaults
+      // 3. Reset to defaults (clears configs)
+      await lspConfigService.updateConfig(sample);
+      expect(lspConfigService.configs.isNotEmpty, isTrue);
       await lspConfigService.resetToDefaults();
-      expect(lspConfigService.configs.any((c) => c.id == 'shell'), isTrue);
-      expect(lspConfigService.configs.firstWhere((c) => c.id == 'c_cpp').serverCommand, equals('clangd'));
+      expect(lspConfigService.configs.isEmpty, isTrue);
     });
   });
 
@@ -158,7 +195,7 @@ void main() {
   });
 
   group('CodeCompletionManagementView & LspLanguageEditDialog Widget Tests', () {
-    testWidgets('Management view renders all language items and engine card in Chinese', (tester) async {
+    testWidgets('Management view renders empty placeholder when no language is installed', (tester) async {
       await lspConfigService.loadConfigs(forceReload: true);
 
       await tester.pumpWidget(buildTestWidget(
@@ -168,11 +205,39 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('代码补全管理'), findsOneWidget);
-      expect(find.text('内部代码智能引擎 (Alpine)'), findsOneWidget);
+      expect(find.text('引擎未启动'), findsOneWidget);
+      expect(find.text('暂无已安装的代码智能组件'), findsOneWidget);
+    });
+
+    testWidgets('Management view renders installed language items in Chinese', (tester) async {
+      await lspConfigService.loadConfigs(forceReload: true);
+      await lspConfigService.updateConfig(const LspLanguageConfig(
+        id: 'c_cpp',
+        name: 'C / C++',
+        languageId: 'cpp',
+        fileExtensions: ['.c', '.cpp', '.h'],
+        serverCommand: 'clangd',
+        package: 'clangd',
+      ));
+      await lspConfigService.updateConfig(const LspLanguageConfig(
+        id: 'python',
+        name: 'Python',
+        languageId: 'python',
+        fileExtensions: ['.py'],
+        serverCommand: 'pylsp',
+        package: 'python3-pylsp',
+      ));
+
+      await tester.pumpWidget(buildTestWidget(
+        child: const CodeCompletionManagementView(),
+        locale: const Locale('zh'),
+      ));
+      await tester.pumpAndSettle();
+
+      expect(find.text('代码补全管理'), findsOneWidget);
+      expect(find.text('引擎未启动'), findsOneWidget);
       expect(find.text('C / C++'), findsOneWidget);
       expect(find.text('Python'), findsOneWidget);
-      expect(find.text('Rust'), findsOneWidget);
-      expect(find.text('Go'), findsOneWidget);
     });
 
     testWidgets('Management view renders without hardcoded text in English', (tester) async {
@@ -185,13 +250,21 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('Code Completion Management'), findsOneWidget);
-      expect(find.text('Internal Code Intelligence Engine (Alpine)'), findsOneWidget);
-      expect(find.byTooltip('Reset to Defaults'), findsOneWidget);
+      expect(find.text('Engine Not Started'), findsOneWidget);
       expect(find.byTooltip('Add Language Configuration'), findsOneWidget);
+      expect(find.text('No code intelligence components installed'), findsOneWidget);
     });
 
     testWidgets('Edit button pops LspLanguageEditDialog and saves modifications', (tester) async {
       await lspConfigService.loadConfigs(forceReload: true);
+      await lspConfigService.updateConfig(const LspLanguageConfig(
+        id: 'c_cpp',
+        name: 'C / C++',
+        languageId: 'cpp',
+        fileExtensions: ['.c', '.cpp', '.h'],
+        serverCommand: 'clangd',
+        package: 'clangd',
+      ));
 
       await tester.pumpWidget(buildTestWidget(
         child: const CodeCompletionManagementView(),
@@ -199,9 +272,13 @@ void main() {
       ));
       await tester.pumpAndSettle();
 
-      // Tap first edit icon
+      // Click C / C++ card to expand it
+      await tester.tap(find.text('C / C++'));
+      await tester.pumpAndSettle();
+
+      // Tap edit button in the expanded menu
       final editButtons = find.byIcon(Icons.edit_outlined);
-      expect(editButtons, findsWidgets);
+      expect(editButtons, findsOneWidget);
 
       await tester.tap(editButtons.first);
       await tester.pumpAndSettle();
@@ -228,6 +305,14 @@ void main() {
 
     testWidgets('Delete button prompts confirmation and removes language', (tester) async {
       await lspConfigService.loadConfigs(forceReload: true);
+      await lspConfigService.updateConfig(const LspLanguageConfig(
+        id: 'python',
+        name: 'Python',
+        languageId: 'python',
+        fileExtensions: ['.py'],
+        serverCommand: 'pylsp',
+        package: 'python3-pylsp',
+      ));
 
       await tester.pumpWidget(buildTestWidget(
         child: const CodeCompletionManagementView(),
@@ -237,16 +322,20 @@ void main() {
 
       expect(find.text('Python'), findsOneWidget);
 
-      // Find delete button for Python (index 1)
+      // Click Python card to expand it
+      await tester.tap(find.text('Python'));
+      await tester.pumpAndSettle();
+
+      // Find delete button in the expanded Python card
       final deleteButtons = find.byIcon(Icons.delete_outline);
-      await tester.tap(deleteButtons.at(1));
+      await tester.tap(deleteButtons.first);
       await tester.pumpAndSettle();
 
       expect(find.text('删除语言配置'), findsOneWidget);
       expect(find.text('确定要删除 Python 的代码补全配置吗？'), findsOneWidget);
 
-      // Confirm delete
-      await tester.tap(find.text('删除'));
+      // Confirm delete in dialog
+      await tester.tap(find.widgetWithText(FilledButton, '删除'));
       await tester.pumpAndSettle();
 
       // Python should now be gone
@@ -255,6 +344,22 @@ void main() {
 
       // Settle SnackBar timer
       await tester.pump(const Duration(seconds: 4));
+    });
+
+    testWidgets('CodeCompletionManagementView renders without overflow on narrow device (320px width)', (tester) async {
+      await lspConfigService.loadConfigs(forceReload: true);
+      tester.view.physicalSize = const Size(320 * 2.0, 640 * 2.0);
+      tester.view.devicePixelRatio = 2.0;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      await tester.pumpWidget(buildTestWidget(
+        child: const CodeCompletionManagementView(),
+        locale: const Locale('en'),
+      ));
+      await tester.pumpAndSettle();
+
+      expect(tester.takeException(), isNull, reason: 'Narrow layout in English should not have any RenderFlex overflow');
     });
   });
 }

@@ -53,6 +53,7 @@ class DefaultCodeLineNumber extends LeafRenderObjectWidget {
   final TextStyle? focusedTextStyle;
   final int? minNumberCount;
   final String Function(int lineIndex)? customLineIndex2Text;
+  final Decoration? Function(int lineIndex)? lineDecorationBuilder;
 
   const DefaultCodeLineNumber({
     super.key,
@@ -62,6 +63,7 @@ class DefaultCodeLineNumber extends LeafRenderObjectWidget {
     this.focusedTextStyle,
     this.minNumberCount,
     this.customLineIndex2Text,
+    this.lineDecorationBuilder,
   });
 
   @override
@@ -72,6 +74,7 @@ class DefaultCodeLineNumber extends LeafRenderObjectWidget {
     focusedTextStyle: focusedTextStyle ?? _useCodeTextStyle(context, true),
     minNumberCount: minNumberCount ?? _kDefaultMinNumberCount,
     custonLineIndex2Text: customLineIndex2Text,
+    lineDecorationBuilder: lineDecorationBuilder,
   );
 
   @override
@@ -81,7 +84,9 @@ class DefaultCodeLineNumber extends LeafRenderObjectWidget {
       ..notifier = notifier
       ..textStyle = textStyle ?? _useCodeTextStyle(context, false)
       ..focusedTextStyle = focusedTextStyle ?? _useCodeTextStyle(context, true)
-      ..minNumberCount = minNumberCount ?? _kDefaultMinNumberCount;
+      ..minNumberCount = minNumberCount ?? _kDefaultMinNumberCount
+      ..customLineIndex2Text = customLineIndex2Text
+      ..lineDecorationBuilder = lineDecorationBuilder;
     super.updateRenderObject(context, renderObject);
   }
 

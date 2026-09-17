@@ -30,20 +30,24 @@ class _CodeLineEditingControllerImpl extends ValueNotifier<CodeLineEditingValue>
   }
 
   factory _CodeLineEditingControllerImpl.fromText(String? text, [
-    CodeLineOptions options = const CodeLineOptions()
+    CodeLineOptions options = const CodeLineOptions(),
+    CodeLineSpanBuilder? spanBuilder,
   ]) {
     return _CodeLineEditingControllerImpl(
       codeLines: text?.codeLines ?? _kInitialCodeLines,
-      options: options
+      options: options,
+      spanBuilder: spanBuilder,
     );
   }
 
   factory _CodeLineEditingControllerImpl.fromTextAsync(String? text, [
-    CodeLineOptions options = const CodeLineOptions()
+    CodeLineOptions options = const CodeLineOptions(),
+    CodeLineSpanBuilder? spanBuilder,
   ]) {
     final _CodeLineEditingControllerImpl controller = _CodeLineEditingControllerImpl(
       codeLines: _kInitialCodeLines,
-      options: options
+      options: options,
+      spanBuilder: spanBuilder,
     );
     if (text != null && text.isNotEmpty) {
       text.codeLinesAsync.then((value) => controller.codeLines = value);

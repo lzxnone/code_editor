@@ -1,6 +1,5 @@
 import 'package:code_editor/l10n/app_localizations.dart';
 import 'package:code_editor/models/app_font.dart';
-import 'package:code_editor/models/distro_manifest.dart';
 import 'package:code_editor/models/editor_theme.dart';
 import 'package:code_editor/models/virtual_keyboard_config.dart';
 import 'package:code_editor/providers/settings_provider.dart';
@@ -84,15 +83,7 @@ class SettingsView extends StatelessWidget {
           const Divider(height: 32, indent: 16, endIndent: 16),
 
           // ==============================
-          // 5. 下载分组 (Download)
-          // ==============================
-          _buildSectionHeader(context, l10n.downloadSection),
-          _buildDownloadSourceTile(context, provider, l10n),
-
-          const Divider(height: 32, indent: 16, endIndent: 16),
-
-          // ==============================
-          // 6. 语言分组 (Language)
+          // 5. 语言分组 (Language)
           // ==============================
           _buildSectionHeader(context, l10n.languageSection),
           _buildLanguageTile(context, provider, l10n),
@@ -1136,100 +1127,6 @@ class SettingsView extends StatelessWidget {
       value: provider.showHiddenFiles,
       onChanged: (val) {
         provider.setShowHiddenFiles(val);
-      },
-    );
-  }
-
-  /// 下载：下载源设置条目
-  Widget _buildDownloadSourceTile(
-    BuildContext context,
-    SettingsProvider provider,
-    AppLocalizations l10n,
-  ) {
-    final theme = Theme.of(context);
-    final currentMirrorId = provider.downloadMirrorId;
-    return ListTile(
-      leading: Icon(Icons.cloud_download_outlined, color: theme.colorScheme.primary),
-      title: Text(l10n.downloadSource),
-      subtitle: Text(l10n.mirrorName(currentMirrorId)),
-      trailing: const Icon(Icons.chevron_right),
-      onTap: () {
-        _showDownloadSourceSelector(context, provider, l10n);
-      },
-    );
-  }
-
-  /// 显示下载源底部选择器（与字体选择器一致的弹窗体验）
-  void _showDownloadSourceSelector(
-    BuildContext context,
-    SettingsProvider provider,
-    AppLocalizations l10n,
-  ) {
-    showModalBottomSheet<void>(
-      context: context,
-      isScrollControlled: true,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (sheetContext) {
-        final theme = Theme.of(context);
-        final mirrors = DistroRepository.availableMirrors;
-        return SafeArea(
-          child: ConstrainedBox(
-            constraints: BoxConstraints(
-              maxHeight: MediaQuery.of(sheetContext).size.height * 0.65,
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: Text(
-                    l10n.selectDownloadSource,
-                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                  ),
-                ),
-                const Divider(height: 1),
-                Expanded(
-                  child: ListView.builder(
-                    itemCount: mirrors.length,
-                    itemBuilder: (context, index) {
-                      final item = mirrors[index];
-                      final isSelected = item.id == provider.downloadMirrorId;
-                      return ListTile(
-                        leading: Icon(
-                          Icons.dns_outlined,
-                          color: isSelected ? theme.colorScheme.primary : null,
-                        ),
-                        title: Text(
-                          l10n.mirrorName(item.id),
-                          style: TextStyle(
-                            fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                            color: isSelected ? theme.colorScheme.primary : null,
-                          ),
-                        ),
-                        subtitle: Text(
-                          item.baseUrl,
-                          style: TextStyle(
-                            fontSize: 12.0,
-                            color: theme.colorScheme.onSurfaceVariant,
-                          ),
-                        ),
-                        trailing: isSelected
-                            ? Icon(Icons.check, color: theme.colorScheme.primary)
-                            : null,
-                        onTap: () {
-                          provider.setDownloadMirrorId(item.id);
-                          Navigator.of(sheetContext).pop();
-                        },
-                      );
-                    },
-                  ),
-                ),
-              ],
-            ),
-          ),
-        );
       },
     );
   }

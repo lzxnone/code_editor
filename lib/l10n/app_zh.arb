@@ -610,6 +610,18 @@
   "detectedTaskSingleGoDesc": "运行当前 Go 源文件",
   "detectedTaskSingleRustDesc": "编译并执行当前 Rust 源文件",
   "detectedTaskSingleJsDesc": "运行当前 JS 脚本",
+  "detectedTaskSingleJavaDesc": "直接运行当前 Java 源文件",
+  "detectedTaskSingleTsDesc": "运行当前 TypeScript 脚本",
+  "detectedTaskSingleLuaDesc": "运行当前 Lua 脚本",
+  "detectedTaskSinglePerlDesc": "运行当前 Perl 脚本",
+  "detectedTaskSinglePhpDesc": "运行当前 PHP 脚本",
+  "detectedTaskPythonPipInstallDesc": "安装项目 requirements 依赖包",
+  "detectedTaskPythonRunMainDesc": "执行 Python 项目主程序",
+  "detectedTaskPythonPytestDesc": "运行 pytest 测试用例",
+  "detectedTaskMavenPackageDesc": "打包 Maven 项目 (mvn package)",
+  "detectedTaskMavenCompileDesc": "编译 Maven 项目源码 (mvn compile)",
+  "detectedTaskMavenTestDesc": "运行 Maven 单元测试 (mvn test)",
+  "detectedTaskMavenCleanDesc": "清理 Maven 目标输出目录 (mvn clean)",
   "missingDistroTitle": "系统环境未就绪",
   "noDistroAvailableContent": "未检测到可用的 Linux 执行环境。\n\n工程任务需要在 Linux 容器环境中运行。请先安装或下载 Linux 系统（如 Ubuntu 或 Alpine）。",
   "distroNotInstalledContent": "系统 \"{distro}\" 尚未安装或已被清理。\n\n请在系统管理中安装该系统，或选择其他已就绪的系统。",
@@ -827,10 +839,15 @@
   },
   "codeCompletionManagement": "代码补全管理",
   "codeCompletionSubtitle": "管理各编程语言的智能补全与报错工具链",
-  "internalEngineTitle": "内部代码智能引擎 (Alpine)",
+  "completionSourceSection": "补全数据源与开关",
+  "localCompletionTitle": "本地基础补全",
+  "localCompletionSubtitle": "包含语言内置关键字与当前文档词法启发式提取",
+  "lspCompletionTitle": "后端语言服务补全",
+  "lspCompletionSubtitle": "向后台编译器守护进程请求真实语义类型与函数参数补全",
+  "internalEngineTitle": "代码运行与智能补全引擎 (Ubuntu)",
   "internalEngineStatusReady": "引擎已就绪",
-  "internalEngineStatusNotReady": "引擎未就绪",
-  "internalEngineExtracting": "正在准备内置代码智能引擎...",
+  "internalEngineStatusNotReady": "引擎未启动",
+  "internalEngineExtracting": "正在准备内置 Ubuntu 开发环境与智能补全引擎...",
   "installedStatus": "已就绪",
   "notInstalledStatus": "未安装组件",
   "installComponent": "安装组件",
@@ -858,11 +875,27 @@
       }
     }
   },
+  "uninstallingComponent": "正在卸载 {pkg} 并清理配置...",
+  "@uninstallingComponent": {
+    "placeholders": {
+      "pkg": {
+        "type": "String"
+      }
+    }
+  },
   "editLanguageConfig": "编辑语言配置",
   "addLanguageConfig": "新增语言配置",
   "deleteLanguageConfirmTitle": "删除语言配置",
   "deleteLanguageConfirmMessage": "确定要删除 {name} 的代码补全配置吗？",
   "@deleteLanguageConfirmMessage": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "deleteLanguageWithPackageConfirmMessage": "确定要删除 {name} 的代码补全配置吗？已安装的软件包将一并卸载。",
+  "@deleteLanguageWithPackageConfirmMessage": {
     "placeholders": {
       "name": {
         "type": "String"
@@ -881,8 +914,8 @@
   "serverCommandFieldHint": "例如: clangd",
   "serverArgsField": "启动参数",
   "serverArgsFieldHint": "多个参数以空格或逗号分隔",
-  "apkPackageField": "Alpine 依赖包名",
-  "apkPackageFieldHint": "用于一键安装，如 clang-extra-tools",
+  "apkPackageField": "Ubuntu 依赖包名 (APT)",
+  "apkPackageFieldHint": "用于一键安装，如 clangd 或 python3-pylsp",
   "lspPackageMissingTitle": "未安装 {language} 代码智能组件",
   "@lspPackageMissingTitle": {
     "placeholders": {
@@ -891,18 +924,39 @@
       }
     }
   },
-  "lspPackageMissingMessage": "安装 {pkg} ({command}) 即可获得精准代码补全与错误检查",
-  "@lspPackageMissingMessage": {
+  "lspPackageMissingMessage": "安装组件即可获得精准代码补全与错误检查",
+  "installNow": "一键安装",
+  "fieldRequired": "此项不能为空",
+  "languageConfigSaved": "语言配置已保存",
+  "enable": "启用",
+  "disable": "停用",
+  "edit": "编辑",
+  "componentQueued": "{name} 排队等待中…",
+  "@componentQueued": {
     "placeholders": {
-      "pkg": {
-        "type": "String"
-      },
-      "command": {
+      "name": {
         "type": "String"
       }
     }
   },
-  "installNow": "一键安装",
-  "fieldRequired": "此项不能为空",
-  "languageConfigSaved": "语言配置已保存"
+  "uninstallComponentSuccess": "{name} 组件卸载成功",
+  "@uninstallComponentSuccess": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "uninstallComponentFailed": "组件卸载失败: {error}",
+  "@uninstallComponentFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "installingStatus": "正在安装…",
+  "uninstallingStatus": "正在卸载…",
+  "emptyLspLanguagesTitle": "暂无已安装的代码智能组件",
+  "emptyLspLanguagesSubtitle": "在编辑器中打开代码文件即可按需触发安装，或点击右上角 \"+\" 手动添加"
 }

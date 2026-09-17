@@ -34,7 +34,7 @@ class _LspLanguageEditDialogState extends State<LspLanguageEditDialog> {
   late final TextEditingController _extensionsController;
   late final TextEditingController _commandController;
   late final TextEditingController _argsController;
-  late final TextEditingController _apkPackageController;
+  late final TextEditingController _packageController;
 
   @override
   void initState() {
@@ -49,7 +49,7 @@ class _LspLanguageEditDialogState extends State<LspLanguageEditDialog> {
     _argsController = TextEditingController(
       text: init?.serverArgs.join(' ') ?? '',
     );
-    _apkPackageController = TextEditingController(text: init?.apkPackage ?? '');
+    _packageController = TextEditingController(text: init?.package ?? '');
   }
 
   @override
@@ -59,7 +59,7 @@ class _LspLanguageEditDialogState extends State<LspLanguageEditDialog> {
     _extensionsController.dispose();
     _commandController.dispose();
     _argsController.dispose();
-    _apkPackageController.dispose();
+    _packageController.dispose();
     super.dispose();
   }
 
@@ -101,7 +101,7 @@ class _LspLanguageEditDialogState extends State<LspLanguageEditDialog> {
       fileExtensions: cleanedExtensions,
       serverCommand: _commandController.text.trim(),
       serverArgs: cleanedArgs,
-      apkPackage: _apkPackageController.text.trim(),
+      package: _packageController.text.trim(),
       enabled: widget.initialConfig?.enabled ?? true,
     );
 
@@ -175,7 +175,7 @@ class _LspLanguageEditDialogState extends State<LspLanguageEditDialog> {
               ),
               const SizedBox(height: 12),
               TextFormField(
-                controller: _apkPackageController,
+                controller: _packageController,
                 decoration: InputDecoration(
                   labelText: l10n.apkPackageField,
                   hintText: l10n.apkPackageFieldHint,

@@ -10,161 +10,119 @@ class ToolchainRequirement {
   /// 用户可见的工具名称/描述
   final String displayName;
 
-  /// 针对不同发行版家族的自动安装指令
-  final Map<DistroFamily, String> installCommands;
+  /// Ubuntu 下的自动安装指令
+  final String installCommand;
 
   const ToolchainRequirement({
     required this.checkBinary,
     required this.displayName,
-    required this.installCommands,
+    required this.installCommand,
   });
 
-  /// 获取指定发行版家族下的安装命令（对于 Ubuntu/Debian 自动前置 dpkg 自愈修复，防止前序中断报错）
-  String? getInstallCommand(DistroFamily family) {
-    final cmd = installCommands[family];
-    if (cmd == null) return null;
-    if (family == DistroFamily.ubuntu || family == DistroFamily.debian) {
-      return 'DEBIAN_FRONTEND=noninteractive dpkg --configure -a 2>/dev/null || true; $cmd';
-    }
-    return cmd;
+  /// 获取安装命令（带自动修复前缀）
+  String get effectiveInstallCommand =>
+      'DEBIAN_FRONTEND=noninteractive dpkg --configure -a 2>/dev/null || true; $installCommand';
+
+  /// 兼容接口
+  String? getInstallCommand([DistroFamily? family]) {
+    if (family == DistroFamily.unknown) return null;
+    return effectiveInstallCommand;
   }
 }
 
-/// 预编译软件源与工具链检测/安装适配服务
+/// 预编译软件源与工具链检测/安装适配服务（专为 Ubuntu 24.04 深度优化）
 class ToolchainService {
   /// 已注册的常用编译器与开发工具链元数据
   static const Map<String, ToolchainRequirement> supportedTools = {
     'make': ToolchainRequirement(
       checkBinary: 'make',
       displayName: 'make 编译构建工具',
-      installCommands: {
-        DistroFamily.alpine: 'apk update && apk add --no-cache make build-base',
-        DistroFamily.ubuntu: 'DEBIAN_FRONTEND=noninteractive apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y build-essential',
-        DistroFamily.debian: 'DEBIAN_FRONTEND=noninteractive apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y build-essential',
-        DistroFamily.arch: 'pacman -Sy --noconfirm base-devel',
-        DistroFamily.fedora: 'dnf install -y make gcc gcc-c++',
-      },
+      installCommand: 'DEBIAN_FRONTEND=noninteractive apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y build-essential',
     ),
     'cmake': ToolchainRequirement(
       checkBinary: 'cmake',
       displayName: 'cmake 构建套件',
-      installCommands: {
-        DistroFamily.alpine: 'apk update && apk add --no-cache cmake make build-base',
-        DistroFamily.ubuntu: 'DEBIAN_FRONTEND=noninteractive apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y cmake build-essential',
-        DistroFamily.debian: 'DEBIAN_FRONTEND=noninteractive apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y cmake build-essential',
-        DistroFamily.arch: 'pacman -Sy --noconfirm cmake base-devel',
-        DistroFamily.fedora: 'dnf install -y cmake make gcc gcc-c++',
-      },
+      installCommand: 'DEBIAN_FRONTEND=noninteractive apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y cmake build-essential',
     ),
     'gcc': ToolchainRequirement(
       checkBinary: 'gcc',
       displayName: 'GCC C 语言编译器',
-      installCommands: {
-        DistroFamily.alpine: 'apk update && apk add --no-cache gcc musl-dev build-base',
-        DistroFamily.ubuntu: 'DEBIAN_FRONTEND=noninteractive apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y build-essential',
-        DistroFamily.debian: 'DEBIAN_FRONTEND=noninteractive apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y build-essential',
-        DistroFamily.arch: 'pacman -Sy --noconfirm base-devel',
-        DistroFamily.fedora: 'dnf install -y gcc gcc-c++',
-      },
+      installCommand: 'DEBIAN_FRONTEND=noninteractive apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y build-essential',
     ),
     'g++': ToolchainRequirement(
       checkBinary: 'g++',
       displayName: 'G++ C++ 编译器',
-      installCommands: {
-        DistroFamily.alpine: 'apk update && apk add --no-cache g++ musl-dev build-base',
-        DistroFamily.ubuntu: 'DEBIAN_FRONTEND=noninteractive apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y build-essential',
-        DistroFamily.debian: 'DEBIAN_FRONTEND=noninteractive apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y build-essential',
-        DistroFamily.arch: 'pacman -Sy --noconfirm base-devel',
-        DistroFamily.fedora: 'dnf install -y gcc-c++',
-      },
+      installCommand: 'DEBIAN_FRONTEND=noninteractive apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y build-essential',
     ),
     'python3': ToolchainRequirement(
       checkBinary: 'python3',
       displayName: 'Python 3 运行环境',
-      installCommands: {
-        DistroFamily.alpine: 'apk update && apk add --no-cache python3 py3-pip',
-        DistroFamily.ubuntu: 'DEBIAN_FRONTEND=noninteractive apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y python3 python3-pip',
-        DistroFamily.debian: 'DEBIAN_FRONTEND=noninteractive apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y python3 python3-pip',
-        DistroFamily.arch: 'pacman -Sy --noconfirm python python-pip',
-        DistroFamily.fedora: 'dnf install -y python3 python3-pip',
-      },
+      installCommand: 'DEBIAN_FRONTEND=noninteractive apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y python3 python3-pip',
     ),
     'python': ToolchainRequirement(
       checkBinary: 'python3',
       displayName: 'Python 3 运行环境',
-      installCommands: {
-        DistroFamily.alpine: 'apk update && apk add --no-cache python3 py3-pip',
-        DistroFamily.ubuntu: 'DEBIAN_FRONTEND=noninteractive apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y python3 python3-pip',
-        DistroFamily.debian: 'DEBIAN_FRONTEND=noninteractive apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y python3 python3-pip',
-        DistroFamily.arch: 'pacman -Sy --noconfirm python python-pip',
-        DistroFamily.fedora: 'dnf install -y python3 python3-pip',
-      },
+      installCommand: 'DEBIAN_FRONTEND=noninteractive apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y python3 python3-pip',
     ),
     'npm': ToolchainRequirement(
       checkBinary: 'npm',
       displayName: 'Node.js 与 NPM 环境',
-      installCommands: {
-        DistroFamily.alpine: 'apk update && apk add --no-cache nodejs npm',
-        DistroFamily.ubuntu: 'DEBIAN_FRONTEND=noninteractive apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y nodejs npm',
-        DistroFamily.debian: 'DEBIAN_FRONTEND=noninteractive apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y nodejs npm',
-        DistroFamily.arch: 'pacman -Sy --noconfirm nodejs npm',
-        DistroFamily.fedora: 'dnf install -y nodejs npm',
-      },
+      installCommand: 'DEBIAN_FRONTEND=noninteractive apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y nodejs npm',
     ),
     'node': ToolchainRequirement(
       checkBinary: 'node',
       displayName: 'Node.js 运行环境',
-      installCommands: {
-        DistroFamily.alpine: 'apk update && apk add --no-cache nodejs npm',
-        DistroFamily.ubuntu: 'DEBIAN_FRONTEND=noninteractive apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y nodejs npm',
-        DistroFamily.debian: 'DEBIAN_FRONTEND=noninteractive apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y nodejs npm',
-        DistroFamily.arch: 'pacman -Sy --noconfirm nodejs npm',
-        DistroFamily.fedora: 'dnf install -y nodejs npm',
-      },
+      installCommand: 'DEBIAN_FRONTEND=noninteractive apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y nodejs npm',
     ),
     'cargo': ToolchainRequirement(
       checkBinary: 'cargo',
       displayName: 'Rust 与 Cargo 工具链',
-      installCommands: {
-        DistroFamily.alpine: 'apk update && apk add --no-cache rust cargo',
-        DistroFamily.ubuntu: 'DEBIAN_FRONTEND=noninteractive apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y cargo rustc',
-        DistroFamily.debian: 'DEBIAN_FRONTEND=noninteractive apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y cargo rustc',
-        DistroFamily.arch: 'pacman -Sy --noconfirm rust',
-        DistroFamily.fedora: 'dnf install -y cargo rust',
-      },
+      installCommand: 'DEBIAN_FRONTEND=noninteractive apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y cargo rustc',
     ),
     'rustc': ToolchainRequirement(
       checkBinary: 'rustc',
       displayName: 'Rust 编译器',
-      installCommands: {
-        DistroFamily.alpine: 'apk update && apk add --no-cache rust cargo',
-        DistroFamily.ubuntu: 'DEBIAN_FRONTEND=noninteractive apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y cargo rustc',
-        DistroFamily.debian: 'DEBIAN_FRONTEND=noninteractive apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y cargo rustc',
-        DistroFamily.arch: 'pacman -Sy --noconfirm rust',
-        DistroFamily.fedora: 'dnf install -y cargo rust',
-      },
+      installCommand: 'DEBIAN_FRONTEND=noninteractive apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y cargo rustc',
     ),
     'go': ToolchainRequirement(
       checkBinary: 'go',
       displayName: 'Go 语言环境',
-      installCommands: {
-        DistroFamily.alpine: 'apk update && apk add --no-cache go',
-        DistroFamily.ubuntu: 'DEBIAN_FRONTEND=noninteractive apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y golang-go',
-        DistroFamily.debian: 'DEBIAN_FRONTEND=noninteractive apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y golang-go',
-        DistroFamily.arch: 'pacman -Sy --noconfirm go',
-        DistroFamily.fedora: 'dnf install -y golang',
-      },
+      installCommand: 'DEBIAN_FRONTEND=noninteractive apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y golang-go',
     ),
     'gradle': ToolchainRequirement(
       checkBinary: 'java',
       displayName: 'Java / Gradle 运行时',
-      installCommands: {
-        DistroFamily.alpine: 'apk update && apk add --no-cache openjdk17-jre-headless',
-        DistroFamily.ubuntu: 'DEBIAN_FRONTEND=noninteractive apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y default-jdk-headless ca-certificates-java && (find /usr/lib/jvm -mindepth 1 -maxdepth 2 -type d \\( -name lib -o -name server \\) > /etc/ld.so.conf.d/java.conf 2>/dev/null; ldconfig 2>/dev/null; update-ca-certificates -f 2>/dev/null || true)',
-        DistroFamily.debian: 'DEBIAN_FRONTEND=noninteractive apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y default-jdk-headless ca-certificates-java && (find /usr/lib/jvm -mindepth 1 -maxdepth 2 -type d \\( -name lib -o -name server \\) > /etc/ld.so.conf.d/java.conf 2>/dev/null; ldconfig 2>/dev/null; update-ca-certificates -f 2>/dev/null || true)',
-        DistroFamily.arch: 'pacman -Sy --noconfirm jdk-openjdk',
-        DistroFamily.fedora: 'dnf install -y java-latest-openjdk-devel',
-      },
+      installCommand: 'DEBIAN_FRONTEND=noninteractive apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y default-jdk-headless ca-certificates-java && (find /usr/lib/jvm -mindepth 1 -maxdepth 2 -type d \\( -name lib -o -name server \\) > /etc/ld.so.conf.d/java.conf 2>/dev/null; ldconfig 2>/dev/null; update-ca-certificates -f 2>/dev/null || true)',
+    ),
+    'java': ToolchainRequirement(
+      checkBinary: 'java',
+      displayName: 'Java 运行环境 (JDK)',
+      installCommand: 'DEBIAN_FRONTEND=noninteractive apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y default-jdk-headless ca-certificates-java && (find /usr/lib/jvm -mindepth 1 -maxdepth 2 -type d \\( -name lib -o -name server \\) > /etc/ld.so.conf.d/java.conf 2>/dev/null; ldconfig 2>/dev/null; update-ca-certificates -f 2>/dev/null || true)',
+    ),
+    'maven': ToolchainRequirement(
+      checkBinary: 'mvn',
+      displayName: 'Maven 构建工具',
+      installCommand: 'DEBIAN_FRONTEND=noninteractive apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y maven default-jdk-headless',
+    ),
+    'mvn': ToolchainRequirement(
+      checkBinary: 'mvn',
+      displayName: 'Maven 构建工具',
+      installCommand: 'DEBIAN_FRONTEND=noninteractive apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y maven default-jdk-headless',
+    ),
+    'lua': ToolchainRequirement(
+      checkBinary: 'lua',
+      displayName: 'Lua 解释器',
+      installCommand: 'DEBIAN_FRONTEND=noninteractive apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y lua5.4',
+    ),
+    'perl': ToolchainRequirement(
+      checkBinary: 'perl',
+      displayName: 'Perl 解释器',
+      installCommand: 'DEBIAN_FRONTEND=noninteractive apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y perl',
+    ),
+    'php': ToolchainRequirement(
+      checkBinary: 'php',
+      displayName: 'PHP 命令行环境',
+      installCommand: 'DEBIAN_FRONTEND=noninteractive apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y php-cli',
     ),
   };
 

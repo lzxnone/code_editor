@@ -126,6 +126,20 @@ class RunProvider extends ChangeNotifier {
   void _resolveLastRunTask() {
     _lastRunTask = null;
     if (_lastRunTaskId == null) return;
+
+    // 单文件任务联动：如果上一次执行的任务是单文件任务（以 detected_single_ 开头）
+    if (_lastRunTaskId!.startsWith('detected_single_')) {
+      final singleTasks = _taskTable.tasksOf(RunTaskType.singleFile);
+      if (singleTasks.isNotEmpty) {
+        // 当前文件支持单文件运行，自动联动为当前文件的单文件任务
+        _lastRunTask = singleTasks.first;
+        _lastRunTaskId = singleTasks.first.id;
+        return;
+      }
+      // 当前文件不支持单文件运行，清除当前可执行的 _lastRunTask（保留 _lastRunTaskId 以便切回可运行文件时恢复）
+      return;
+    }
+
     for (final task in allTasks) {
       if (task.id == _lastRunTaskId) {
         _lastRunTask = task;

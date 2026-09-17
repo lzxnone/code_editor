@@ -1,12 +1,10 @@
-import 'dart:io';
+import 'package:code_editor/models/distro_manifest.dart';
 import 'package:flutter/foundation.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import '../services/distro_installer.dart';
 import '../services/distro_manager.dart';
 
-/// 终端多系统状态与默认系统持久化管理器
+/// 终端系统状态管理器（单一内置 Ubuntu 环境）
 class DistroProvider with ChangeNotifier {
-  static const String _prefKeyDefaultSystem = 'terminal_default_system';
 
   final DistroManager _manager = DistroManager();
 
@@ -37,42 +35,27 @@ class DistroProvider with ChangeNotifier {
     notifyListeners();
   }
 
-  /// 重新扫描已安装的系统并校准当前默认选中项
+  /// 重新扫描已安装的系统并校准状态
   Future<void> refreshSystems() async {
-    final systems = await _manager.listInstalledSystems();
-    _installedSystems = systems;
-
-    final prefs = await SharedPreferences.getInstance();
-    final savedSystem = prefs.getString(_prefKeyDefaultSystem);
-
-    if (savedSystem != null && _installedSystems.contains(savedSystem)) {
-      _selectedSystem = savedSystem;
-    } else if (_installedSystems.isNotEmpty) {
-      _selectedSystem = _installedSystems.first;
-      await prefs.setString(_prefKeyDefaultSystem, _selectedSystem!);
+    final isInstalled = await _manager.isSystemInstalled(DistroRepository.defaultSystemName);
+    if (isInstalled) {
+      _installedSystems = [DistroRepository.defaultSystemName];
+      _selectedSystem = DistroRepository.defaultSystemName;
     } else {
+      _installedSystems = [];
       _selectedSystem = null;
-      await prefs.remove(_prefKeyDefaultSystem);
     }
-
     notifyListeners();
   }
 
-  /// 选择指定系统为当前活跃系统并持久化为默认系统
+  /// 选择指定系统为当前活跃系统（仅支持默认 Ubuntu）
   Future<void> selectSystem(String systemName) async {
-    if (!_installedSystems.contains(systemName)) return;
-
-    if (_selectedSystem != systemName) {
-      _selectedSystem = systemName;
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setString(_prefKeyDefaultSystem, systemName);
-      notifyListeners();
-    }
+    await refreshSystems();
   }
 
   /// 从应用内置资源导入 Ubuntu 24.04 系统实例
   Future<void> importBuiltinUbuntu({
-    required String systemName,
+    String systemName = DistroRepository.defaultSystemName,
     InstallProgressCallback? onProgress,
     bool Function()? isCancelled,
   }) async {
@@ -82,51 +65,7 @@ class DistroProvider with ChangeNotifier {
       isCancelled: isCancelled,
     );
 
-    // 导入成功后刷新列表并自动选为当前系统
-    await refreshSystems();
-    await selectSystem(systemName);
-  }
-
-  /// 从应用内置资源导入 Alpine 系统实例（保留备用）
-  Future<void> importBuiltinAlpine({
-    required String systemName,
-    InstallProgressCallback? onProgress,
-    bool Function()? isCancelled,
-  }) async {
-    await _manager.importBuiltinAlpine(
-      systemName: systemName,
-      onProgress: onProgress,
-      isCancelled: isCancelled,
-    );
-
-    // 导入成功后刷新列表并自动选为当前系统
-    await refreshSystems();
-    await selectSystem(systemName);
-  }
-
-  /// 从外部 .tar.gz 压缩包导入自定义系统实例
-  Future<void> importFromCustomTarGz({
-    required String systemName,
-    required File tarGzFile,
-    InstallProgressCallback? onProgress,
-    bool Function()? isCancelled,
-  }) async {
-    await _manager.importFromCustomTarGz(
-      systemName: systemName,
-      tarGzFile: tarGzFile,
-      onProgress: onProgress,
-      isCancelled: isCancelled,
-    );
-
-    // 导入成功后刷新列表并自动选为当前系统
-    await refreshSystems();
-    await selectSystem(systemName);
-  }
-
-  /// 高危操作：删除指定系统实例
-  Future<void> deleteSystem(String systemName) async {
-    await _manager.deleteSystem(systemName);
-    onSystemDeleted?.call(systemName);
+    // 导入成功后刷新列表
     await refreshSystems();
   }
 }

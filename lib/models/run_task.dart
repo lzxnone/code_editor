@@ -139,6 +139,31 @@ class RunTask {
         return l10n.detectedTaskSingleRustDesc;
       case 'detected_single_js':
         return l10n.detectedTaskSingleJsDesc;
+      case 'detected_single_java':
+        return l10n.detectedTaskSingleJavaDesc;
+      case 'detected_single_ts':
+        return l10n.detectedTaskSingleTsDesc;
+      case 'detected_single_lua':
+        return l10n.detectedTaskSingleLuaDesc;
+      case 'detected_single_perl':
+        return l10n.detectedTaskSinglePerlDesc;
+      case 'detected_single_php':
+        return l10n.detectedTaskSinglePhpDesc;
+      case 'detected_python_pip_install':
+        return l10n.detectedTaskPythonPipInstallDesc;
+      case 'detected_python_run_main':
+      case 'detected_python_run_app':
+        return l10n.detectedTaskPythonRunMainDesc;
+      case 'detected_python_pytest':
+        return l10n.detectedTaskPythonPytestDesc;
+      case 'detected_maven_package':
+        return l10n.detectedTaskMavenPackageDesc;
+      case 'detected_maven_compile':
+        return l10n.detectedTaskMavenCompileDesc;
+      case 'detected_maven_test':
+        return l10n.detectedTaskMavenTestDesc;
+      case 'detected_maven_clean':
+        return l10n.detectedTaskMavenCleanDesc;
       default:
         return description ?? '';
     }

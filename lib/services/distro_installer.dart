@@ -687,6 +687,99 @@ class DistroInstaller {
 
     // 8. 自动配置 Java 运行时动态链接路径
     await ensureJavaConfiguration(rootfsDir);
+
+    // 9. 自动配置 Debian/Ubuntu 容器环境策略（policy-rc.d 屏蔽守护进程启动，解决 dpkg error code 1）
+    await ensureAptPolicyAndDiversions(rootfsDir);
+
+    // 10. 自动配置 Debian/Ubuntu dpkg 优化（force-unsafe-io 解决硬链接解包与 I/O 阻塞异常）
+    await ensureDpkgConfiguration(rootfsDir);
+  }
+
+  /// 自动配置 Debian / Ubuntu 容器环境 dpkg 优化配置（解决 fsync/I/O 阻塞与权限死锁）
+  /// 对标 proot-distro：
+  /// 写入 `/etc/dpkg/dpkg.cfg.d/01_proot`，包含 `force-unsafe-io`
+  static Future<void> ensureDpkgConfiguration(Directory rootfsDir) async {
+    try {
+      final etcDpkgDir = Directory(p.join(rootfsDir.path, 'etc', 'dpkg'));
+      if (!etcDpkgDir.existsSync()) return;
+
+      final dpkgCfgD = Directory(p.join(etcDpkgDir.path, 'dpkg.cfg.d'));
+      if (!dpkgCfgD.existsSync()) {
+        dpkgCfgD.createSync(recursive: true);
+      }
+
+      final prootCfg = File(p.join(dpkgCfgD.path, '01_proot'));
+      const prootCfgContent = 'force-unsafe-io\n';
+      if (!prootCfg.existsSync() || prootCfg.readAsStringSync() != prootCfgContent) {
+        prootCfg.writeAsStringSync(prootCfgContent, flush: true);
+        debugPrint('[DistroInstaller] 成功配置 /etc/dpkg/dpkg.cfg.d/01_proot (force-unsafe-io)');
+      }
+    } catch (e) {
+      debugPrint('[DistroInstaller] 配置 dpkg 优化策略异常 (非阻塞): $e');
+    }
+  }
+
+  /// 自动适配 Debian/Ubuntu 容器环境的包管理器策略与服务屏蔽
+  /// 对标 proot-distro：
+  /// 1. 注入 `/usr/sbin/policy-rc.d` 返回 101，禁止包安装过程启动 systemd/init 服务；
+  /// 2. 伪装 `start-stop-daemon`，避免 postinst 脚本因守护进程调用失败导致 dpkg 退出码 1；
+  /// 3. 设置 APT 默认静默与非交互模式，避免缺少 apt-utils 时 debconf 异常。
+  static Future<void> ensureAptPolicyAndDiversions(Directory rootfsDir) async {
+    try {
+      final etcAptDir = Directory(p.join(rootfsDir.path, 'etc', 'apt'));
+      if (!etcAptDir.existsSync()) return;
+
+      // 同步检查并配置 dpkg 选项
+      await ensureDpkgConfiguration(rootfsDir);
+
+      // 1. /usr/sbin/policy-rc.d (exit 101)
+      final sbinDir = Directory(p.join(rootfsDir.path, 'usr', 'sbin'));
+      if (!sbinDir.existsSync()) {
+        sbinDir.createSync(recursive: true);
+      }
+      final policyRcD = File(p.join(sbinDir.path, 'policy-rc.d'));
+      const policyContent = '#!/bin/sh\nexit 101\n';
+      if (!policyRcD.existsSync() || policyRcD.readAsStringSync() != policyContent) {
+        policyRcD.writeAsStringSync(policyContent, flush: true);
+        if (!Platform.isWindows) {
+          try {
+            await Process.run('chmod', ['755', policyRcD.path]);
+          } catch (_) {}
+        }
+        debugPrint('[DistroInstaller] 成功注入 /usr/sbin/policy-rc.d');
+      }
+
+      // 2. /usr/sbin/start-stop-daemon (exit 0 伪装，避免无 init 守护进程报错)
+      final startStopDaemon = File(p.join(sbinDir.path, 'start-stop-daemon'));
+      const daemonStubContent = '#!/bin/sh\nexit 0\n';
+      if (!startStopDaemon.existsSync()) {
+        startStopDaemon.writeAsStringSync(daemonStubContent, flush: true);
+        if (!Platform.isWindows) {
+          try {
+            await Process.run('chmod', ['755', startStopDaemon.path]);
+          } catch (_) {}
+        }
+        debugPrint('[DistroInstaller] 成功伪装 /usr/sbin/start-stop-daemon');
+      }
+
+      // 3. /etc/apt/apt.conf.d/99no-install-recommends 与 debconf 配置
+      final aptConfD = Directory(p.join(etcAptDir.path, 'apt.conf.d'));
+      if (!aptConfD.existsSync()) {
+        aptConfD.createSync(recursive: true);
+      }
+      final aptSettings = File(p.join(aptConfD.path, '99proot-container'));
+      const aptSettingsContent =
+          'APT::Install-Recommends "false";\n'
+          'APT::Install-Suggests "false";\n'
+          'APT::Get::Assume-Yes "true";\n'
+          'Dpkg::Use-Pty "0";\n';
+      if (!aptSettings.existsSync() || aptSettings.readAsStringSync() != aptSettingsContent) {
+        aptSettings.writeAsStringSync(aptSettingsContent, flush: true);
+        debugPrint('[DistroInstaller] 成功配置 /etc/apt/apt.conf.d/99proot-container');
+      }
+    } catch (e) {
+      debugPrint('[DistroInstaller] 配置 APT policy-rc.d 策略异常 (非阻塞): $e');
+    }
   }
 
   /// 自动部署标准 SSL CA 证书链（让 APT / Curl / Git 默认支持 HTTPS）

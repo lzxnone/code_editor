@@ -45,29 +45,8 @@ class FakeDistroProvider extends DistroProvider {
   }
 
   @override
-  Future<void> deleteSystem(String systemName) async {
-    _systems.remove(systemName);
-    if (_selected == systemName) {
-      _selected = _systems.isNotEmpty ? _systems.first : null;
-    }
-    notifyListeners();
-  }
-
-  @override
-  Future<void> importBuiltinAlpine({
-    required String systemName,
-    dynamic onProgress,
-    bool Function()? isCancelled,
-  }) async {
-    _systems.add(systemName);
-    _selected = systemName;
-    notifyListeners();
-  }
-
-  @override
-  Future<void> importFromCustomTarGz({
-    required String systemName,
-    required dynamic tarGzFile,
+  Future<void> importBuiltinUbuntu({
+    String systemName = 'ubuntu',
     dynamic onProgress,
     bool Function()? isCancelled,
   }) async {

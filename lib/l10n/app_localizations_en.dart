@@ -1291,6 +1291,47 @@ class AppLocalizationsEn extends AppLocalizations {
   String get detectedTaskSingleJsDesc => 'Run current JavaScript script';
 
   @override
+  String get detectedTaskSingleJavaDesc =>
+      'Run current Java source file directly';
+
+  @override
+  String get detectedTaskSingleTsDesc => 'Run current TypeScript script';
+
+  @override
+  String get detectedTaskSingleLuaDesc => 'Run current Lua script';
+
+  @override
+  String get detectedTaskSinglePerlDesc => 'Run current Perl script';
+
+  @override
+  String get detectedTaskSinglePhpDesc => 'Run current PHP script';
+
+  @override
+  String get detectedTaskPythonPipInstallDesc => 'Install requirements via pip';
+
+  @override
+  String get detectedTaskPythonRunMainDesc =>
+      'Execute Python project main entrypoint';
+
+  @override
+  String get detectedTaskPythonPytestDesc => 'Run pytest test suite';
+
+  @override
+  String get detectedTaskMavenPackageDesc =>
+      'Package Maven project (mvn package)';
+
+  @override
+  String get detectedTaskMavenCompileDesc =>
+      'Compile Maven project sources (mvn compile)';
+
+  @override
+  String get detectedTaskMavenTestDesc => 'Run Maven unit tests (mvn test)';
+
+  @override
+  String get detectedTaskMavenCleanDesc =>
+      'Clean Maven target output directory (mvn clean)';
+
+  @override
   String get missingDistroTitle => 'System Environment Not Ready';
 
   @override
@@ -1543,18 +1584,35 @@ class AppLocalizationsEn extends AppLocalizations {
       'Manage language servers and code intelligence toolchains';
 
   @override
+  String get completionSourceSection => 'Completion Data Sources & Switches';
+
+  @override
+  String get localCompletionTitle => 'Local Base Completion';
+
+  @override
+  String get localCompletionSubtitle =>
+      'Built-in language keywords and document lexical heuristic extraction';
+
+  @override
+  String get lspCompletionTitle => 'Backend Language Server';
+
+  @override
+  String get lspCompletionSubtitle =>
+      'Request real semantic types and function parameters from background compilers';
+
+  @override
   String get internalEngineTitle =>
-      'Internal Code Intelligence Engine (Alpine)';
+      'Runtime & Code Intelligence Engine (Ubuntu)';
 
   @override
   String get internalEngineStatusReady => 'Engine Ready';
 
   @override
-  String get internalEngineStatusNotReady => 'Engine Not Ready';
+  String get internalEngineStatusNotReady => 'Engine Not Started';
 
   @override
   String get internalEngineExtracting =>
-      'Preparing internal code intelligence engine...';
+      'Preparing built-in Ubuntu environment & intelligence engine...';
 
   @override
   String get installComponent => 'Install Component';
@@ -1575,6 +1633,11 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String uninstallingComponent(String pkg) {
+    return 'Uninstalling $pkg and cleaning configuration...';
+  }
+
+  @override
   String get editLanguageConfig => 'Edit Language Configuration';
 
   @override
@@ -1585,15 +1648,20 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String deleteLanguageConfirmMessage(String name) {
-    return 'Are you sure you want to delete code completion config for $name?';
+    return 'Are you sure you want to delete the code completion configuration for $name?';
   }
 
   @override
-  String get resetDefaultLanguages => 'Reset to Defaults';
+  String deleteLanguageWithPackageConfirmMessage(String name) {
+    return 'Are you sure you want to delete the code completion configuration for $name? Installed packages will be uninstalled.';
+  }
+
+  @override
+  String get resetDefaultLanguages => 'Reset Default Configurations';
 
   @override
   String get resetDefaultLanguagesConfirm =>
-      'Are you sure you want to reset all language configurations to defaults?';
+      'Are you sure you want to reset all language configurations to official default presets?';
 
   @override
   String get languageDisplayName => 'Language Name';
@@ -1624,14 +1692,14 @@ class AppLocalizationsEn extends AppLocalizations {
   String get serverArgsField => 'Server Arguments';
 
   @override
-  String get serverArgsFieldHint => 'Space or comma separated';
+  String get serverArgsFieldHint => 'Space or comma-separated arguments';
 
   @override
-  String get apkPackageField => 'Alpine APK Package';
+  String get apkPackageField => 'Ubuntu Package Name (APT)';
 
   @override
   String get apkPackageFieldHint =>
-      'For one-click install, e.g. clang-extra-tools';
+      'For one-click install, e.g. clangd or python3-pylsp';
 
   @override
   String lspPackageMissingTitle(String language) {
@@ -1639,9 +1707,8 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String lspPackageMissingMessage(String pkg, String command) {
-    return 'Install $pkg ($command) to enable code completion and error diagnostics';
-  }
+  String get lspPackageMissingMessage =>
+      'Install the component to enable code completion and error diagnostics';
 
   @override
   String get installNow => 'Install Now';
@@ -1651,4 +1718,42 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get languageConfigSaved => 'Language configuration saved';
+
+  @override
+  String get enable => 'Enable';
+
+  @override
+  String get disable => 'Disable';
+
+  @override
+  String get edit => 'Edit';
+
+  @override
+  String componentQueued(String name) {
+    return '$name queued…';
+  }
+
+  @override
+  String uninstallComponentSuccess(String name) {
+    return '$name component uninstalled successfully';
+  }
+
+  @override
+  String uninstallComponentFailed(String error) {
+    return 'Failed to uninstall component: $error';
+  }
+
+  @override
+  String get installingStatus => 'Installing…';
+
+  @override
+  String get uninstallingStatus => 'Uninstalling…';
+
+  @override
+  String get emptyLspLanguagesTitle =>
+      'No code intelligence components installed';
+
+  @override
+  String get emptyLspLanguagesSubtitle =>
+      'Open any source file to trigger installation on demand, or click \"+\" to add manually';
 }

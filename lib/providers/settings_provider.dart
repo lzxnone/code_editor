@@ -1,6 +1,5 @@
 import 'dart:convert';
 import 'package:code_editor/models/app_font.dart';
-import 'package:code_editor/models/distro_manifest.dart';
 import 'package:code_editor/models/editor_theme.dart';
 import 'package:code_editor/models/virtual_keyboard_config.dart';
 import 'package:flutter/foundation.dart';
@@ -34,8 +33,8 @@ class SettingsProvider extends ChangeNotifier {
   //项目配置
   static const String _keyShowHiddenFiles = 'show_hidden_files'; //显示隐藏文件
 
-  //下载配置
-  static const String _keyDownloadMirrorId = 'download_mirror_id'; //下载源镜像ID
+  //代码补全
+  static const String _keyEnableLspCompletion = 'enable_lsp_completion'; //LSP智能代码补全启用
 
   //语言
   static const String _keyAppLocale = 'app_locale';
@@ -60,12 +59,13 @@ class SettingsProvider extends ChangeNotifier {
   String _terminalKeyboardConfigJson = VirtualKeyboardConfig.defaultTerminalJsonPretty();
   VirtualKeyboardConfig _terminalKeyboardConfig = VirtualKeyboardConfig.defaultTerminalConfiguration();
   bool _showHiddenFiles = true;
-  String _downloadMirrorId = 'tsinghua'; // 默认清华源
+  bool _enableLspCompletion = true;
   Locale? _locale;
 
   bool get showHiddenFiles => _showHiddenFiles;
-  String get downloadMirrorId => _downloadMirrorId;
-  DistroMirror get downloadMirror => DistroRepository.getMirrorById(_downloadMirrorId);
+  @Deprecated('本地补全已完全移除')
+  bool get enableLocalCompletion => false;
+  bool get enableLspCompletion => _enableLspCompletion;
 
   ThemeMode get appThemeMode => _appThemeMode;
   Color get appThemeColor => _appThemeColor;
@@ -291,10 +291,10 @@ class SettingsProvider extends ChangeNotifier {
         _showHiddenFiles = savedShowHiddenFiles;
       }
 
-      //设置下载源镜像配置
-      final savedMirrorId = prefs.getString(_keyDownloadMirrorId);
-      if (savedMirrorId != null && savedMirrorId.isNotEmpty) {
-        _downloadMirrorId = savedMirrorId;
+      //设置代码补全
+      final savedEnableLspCompletion = prefs.getBool(_keyEnableLspCompletion);
+      if (savedEnableLspCompletion != null) {
+        _enableLspCompletion = savedEnableLspCompletion;
       }
 
       //设置语言
@@ -482,14 +482,18 @@ class SettingsProvider extends ChangeNotifier {
     } catch (_) {}
   }
 
-  /// 设置系统安装包下载镜像源
-  Future<void> setDownloadMirrorId(String mirrorId) async {
-    if (_downloadMirrorId == mirrorId) return;
-    _downloadMirrorId = mirrorId;
+  /// 设置是否启用本地基础补全（本地补全已移除，保留此方法仅作向后兼容）
+  @Deprecated('本地补全已完全移除')
+  Future<void> setEnableLocalCompletion(bool enable) async {}
+
+  /// 设置是否启用LSP后端代码补全
+  Future<void> setEnableLspCompletion(bool enable) async {
+    if (_enableLspCompletion == enable) return;
+    _enableLspCompletion = enable;
     notifyListeners();
     try {
       final prefs = await SharedPreferences.getInstance();
-      await prefs.setString(_keyDownloadMirrorId, mirrorId);
+      await prefs.setBool(_keyEnableLspCompletion, enable);
     } catch (_) {}
   }
 }

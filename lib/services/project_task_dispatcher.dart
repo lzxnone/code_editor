@@ -11,9 +11,11 @@ import 'project_modules/cmake_project_module.dart';
 import 'project_modules/dart_project_module.dart';
 import 'project_modules/gradle_project_module.dart';
 import 'project_modules/make_project_module.dart';
+import 'project_modules/maven_project_module.dart';
 import 'project_modules/npm_project_module.dart';
 import 'project_modules/project_module.dart';
 import 'project_modules/project_probe.dart';
+import 'project_modules/python_project_module.dart';
 import 'project_modules/single_file_task_detector.dart';
 
 /// 项目任务总调度（对标 VS Code Task Service / IDE 的 ProjectModel 协调器）
@@ -43,11 +45,13 @@ class ProjectTaskDispatcher {
   void _registerDefaultModules() {
     _modules.addAll([
       GradleProjectModule(),
+      MavenProjectModule(),
       CMakeProjectModule(),
       CargoProjectModule(),
       NpmProjectModule(),
       MakeProjectModule(),
       DartProjectModule(),
+      PythonProjectModule(),
     ]);
   }
 

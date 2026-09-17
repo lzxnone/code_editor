@@ -30,6 +30,12 @@ class SingleFileTaskDetector {
     '.go',
     '.rs',
     '.js',
+    '.java',
+    '.ts',
+    '.mts',
+    '.lua',
+    '.pl',
+    '.php',
   };
 
   /// 检查给定文件路径是否属于支持的单文件任务类型
@@ -134,6 +140,52 @@ class SingleFileTaskDetector {
           source: TaskSource.detected,
           group: 'single_file',
           icon: Icons.javascript,
+        );
+      case '.java':
+        return RunTask(
+          id: 'detected_single_java',
+          name: 'Java: $fileName',
+          command: 'java $escapedRelPath',
+          source: TaskSource.detected,
+          group: 'single_file',
+          icon: Icons.code,
+        );
+      case '.ts':
+      case '.mts':
+        return RunTask(
+          id: 'detected_single_ts',
+          name: 'TypeScript: $fileName',
+          command: 'npx -y tsx $escapedRelPath',
+          source: TaskSource.detected,
+          group: 'single_file',
+          icon: Icons.javascript,
+        );
+      case '.lua':
+        return RunTask(
+          id: 'detected_single_lua',
+          name: 'Lua: $fileName',
+          command: 'lua $escapedRelPath',
+          source: TaskSource.detected,
+          group: 'single_file',
+          icon: Icons.code,
+        );
+      case '.pl':
+        return RunTask(
+          id: 'detected_single_perl',
+          name: 'Perl: $fileName',
+          command: 'perl $escapedRelPath',
+          source: TaskSource.detected,
+          group: 'single_file',
+          icon: Icons.terminal,
+        );
+      case '.php':
+        return RunTask(
+          id: 'detected_single_php',
+          name: 'PHP: $fileName',
+          command: 'php $escapedRelPath',
+          source: TaskSource.detected,
+          group: 'single_file',
+          icon: Icons.code,
         );
       default:
         return null;

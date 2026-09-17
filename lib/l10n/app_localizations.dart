@@ -2144,6 +2144,78 @@ abstract class AppLocalizations {
   /// **'运行当前 JS 脚本'**
   String get detectedTaskSingleJsDesc;
 
+  /// No description provided for @detectedTaskSingleJavaDesc.
+  ///
+  /// In zh, this message translates to:
+  /// **'直接运行当前 Java 源文件'**
+  String get detectedTaskSingleJavaDesc;
+
+  /// No description provided for @detectedTaskSingleTsDesc.
+  ///
+  /// In zh, this message translates to:
+  /// **'运行当前 TypeScript 脚本'**
+  String get detectedTaskSingleTsDesc;
+
+  /// No description provided for @detectedTaskSingleLuaDesc.
+  ///
+  /// In zh, this message translates to:
+  /// **'运行当前 Lua 脚本'**
+  String get detectedTaskSingleLuaDesc;
+
+  /// No description provided for @detectedTaskSinglePerlDesc.
+  ///
+  /// In zh, this message translates to:
+  /// **'运行当前 Perl 脚本'**
+  String get detectedTaskSinglePerlDesc;
+
+  /// No description provided for @detectedTaskSinglePhpDesc.
+  ///
+  /// In zh, this message translates to:
+  /// **'运行当前 PHP 脚本'**
+  String get detectedTaskSinglePhpDesc;
+
+  /// No description provided for @detectedTaskPythonPipInstallDesc.
+  ///
+  /// In zh, this message translates to:
+  /// **'安装项目 requirements 依赖包'**
+  String get detectedTaskPythonPipInstallDesc;
+
+  /// No description provided for @detectedTaskPythonRunMainDesc.
+  ///
+  /// In zh, this message translates to:
+  /// **'执行 Python 项目主程序'**
+  String get detectedTaskPythonRunMainDesc;
+
+  /// No description provided for @detectedTaskPythonPytestDesc.
+  ///
+  /// In zh, this message translates to:
+  /// **'运行 pytest 测试用例'**
+  String get detectedTaskPythonPytestDesc;
+
+  /// No description provided for @detectedTaskMavenPackageDesc.
+  ///
+  /// In zh, this message translates to:
+  /// **'打包 Maven 项目 (mvn package)'**
+  String get detectedTaskMavenPackageDesc;
+
+  /// No description provided for @detectedTaskMavenCompileDesc.
+  ///
+  /// In zh, this message translates to:
+  /// **'编译 Maven 项目源码 (mvn compile)'**
+  String get detectedTaskMavenCompileDesc;
+
+  /// No description provided for @detectedTaskMavenTestDesc.
+  ///
+  /// In zh, this message translates to:
+  /// **'运行 Maven 单元测试 (mvn test)'**
+  String get detectedTaskMavenTestDesc;
+
+  /// No description provided for @detectedTaskMavenCleanDesc.
+  ///
+  /// In zh, this message translates to:
+  /// **'清理 Maven 目标输出目录 (mvn clean)'**
+  String get detectedTaskMavenCleanDesc;
+
   /// No description provided for @missingDistroTitle.
   ///
   /// In zh, this message translates to:
@@ -2546,10 +2618,40 @@ abstract class AppLocalizations {
   /// **'管理各编程语言的智能补全与报错工具链'**
   String get codeCompletionSubtitle;
 
+  /// No description provided for @completionSourceSection.
+  ///
+  /// In zh, this message translates to:
+  /// **'补全数据源与开关'**
+  String get completionSourceSection;
+
+  /// No description provided for @localCompletionTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'本地基础补全'**
+  String get localCompletionTitle;
+
+  /// No description provided for @localCompletionSubtitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'包含语言内置关键字与当前文档词法启发式提取'**
+  String get localCompletionSubtitle;
+
+  /// No description provided for @lspCompletionTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'后端语言服务补全'**
+  String get lspCompletionTitle;
+
+  /// No description provided for @lspCompletionSubtitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'向后台编译器守护进程请求真实语义类型与函数参数补全'**
+  String get lspCompletionSubtitle;
+
   /// No description provided for @internalEngineTitle.
   ///
   /// In zh, this message translates to:
-  /// **'内部代码智能引擎 (Alpine)'**
+  /// **'代码运行与智能补全引擎 (Ubuntu)'**
   String get internalEngineTitle;
 
   /// No description provided for @internalEngineStatusReady.
@@ -2561,13 +2663,13 @@ abstract class AppLocalizations {
   /// No description provided for @internalEngineStatusNotReady.
   ///
   /// In zh, this message translates to:
-  /// **'引擎未就绪'**
+  /// **'引擎未启动'**
   String get internalEngineStatusNotReady;
 
   /// No description provided for @internalEngineExtracting.
   ///
   /// In zh, this message translates to:
-  /// **'正在准备内置代码智能引擎...'**
+  /// **'正在准备内置 Ubuntu 开发环境与智能补全引擎...'**
   String get internalEngineExtracting;
 
   /// No description provided for @installComponent.
@@ -2594,6 +2696,12 @@ abstract class AppLocalizations {
   /// **'组件安装失败: {error}'**
   String installComponentFailed(String error);
 
+  /// No description provided for @uninstallingComponent.
+  ///
+  /// In zh, this message translates to:
+  /// **'正在卸载 {pkg} 并清理配置...'**
+  String uninstallingComponent(String pkg);
+
   /// No description provided for @editLanguageConfig.
   ///
   /// In zh, this message translates to:
@@ -2617,6 +2725,12 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'确定要删除 {name} 的代码补全配置吗？'**
   String deleteLanguageConfirmMessage(String name);
+
+  /// No description provided for @deleteLanguageWithPackageConfirmMessage.
+  ///
+  /// In zh, this message translates to:
+  /// **'确定要删除 {name} 的代码补全配置吗？已安装的软件包将一并卸载。'**
+  String deleteLanguageWithPackageConfirmMessage(String name);
 
   /// No description provided for @resetDefaultLanguages.
   ///
@@ -2693,13 +2807,13 @@ abstract class AppLocalizations {
   /// No description provided for @apkPackageField.
   ///
   /// In zh, this message translates to:
-  /// **'Alpine 依赖包名'**
+  /// **'Ubuntu 依赖包名 (APT)'**
   String get apkPackageField;
 
   /// No description provided for @apkPackageFieldHint.
   ///
   /// In zh, this message translates to:
-  /// **'用于一键安装，如 clang-extra-tools'**
+  /// **'用于一键安装，如 clangd 或 python3-pylsp'**
   String get apkPackageFieldHint;
 
   /// No description provided for @lspPackageMissingTitle.
@@ -2711,8 +2825,8 @@ abstract class AppLocalizations {
   /// No description provided for @lspPackageMissingMessage.
   ///
   /// In zh, this message translates to:
-  /// **'安装 {pkg} ({command}) 即可获得精准代码补全与错误检查'**
-  String lspPackageMissingMessage(String pkg, String command);
+  /// **'安装组件即可获得精准代码补全与错误检查'**
+  String get lspPackageMissingMessage;
 
   /// No description provided for @installNow.
   ///
@@ -2731,6 +2845,66 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'语言配置已保存'**
   String get languageConfigSaved;
+
+  /// No description provided for @enable.
+  ///
+  /// In zh, this message translates to:
+  /// **'启用'**
+  String get enable;
+
+  /// No description provided for @disable.
+  ///
+  /// In zh, this message translates to:
+  /// **'停用'**
+  String get disable;
+
+  /// No description provided for @edit.
+  ///
+  /// In zh, this message translates to:
+  /// **'编辑'**
+  String get edit;
+
+  /// No description provided for @componentQueued.
+  ///
+  /// In zh, this message translates to:
+  /// **'{name} 排队等待中…'**
+  String componentQueued(String name);
+
+  /// No description provided for @uninstallComponentSuccess.
+  ///
+  /// In zh, this message translates to:
+  /// **'{name} 组件卸载成功'**
+  String uninstallComponentSuccess(String name);
+
+  /// No description provided for @uninstallComponentFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'组件卸载失败: {error}'**
+  String uninstallComponentFailed(String error);
+
+  /// No description provided for @installingStatus.
+  ///
+  /// In zh, this message translates to:
+  /// **'正在安装…'**
+  String get installingStatus;
+
+  /// No description provided for @uninstallingStatus.
+  ///
+  /// In zh, this message translates to:
+  /// **'正在卸载…'**
+  String get uninstallingStatus;
+
+  /// No description provided for @emptyLspLanguagesTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'暂无已安装的代码智能组件'**
+  String get emptyLspLanguagesTitle;
+
+  /// No description provided for @emptyLspLanguagesSubtitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'在编辑器中打开代码文件即可按需触发安装，或点击右上角 \"+\" 手动添加'**
+  String get emptyLspLanguagesSubtitle;
 }
 
 class _AppLocalizationsDelegate

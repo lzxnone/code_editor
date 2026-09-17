@@ -401,10 +401,17 @@ class _CodeEditableState extends State<_CodeEditable> with AutomaticKeepAliveCli
       return;
     }
     widget.onChanged?.call(widget.controller.value);
+    final isTextChanged = widget.controller.codeLines != widget.controller.preValue?.codeLines;
     if (widget.controller.codeLines != widget.controller.preValue?.codeLines &&
       widget.controller.preValue != null) {
       widget.selectionOverlayController.hideHandle();
       widget.selectionOverlayController.hideToolbar();
+    }
+    if (isTextChanged) {
+      // 文本发生变更（包括输入字符与退格删除字符），触发补全提示列表自适应重算与刷新
+      Future.delayed(const Duration(milliseconds: 50), () {
+        _updateAutoCompleteState(true);
+      });
     } else {
       _updateAutoCompleteState(false);
     }
@@ -473,7 +480,11 @@ class _CodeEditableState extends State<_CodeEditable> with AutomaticKeepAliveCli
       return;
     }
     if (!isCodeLineChanged) {
-      autocompleteState.dismiss();
+      if (!widget.controller.selection.isCollapsed ||
+          (widget.controller.preValue != null &&
+           widget.controller.selection.extentIndex != widget.controller.preValue!.selection.extentIndex)) {
+        autocompleteState.dismiss();
+      }
       return;
     }
     if (widget.controller.isComposing || !widget.controller.selection.isCollapsed) {
@@ -514,6 +525,7 @@ class _CodeEditableState extends State<_CodeEditable> with AutomaticKeepAliveCli
 class _CodeCursorBlinkController extends ValueNotifier<bool> {
 
   Timer? _timer;
+  bool _isDisposed = false;
 
   _CodeCursorBlinkController() : super(false);
 
@@ -525,10 +537,14 @@ class _CodeCursorBlinkController extends ValueNotifier<bool> {
     if (kIsAndroid || kIsIOS) {
       // Wait selection position to update
       Future.delayed(const Duration(milliseconds: 100), () {
-        value = true;
+        if (!_isDisposed) {
+          value = true;
+        }
       });
     } else {
-      value = true;
+      if (!_isDisposed) {
+        value = true;
+      }
     }
   }
 
@@ -538,15 +554,20 @@ class _CodeCursorBlinkController extends ValueNotifier<bool> {
     }
     _timer?.cancel();
     _timer = null;
-    value = false;
+    if (!_isDisposed) {
+      value = false;
+    }
   }
 
   void _cursorTick(Timer timer) {
-    value = !value;
+    if (!_isDisposed) {
+      value = !value;
+    }
   }
 
   @override
   void dispose() {
+    _isDisposed = true;
     stopBlink();
     super.dispose();
   }

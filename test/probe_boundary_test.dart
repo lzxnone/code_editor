@@ -301,6 +301,26 @@ void main() {
       final txtFile = File(p.join(projectA.path, 'notes.txt'))..writeAsStringSync('hi');
       provider.refreshSingleFileTask(currentFilePath: txtFile.path);
       expect(provider.taskTable.tasksOf(RunTaskType.singleFile), isEmpty);
+
+      // 上一次运行单文件任务时的联动测试：
+      // 1. 在 cpp 文件设置单文件任务为 lastRunTask
+      provider.refreshSingleFileTask(currentFilePath: cppFile.path);
+      final cppTask = provider.taskTable.tasksOf(RunTaskType.singleFile).first;
+      await provider.setLastRunTask(cppTask);
+      expect(provider.lastRunTask?.id, 'detected_single_cpp');
+
+      // 2. 切换到 python 文件 -> lastRunTask 自动联动为当前 py 文件的任务
+      provider.refreshSingleFileTask(currentFilePath: pyFile.path);
+      expect(provider.lastRunTask?.id, 'detected_single_python');
+      expect(provider.lastRunTask?.name, 'Python: main.py');
+
+      // 3. 切换到不可运行文件（txt）-> lastRunTask 安全置空，不误跑切走的文件
+      provider.refreshSingleFileTask(currentFilePath: txtFile.path);
+      expect(provider.lastRunTask, isNull);
+
+      // 4. 再切回 cpp 文件 -> 重新恢复为 cpp 单文件任务
+      provider.refreshSingleFileTask(currentFilePath: cppFile.path);
+      expect(provider.lastRunTask?.id, 'detected_single_cpp');
     });
 
     test('未映射到内置类型的自定义模块：任务归入 other，不能丢', () async {

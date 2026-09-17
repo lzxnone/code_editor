@@ -165,6 +165,7 @@ static inline long my_syscall6(long n, long a1, long a2, long a3, long a4, long 
 
 #endif
 
+#define AT_FDCWD -100
 #define AT_SYMLINK_NOFOLLOW 0x100
 #define ENOENT 2
 
@@ -179,13 +180,17 @@ static inline int set_errno_and_return(long ret) {
 }
 
 /* -------------------------------------------------------------------------
- * utimensat() / fchownat(): survive PRoot's --link2symlink hardlink stand-ins.
+ * utimensat() / fchownat() / chown() / lchown(): survive PRoot's --link2symlink hardlink stand-ins.
  *
  * apk 在装完文件后会对 <dir>/.apk.<hash> 做两件"跟随符号链接"语义的操作：
  *   utimensat(dirfd, name, times, 0)   保 mtime  → 维护老的 proot 需要它
  *   fchownat(dirfd, name, 0, 0, 0)     设 owner  → 新版 proot（link2symlink 重写后）需要它
  * 二者都会解析进 l2s 的隐藏替身（guest 不可解析）→ ENOENT。
  * 带 AT_SYMLINK_NOFOLLOW 重试即可作用于替身自身（最接近硬链接语义）。
+ * 
+ * 对于 Debian/Ubuntu (dpkg)：
+ *   dpkg 在解包硬链接（如 perl 软件包）时会直接调用 chown()。glibc 下 chown() 是内联系统调用，
+ *   不走 fchownat 的 PLT 拦截。因此显式导出 chown 与 lchown，转发至带容错机制的 fchownat。
  * ------------------------------------------------------------------------- */
 __attribute__((visibility("default")))
 int utimensat(int dirfd, const char *path, const void *times, int flags) {
@@ -217,6 +222,16 @@ int fchownat(int dirfd, const char *path, int owner, int group, int flags) {
         }
     }
     return set_errno_and_return(ret);
+}
+
+__attribute__((visibility("default")))
+int chown(const char *path, int owner, int group) {
+    return fchownat(AT_FDCWD, path, owner, group, 0);
+}
+
+__attribute__((visibility("default")))
+int lchown(const char *path, int owner, int group) {
+    return fchownat(AT_FDCWD, path, owner, group, AT_SYMLINK_NOFOLLOW);
 }
 
 #if defined(__x86_64__)

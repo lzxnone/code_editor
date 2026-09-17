@@ -6,7 +6,12 @@ import 'package:path/path.dart' as p;
 import 'package:code_editor/services/archive_extractor.dart';
 import 'package:code_editor/services/internal_project_service.dart';
 
-import 'distro_image_resolver_test.dart'; // 借用 encodeValidXz
+/// 构造包含合法 XZ 头的字节流用于测试
+List<int> encodeValidXz(List<int> payload) {
+  // 最小合法 XZ 流结构 (Stream Header + Filter Flags + Data + Footer)
+  final xzEncoded = XZEncoder().encode(payload);
+  return xzEncoded;
+}
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();

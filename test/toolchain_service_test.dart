@@ -94,14 +94,6 @@ void main() {
       expect(resolved, equals('echo "test" && ls -la'));
     });
 
-    test('Alpine generates apk install preamble for make', () {
-      final resolved = ToolchainService.resolveCommand('make', DistroFamily.alpine);
-      expect(resolved, contains('command -v make'));
-      expect(resolved, contains('apk update && apk add --no-cache make build-base'));
-      expect(resolved, contains('make 编译构建工具'));
-      expect(resolved, endsWith('&& (make)'));
-    });
-
     test('Ubuntu generates apt-get install preamble for make', () {
       final resolved = ToolchainService.resolveCommand('make', DistroFamily.ubuntu);
       expect(resolved, contains('command -v make'));
@@ -110,24 +102,10 @@ void main() {
       expect(resolved, endsWith('&& (make)'));
     });
 
-    test('Debian generates apt-get install preamble for cmake', () {
-      final resolved = ToolchainService.resolveCommand('cmake -B build', DistroFamily.debian);
-      expect(resolved, contains('command -v cmake'));
-      expect(resolved, contains('apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y cmake build-essential'));
-      expect(resolved, endsWith('&& (cmake -B build)'));
-    });
-
-    test('Arch generates pacman install preamble for gcc', () {
-      final resolved = ToolchainService.resolveCommand('gcc main.c', DistroFamily.arch);
-      expect(resolved, contains('command -v gcc'));
-      expect(resolved, contains('pacman -Sy --noconfirm base-devel'));
-      expect(resolved, endsWith('&& (gcc main.c)'));
-    });
-
-    test('Fedora generates dnf install preamble for python3', () {
-      final resolved = ToolchainService.resolveCommand('python3 app.py', DistroFamily.fedora);
+    test('All toolchain resolutions map to Ubuntu apt-get command', () {
+      final resolved = ToolchainService.resolveCommand('python3 app.py', DistroFamily.ubuntu);
       expect(resolved, contains('command -v python3'));
-      expect(resolved, contains('dnf install -y python3 python3-pip'));
+      expect(resolved, contains('apt-get install -y python3 python3-pip'));
       expect(resolved, endsWith('&& (python3 app.py)'));
     });
 
@@ -391,15 +369,13 @@ gcc main.c -o app
       }
     });
 
-    test('ToolchainRequirement getInstallCommand automatically adds dpkg self-healing for Ubuntu and Debian', () {
+    test('ToolchainRequirement getInstallCommand automatically adds dpkg self-healing', () {
       final makeReq = ToolchainService.supportedTools['make']!;
       final ubuntuCmd = makeReq.getInstallCommand(DistroFamily.ubuntu);
-      final debianCmd = makeReq.getInstallCommand(DistroFamily.debian);
-      final alpineCmd = makeReq.getInstallCommand(DistroFamily.alpine);
+      final defaultCmd = makeReq.effectiveInstallCommand;
 
       expect(ubuntuCmd, contains('dpkg --configure -a'));
-      expect(debianCmd, contains('dpkg --configure -a'));
-      expect(alpineCmd, isNot(contains('dpkg --configure -a')));
+      expect(defaultCmd, contains('dpkg --configure -a'));
     });
   });
 }

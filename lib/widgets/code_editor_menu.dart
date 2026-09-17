@@ -1,6 +1,9 @@
 import 'dart:math';
 
 import 'package:code_editor/l10n/app_localizations.dart';
+import 'package:code_editor/services/lsp/lsp_diagnostics_store.dart';
+import 'package:code_editor/services/lsp/lsp_protocol.dart';
+import 'package:code_editor/widgets/lsp_quick_fix_dialog.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:re_editor/re_editor.dart';
@@ -150,6 +153,7 @@ class _MobileSelectionToolbarWidget extends StatefulWidget {
   final VoidCallback onDismiss;
   final FocusNode? focusNode;
   final Rect? renderRect;
+  final String? Function()? filePathGetter;
 
   const _MobileSelectionToolbarWidget({
     required this.anchors,
@@ -157,6 +161,7 @@ class _MobileSelectionToolbarWidget extends StatefulWidget {
     required this.onDismiss,
     this.focusNode,
     this.renderRect,
+    this.filePathGetter,
   });
 
   @override
@@ -197,6 +202,12 @@ class _MobileSelectionToolbarWidgetState extends State<_MobileSelectionToolbarWi
 
     final theme = Theme.of(context);
 
+    final filePath = widget.filePathGetter?.call();
+    final line = widget.controller.selection.baseIndex;
+    final diags = (filePath != null && line >= 0)
+        ? LspDiagnosticsStore.instance.getDiagnosticsForLine(filePath, line)
+        : const <LspDiagnostic>[];
+
     final toolbarContent = Material(
       elevation: 6.0,
       shadowColor: Colors.black45,
@@ -213,6 +224,23 @@ class _MobileSelectionToolbarWidgetState extends State<_MobileSelectionToolbarWi
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
+            if (diags.isNotEmpty && filePath != null) ...[
+              _buildItem(
+                context,
+                label: '修复 💡',
+                onTap: () {
+                  widget.onDismiss();
+                  LspQuickFixDialog.show(
+                    context,
+                    filePath: filePath,
+                    lineIndex: line,
+                    diagnostics: diags,
+                    controller: widget.controller,
+                  );
+                },
+              ),
+              _buildDivider(context),
+            ],
             if (hasSelection) ...[
               _buildItem(
                 context,
@@ -311,6 +339,7 @@ class _MobileSelectionToolbarWidgetState extends State<_MobileSelectionToolbarWi
 /// 自定义代码编辑器选区与右键菜单控制器
 class CodeEditorToolbarController implements SelectionToolbarController {
   final FocusNode? focusNode;
+  final String? Function()? filePathGetter;
   late final SelectionToolbarController _mobileController;
 
   CodeLineEditingController? _lastController;
@@ -319,7 +348,7 @@ class CodeEditorToolbarController implements SelectionToolbarController {
   LayerLink? _lastLayerLink;
   ValueNotifier<bool>? _lastVisibility;
 
-  CodeEditorToolbarController({this.focusNode}) {
+  CodeEditorToolbarController({this.focusNode, this.filePathGetter}) {
     _mobileController = MobileSelectionToolbarController(
       builder: ({
         required BuildContext context,
@@ -335,6 +364,7 @@ class CodeEditorToolbarController implements SelectionToolbarController {
           onDismiss: onDismiss,
           focusNode: focusNode,
           renderRect: renderRect,
+          filePathGetter: filePathGetter,
         );
       },
     );
@@ -410,6 +440,12 @@ class CodeEditorToolbarController implements SelectionToolbarController {
     final clipboardData = await Clipboard.getData(Clipboard.kTextPlain);
     final hasClipboard = clipboardData != null && (clipboardData.text?.isNotEmpty ?? false);
 
+    final filePath = filePathGetter?.call();
+    final line = controller.selection.baseIndex;
+    final diags = (filePath != null && line >= 0)
+        ? LspDiagnosticsStore.instance.getDiagnosticsForLine(filePath, line)
+        : const <LspDiagnostic>[];
+
     if (!context.mounted) return;
 
     final l10n = AppLocalizations.of(context);
@@ -433,6 +469,23 @@ class CodeEditorToolbarController implements SelectionToolbarController {
         Offset.zero & mediaQuery.size,
       ),
       items: [
+        if (diags.isNotEmpty && filePath != null) ...[
+          _EditorContextMenuItem(
+            text: '快速修复 (Quick Fix)',
+            icon: Icons.lightbulb,
+            enabled: true,
+            onTap: () {
+              LspQuickFixDialog.show(
+                context,
+                filePath: filePath,
+                lineIndex: line,
+                diagnostics: diags,
+                controller: controller,
+              );
+            },
+          ),
+          const PopupMenuDivider(height: 1),
+        ],
         _EditorContextMenuItem(
           text: l10n?.cut ?? 'Cut',
           icon: Icons.content_cut,

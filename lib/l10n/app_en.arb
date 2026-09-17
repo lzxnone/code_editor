@@ -610,6 +610,18 @@
   "detectedTaskSingleGoDesc": "Run current Go source file",
   "detectedTaskSingleRustDesc": "Compile and execute current Rust source file",
   "detectedTaskSingleJsDesc": "Run current JavaScript script",
+  "detectedTaskSingleJavaDesc": "Run current Java source file directly",
+  "detectedTaskSingleTsDesc": "Run current TypeScript script",
+  "detectedTaskSingleLuaDesc": "Run current Lua script",
+  "detectedTaskSinglePerlDesc": "Run current Perl script",
+  "detectedTaskSinglePhpDesc": "Run current PHP script",
+  "detectedTaskPythonPipInstallDesc": "Install requirements via pip",
+  "detectedTaskPythonRunMainDesc": "Execute Python project main entrypoint",
+  "detectedTaskPythonPytestDesc": "Run pytest test suite",
+  "detectedTaskMavenPackageDesc": "Package Maven project (mvn package)",
+  "detectedTaskMavenCompileDesc": "Compile Maven project sources (mvn compile)",
+  "detectedTaskMavenTestDesc": "Run Maven unit tests (mvn test)",
+  "detectedTaskMavenCleanDesc": "Clean Maven target output directory (mvn clean)",
   "missingDistroTitle": "System Environment Not Ready",
   "noDistroAvailableContent": "No available Linux execution environment detected.\n\nProject tasks need to run inside a Linux container. Please install or download a Linux system first (e.g. Ubuntu or Alpine).",
   "distroNotInstalledContent": "System \"{distro}\" is not installed or has been removed.\n\nPlease install it in System Management or select another available system.",
@@ -827,10 +839,15 @@
   },
   "codeCompletionManagement": "Code Completion Management",
   "codeCompletionSubtitle": "Manage language servers and code intelligence toolchains",
-  "internalEngineTitle": "Internal Code Intelligence Engine (Alpine)",
+  "completionSourceSection": "Completion Data Sources & Switches",
+  "localCompletionTitle": "Local Base Completion",
+  "localCompletionSubtitle": "Built-in language keywords and document lexical heuristic extraction",
+  "lspCompletionTitle": "Backend Language Server",
+  "lspCompletionSubtitle": "Request real semantic types and function parameters from background compilers",
+  "internalEngineTitle": "Runtime & Code Intelligence Engine (Ubuntu)",
   "internalEngineStatusReady": "Engine Ready",
-  "internalEngineStatusNotReady": "Engine Not Ready",
-  "internalEngineExtracting": "Preparing internal code intelligence engine...",
+  "internalEngineStatusNotReady": "Engine Not Started",
+  "internalEngineExtracting": "Preparing built-in Ubuntu environment & intelligence engine...",
   "installedStatus": "Ready",
   "notInstalledStatus": "Component Not Installed",
   "installComponent": "Install Component",
@@ -858,10 +875,18 @@
       }
     }
   },
+  "uninstallingComponent": "Uninstalling {pkg} and cleaning configuration...",
+  "@uninstallingComponent": {
+    "placeholders": {
+      "pkg": {
+        "type": "String"
+      }
+    }
+  },
   "editLanguageConfig": "Edit Language Configuration",
   "addLanguageConfig": "Add Language Configuration",
   "deleteLanguageConfirmTitle": "Delete Language Configuration",
-  "deleteLanguageConfirmMessage": "Are you sure you want to delete code completion config for {name}?",
+  "deleteLanguageConfirmMessage": "Are you sure you want to delete the code completion configuration for {name}?",
   "@deleteLanguageConfirmMessage": {
     "placeholders": {
       "name": {
@@ -869,8 +894,16 @@
       }
     }
   },
-  "resetDefaultLanguages": "Reset to Defaults",
-  "resetDefaultLanguagesConfirm": "Are you sure you want to reset all language configurations to defaults?",
+  "deleteLanguageWithPackageConfirmMessage": "Are you sure you want to delete the code completion configuration for {name}? Installed packages will be uninstalled.",
+  "@deleteLanguageWithPackageConfirmMessage": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "resetDefaultLanguages": "Reset Default Configurations",
+  "resetDefaultLanguagesConfirm": "Are you sure you want to reset all language configurations to official default presets?",
   "languageDisplayName": "Language Name",
   "languageDisplayNameHint": "e.g. C / C++",
   "languageIdField": "Language ID",
@@ -880,9 +913,9 @@
   "serverCommandField": "Server Command",
   "serverCommandFieldHint": "e.g. clangd",
   "serverArgsField": "Server Arguments",
-  "serverArgsFieldHint": "Space or comma separated",
-  "apkPackageField": "Alpine APK Package",
-  "apkPackageFieldHint": "For one-click install, e.g. clang-extra-tools",
+  "serverArgsFieldHint": "Space or comma-separated arguments",
+  "apkPackageField": "Ubuntu Package Name (APT)",
+  "apkPackageFieldHint": "For one-click install, e.g. clangd or python3-pylsp",
   "lspPackageMissingTitle": "{language} code intelligence component not installed",
   "@lspPackageMissingTitle": {
     "placeholders": {
@@ -891,18 +924,39 @@
       }
     }
   },
-  "lspPackageMissingMessage": "Install {pkg} ({command}) to enable code completion and error diagnostics",
-  "@lspPackageMissingMessage": {
+  "lspPackageMissingMessage": "Install the component to enable code completion and error diagnostics",
+  "installNow": "Install Now",
+  "fieldRequired": "This field is required",
+  "languageConfigSaved": "Language configuration saved",
+  "enable": "Enable",
+  "disable": "Disable",
+  "edit": "Edit",
+  "componentQueued": "{name} queued…",
+  "@componentQueued": {
     "placeholders": {
-      "pkg": {
-        "type": "String"
-      },
-      "command": {
+      "name": {
         "type": "String"
       }
     }
   },
-  "installNow": "Install Now",
-  "fieldRequired": "This field is required",
-  "languageConfigSaved": "Language configuration saved"
+  "uninstallComponentSuccess": "{name} component uninstalled successfully",
+  "@uninstallComponentSuccess": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "uninstallComponentFailed": "Failed to uninstall component: {error}",
+  "@uninstallComponentFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "installingStatus": "Installing…",
+  "uninstallingStatus": "Uninstalling…",
+  "emptyLspLanguagesTitle": "No code intelligence components installed",
+  "emptyLspLanguagesSubtitle": "Open any source file to trigger installation on demand, or click \"+\" to add manually"
 }

@@ -9,7 +9,8 @@ class CodeLineNumberRenderObject extends RenderBox {
   int _minNumberCount;
   int _allLineCount;
 
-  final String Function(int lineIndex)? _customLineIndex2Text;
+  String Function(int lineIndex)? _customLineIndex2Text;
+  Decoration? Function(int lineIndex)? _lineDecorationBuilder;
   final TextPainter _textPainter;
 
   CodeLineNumberRenderObject({
@@ -19,6 +20,7 @@ class CodeLineNumberRenderObject extends RenderBox {
     required TextStyle focusedTextStyle,
     required int minNumberCount,
     String Function(int lineIndex)? custonLineIndex2Text,
+    Decoration? Function(int lineIndex)? lineDecorationBuilder,
   }) : _controller = controller,
     _notifier = notifier,
     _textStyle = textStyle,
@@ -26,6 +28,7 @@ class CodeLineNumberRenderObject extends RenderBox {
     _minNumberCount = minNumberCount,
     _allLineCount = controller.lineCount,
     _customLineIndex2Text = custonLineIndex2Text,
+    _lineDecorationBuilder = lineDecorationBuilder,
     _textPainter = TextPainter(
       textDirection: TextDirection.ltr,
     );
@@ -82,6 +85,22 @@ class CodeLineNumberRenderObject extends RenderBox {
     markNeedsLayout();
   }
 
+  set customLineIndex2Text(String Function(int lineIndex)? value) {
+    if (_customLineIndex2Text == value) {
+      return;
+    }
+    _customLineIndex2Text = value;
+    markNeedsPaint();
+  }
+
+  set lineDecorationBuilder(Decoration? Function(int lineIndex)? value) {
+    if (_lineDecorationBuilder == value) {
+      return;
+    }
+    _lineDecorationBuilder = value;
+    markNeedsPaint();
+  }
+
   @override
   bool hitTestSelf(Offset position) => true;
 
@@ -136,6 +155,19 @@ class CodeLineNumberRenderObject extends RenderBox {
     int firstLineIndex = _controller.index2lineIndex(value.paragraphs.first.index);
     for (final CodeLineRenderParagraph paragraph in value.paragraphs) {
       final lineIndexText = _customLineIndex2Text?.call(firstLineIndex) ?? (firstLineIndex + 1).toString();
+      
+      final decoration = _lineDecorationBuilder?.call(firstLineIndex);
+      if (decoration != null) {
+        final painter = decoration.createBoxPainter(markNeedsPaint);
+        final lineRect = Rect.fromLTWH(
+          offset.dx,
+          offset.dy + paragraph.offset.dy,
+          size.width,
+          paragraph.preferredLineHeight,
+        );
+        painter.paint(canvas, lineRect.topLeft, ImageConfiguration(size: lineRect.size));
+      }
+
       _textPainter.text = TextSpan(
         text: lineIndexText,
         style: paragraph.index == value.focusedIndex ? _focusedTextStyle : _textStyle

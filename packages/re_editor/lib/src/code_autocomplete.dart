@@ -229,7 +229,7 @@ typedef CodeAutocompleteWidgetBuilder = PreferredSizeWidget Function(
 abstract class CodeAutocompletePromptsBuilder {
 
   /// Build the prompts with the current code.
-  CodeAutocompleteEditingValue? build(
+  FutureOr<CodeAutocompleteEditingValue?> build(
     BuildContext context,
     CodeLine codeLine,
     CodeLineSelection selection,

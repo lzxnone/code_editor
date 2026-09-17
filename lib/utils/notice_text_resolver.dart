@@ -48,5 +48,22 @@ NoticeDisplay resolveNoticeDisplay(AppLocalizations l10n, NoticeText text) {
         title: l10n.probeFailedTitle(text.moduleDisplayName),
         subtitle: subtitle,
       );
+    case ComponentInstallPhaseText():
+      final title = text.isQueued
+          ? l10n.componentQueued(text.componentName)
+          : (text.isUninstall
+              ? l10n.uninstallingComponent(text.componentName)
+              : l10n.installingComponent(text.componentName));
+      return NoticeDisplay(title: title, subtitle: text.detail);
+    case ComponentInstallDoneText():
+      final title = text.isUninstall
+          ? l10n.uninstallComponentSuccess(text.componentName)
+          : l10n.installComponentSuccess(text.componentName);
+      return NoticeDisplay(title: title);
+    case ComponentInstallFailureText():
+      final title = text.isUninstall
+          ? l10n.uninstallComponentFailed(text.error ?? '')
+          : l10n.installComponentFailed(text.error ?? '');
+      return NoticeDisplay(title: title, subtitle: text.error);
   }
 }

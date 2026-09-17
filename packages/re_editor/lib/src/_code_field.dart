@@ -1484,12 +1484,8 @@ class _CodeFieldRender extends RenderBox implements MouseTrackerAnnotation {
   }
 
   void _drawHandleLayer(PaintingContext context, LayerLink layer, Offset position, Offset offset) {
-    final Offset point = Offset(
-      clampDouble(position.dx, 0.0, size.width),
-      clampDouble(position.dy, 0.0, size.height),
-    );
     context.pushLayer(
-      LeaderLayer(link: layer, offset: point + offset),
+      LeaderLayer(link: layer, offset: position + offset),
       super.paint,
       Offset.zero,
     );

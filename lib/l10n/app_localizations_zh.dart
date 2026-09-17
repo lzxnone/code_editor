@@ -1252,6 +1252,42 @@ class AppLocalizationsZh extends AppLocalizations {
   String get detectedTaskSingleJsDesc => '运行当前 JS 脚本';
 
   @override
+  String get detectedTaskSingleJavaDesc => '直接运行当前 Java 源文件';
+
+  @override
+  String get detectedTaskSingleTsDesc => '运行当前 TypeScript 脚本';
+
+  @override
+  String get detectedTaskSingleLuaDesc => '运行当前 Lua 脚本';
+
+  @override
+  String get detectedTaskSinglePerlDesc => '运行当前 Perl 脚本';
+
+  @override
+  String get detectedTaskSinglePhpDesc => '运行当前 PHP 脚本';
+
+  @override
+  String get detectedTaskPythonPipInstallDesc => '安装项目 requirements 依赖包';
+
+  @override
+  String get detectedTaskPythonRunMainDesc => '执行 Python 项目主程序';
+
+  @override
+  String get detectedTaskPythonPytestDesc => '运行 pytest 测试用例';
+
+  @override
+  String get detectedTaskMavenPackageDesc => '打包 Maven 项目 (mvn package)';
+
+  @override
+  String get detectedTaskMavenCompileDesc => '编译 Maven 项目源码 (mvn compile)';
+
+  @override
+  String get detectedTaskMavenTestDesc => '运行 Maven 单元测试 (mvn test)';
+
+  @override
+  String get detectedTaskMavenCleanDesc => '清理 Maven 目标输出目录 (mvn clean)';
+
+  @override
   String get missingDistroTitle => '系统环境未就绪';
 
   @override
@@ -1499,16 +1535,31 @@ class AppLocalizationsZh extends AppLocalizations {
   String get codeCompletionSubtitle => '管理各编程语言的智能补全与报错工具链';
 
   @override
-  String get internalEngineTitle => '内部代码智能引擎 (Alpine)';
+  String get completionSourceSection => '补全数据源与开关';
+
+  @override
+  String get localCompletionTitle => '本地基础补全';
+
+  @override
+  String get localCompletionSubtitle => '包含语言内置关键字与当前文档词法启发式提取';
+
+  @override
+  String get lspCompletionTitle => '后端语言服务补全';
+
+  @override
+  String get lspCompletionSubtitle => '向后台编译器守护进程请求真实语义类型与函数参数补全';
+
+  @override
+  String get internalEngineTitle => '代码运行与智能补全引擎 (Ubuntu)';
 
   @override
   String get internalEngineStatusReady => '引擎已就绪';
 
   @override
-  String get internalEngineStatusNotReady => '引擎未就绪';
+  String get internalEngineStatusNotReady => '引擎未启动';
 
   @override
-  String get internalEngineExtracting => '正在准备内置代码智能引擎...';
+  String get internalEngineExtracting => '正在准备内置 Ubuntu 开发环境与智能补全引擎...';
 
   @override
   String get installComponent => '安装组件';
@@ -1529,6 +1580,11 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
+  String uninstallingComponent(String pkg) {
+    return '正在卸载 $pkg 并清理配置...';
+  }
+
+  @override
   String get editLanguageConfig => '编辑语言配置';
 
   @override
@@ -1540,6 +1596,11 @@ class AppLocalizationsZh extends AppLocalizations {
   @override
   String deleteLanguageConfirmMessage(String name) {
     return '确定要删除 $name 的代码补全配置吗？';
+  }
+
+  @override
+  String deleteLanguageWithPackageConfirmMessage(String name) {
+    return '确定要删除 $name 的代码补全配置吗？已安装的软件包将一并卸载。';
   }
 
   @override
@@ -1579,10 +1640,10 @@ class AppLocalizationsZh extends AppLocalizations {
   String get serverArgsFieldHint => '多个参数以空格或逗号分隔';
 
   @override
-  String get apkPackageField => 'Alpine 依赖包名';
+  String get apkPackageField => 'Ubuntu 依赖包名 (APT)';
 
   @override
-  String get apkPackageFieldHint => '用于一键安装，如 clang-extra-tools';
+  String get apkPackageFieldHint => '用于一键安装，如 clangd 或 python3-pylsp';
 
   @override
   String lspPackageMissingTitle(String language) {
@@ -1590,9 +1651,7 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
-  String lspPackageMissingMessage(String pkg, String command) {
-    return '安装 $pkg ($command) 即可获得精准代码补全与错误检查';
-  }
+  String get lspPackageMissingMessage => '安装组件即可获得精准代码补全与错误检查';
 
   @override
   String get installNow => '一键安装';
@@ -1602,4 +1661,41 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get languageConfigSaved => '语言配置已保存';
+
+  @override
+  String get enable => '启用';
+
+  @override
+  String get disable => '停用';
+
+  @override
+  String get edit => '编辑';
+
+  @override
+  String componentQueued(String name) {
+    return '$name 排队等待中…';
+  }
+
+  @override
+  String uninstallComponentSuccess(String name) {
+    return '$name 组件卸载成功';
+  }
+
+  @override
+  String uninstallComponentFailed(String error) {
+    return '组件卸载失败: $error';
+  }
+
+  @override
+  String get installingStatus => '正在安装…';
+
+  @override
+  String get uninstallingStatus => '正在卸载…';
+
+  @override
+  String get emptyLspLanguagesTitle => '暂无已安装的代码智能组件';
+
+  @override
+  String get emptyLspLanguagesSubtitle =>
+      '在编辑器中打开代码文件即可按需触发安装，或点击右上角 \"+\" 手动添加';
 }

@@ -82,6 +82,45 @@ class ModuleFailureText extends NoticeText {
   });
 }
 
+/// 后台组件安装/卸载阶段通知（支持排队、执行中）
+class ComponentInstallPhaseText extends NoticeText {
+  final String componentName;
+  final bool isUninstall;
+  final bool isQueued;
+  final String? detail;
+
+  const ComponentInstallPhaseText({
+    required this.componentName,
+    this.isUninstall = false,
+    this.isQueued = false,
+    this.detail,
+  });
+}
+
+/// 后台组件安装/卸载成功通知
+class ComponentInstallDoneText extends NoticeText {
+  final String componentName;
+  final bool isUninstall;
+
+  const ComponentInstallDoneText({
+    required this.componentName,
+    this.isUninstall = false,
+  });
+}
+
+/// 后台组件安装/卸载失败通知
+class ComponentInstallFailureText extends NoticeText {
+  final String componentName;
+  final bool isUninstall;
+  final String? error;
+
+  const ComponentInstallFailureText({
+    required this.componentName,
+    this.isUninstall = false,
+    this.error,
+  });
+}
+
 /// 一条通知（业务无关：任务探测、以后的下载/编译进度都可复用）
 @immutable
 class NoticeItem {

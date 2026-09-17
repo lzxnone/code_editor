@@ -257,53 +257,7 @@ class DistroManager {
     );
   }
 
-  /// 从应用内置资源导入 Alpine Linux 系统实例（保留备用）
-  ///
-  /// [systemName] 系统名称（默认为 'alpine'，同一个 rootfs 包可创建多个系统）
-  Future<void> importBuiltinAlpine({
-    required String systemName,
-    InstallProgressCallback? onProgress,
-    bool Function()? isCancelled,
-  }) async {
-    await validateSystemName(systemName);
 
-    final assetPath = DistroRepository.builtinAlpineAssetPath;
-    onProgress?.call(0.02, '正在读取应用内置 Alpine 系统资源包...');
-    final byteData = await rootBundle.load(assetPath);
-    final bytes = byteData.buffer.asUint8List();
-
-    final targetDir = await getSystemRootDir(systemName);
-
-    await DistroInstaller.installFromBytes(
-      tarGzBytes: bytes,
-      targetDir: targetDir,
-      onProgress: onProgress,
-      isCancelled: isCancelled,
-    );
-  }
-
-  /// 从用户本地指定的 .tar.gz / .tar.xz 压缩包导入外部系统实例
-  Future<void> importFromCustomTarGz({
-    required String systemName,
-    required File tarGzFile,
-    InstallProgressCallback? onProgress,
-    bool Function()? isCancelled,
-  }) async {
-    await validateSystemName(systemName);
-
-    if (!tarGzFile.existsSync()) {
-      throw ArgumentError('所选压缩包文件不存在: ${tarGzFile.path}');
-    }
-
-    final targetDir = await getSystemRootDir(systemName);
-
-    await DistroInstaller.installFromFile(
-      archiveFile: tarGzFile,
-      targetDir: targetDir,
-      onProgress: onProgress,
-      isCancelled: isCancelled,
-    );
-  }
 
   /// 高危操作：彻底删除指定系统实例及其所有存储数据
   Future<void> deleteSystem(String systemName) async {
@@ -432,11 +386,14 @@ class DistroManager {
     // 确保 Java 运行时动态链接配置就绪（解决 /usr/bin/java 符号链接找不到 libjli.so）
     await DistroInstaller.ensureJavaConfiguration(rootDir);
 
+    // 确保 Debian/Ubuntu 容器环境策略就绪（policy-rc.d 屏蔽守护进程自启，解决 dpkg error code 1）
+    await DistroInstaller.ensureAptPolicyAndDiversions(rootDir);
+
     // 确保独立的 /dev/shm 目录存在（对标 proot-distro shm.py，解决 POSIX 共享内存缺失）
     final shmDir = await _ensureShmDir(systemName, customBaseDir: customRootDir?.parent);
 
-    // 确保独立的 .l2s 硬链接目录存在（对标 proot-distro --link2symlink 规范）
-    final l2sDir = await _ensureL2sDir(systemName, customBaseDir: customRootDir?.parent);
+    // 确保独立的 .l2s 硬链接目录存在（对标 proot-distro --link2symlink 规范，位于 rootfs/.l2s）
+    final l2sDir = await _ensureL2sDir(systemName, rootDir, customBaseDir: customRootDir?.parent);
 
     // 确保独立的 sysdata 桩目录存在（对标 proot-distro sysdata.py，提供 SELinux 与 Proc 补充数据）
     final sysdataDir = await _ensureSysdataDir(systemName, customBaseDir: customRootDir?.parent);
@@ -555,6 +512,7 @@ class DistroManager {
       'TERM=xterm-256color',
       'COLORTERM=truecolor',
       'LANG=C.UTF-8',
+      'PROOT_L2S_DIR=/.l2s',
       if (guestJavaHome != null) 'JAVA_HOME=$guestJavaHome',
       if (guestJavaHome != null)
         'PATH=$guestJavaHome/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin'
@@ -638,14 +596,34 @@ class DistroManager {
     }
   }
 
-  /// 确保容器实例拥有独立的 .l2s 硬链接跟踪目录（对标 proot-distro login/__init__.py）
-  Future<Directory?> _ensureL2sDir(String systemName, {Directory? customBaseDir}) async {
+  /// 确保容器实例拥有独立的 .l2s 硬链接跟踪目录（对标 proot-distro l2s.py，位于 rootfs/.l2s）
+  Future<Directory?> _ensureL2sDir(String systemName, Directory rootDir, {Directory? customBaseDir}) async {
     try {
-      final baseDir = customBaseDir ?? await getBaseDistrosDir();
-      final l2sDir = Directory(p.join(baseDir.path, systemName, '.l2s'));
+      final l2sDir = Directory(p.join(rootDir.path, '.l2s'));
       if (!l2sDir.existsSync()) {
         l2sDir.createSync(recursive: true);
       }
+
+      // 自动迁移旧版本放置在 rootfs 外部的 .l2s 目录 (<rootDir.parent>/.l2s)
+      try {
+        final legacyL2sDir = Directory(p.join(rootDir.parent.path, '.l2s'));
+        if (legacyL2sDir.existsSync() && legacyL2sDir.path != l2sDir.path) {
+          final entries = legacyL2sDir.listSync();
+          for (final entry in entries) {
+            final targetPath = p.join(l2sDir.path, p.basename(entry.path));
+            if (!File(targetPath).existsSync() && !Directory(targetPath).existsSync()) {
+              entry.renameSync(targetPath);
+            }
+          }
+          try {
+            legacyL2sDir.deleteSync(recursive: true);
+          } catch (_) {}
+          debugPrint('[DistroManager] 已平滑迁移旧版本外部 .l2s 目录至 rootfs/.l2s');
+        }
+      } catch (e) {
+        debugPrint('[DistroManager] 迁移旧 .l2s 异常 (非阻塞): $e');
+      }
+
       return l2sDir;
     } catch (e) {
       debugPrint('创建容器 .l2s 目录失败 (非阻塞): $e');

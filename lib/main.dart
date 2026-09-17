@@ -6,6 +6,7 @@ import 'package:code_editor/providers/settings_provider.dart';
 import 'package:code_editor/providers/tab_provider.dart';
 import 'package:code_editor/providers/run_provider.dart';
 import 'package:code_editor/providers/terminal_provider.dart';
+import 'package:code_editor/services/background_task/background_task_scheduler.dart';
 import 'package:code_editor/views/main_view.dart';
 import 'package:code_editor/utils/app_theme.dart';
 import 'package:flutter/material.dart';
@@ -45,7 +46,13 @@ class MyApp extends StatelessWidget {
               (tab ?? (TabProvider()..init()))..bindProjectProvider(project),
         ),
         ChangeNotifierProvider(create: (_) => TerminalProvider()),
-        ChangeNotifierProvider(create: (_) => NoticeCenter()),
+        ChangeNotifierProvider(
+          create: (_) {
+            final nc = NoticeCenter();
+            BackgroundTaskScheduler.instance.attachNoticeCenter(nc);
+            return nc;
+          },
+        ),
         ChangeNotifierProvider(
           create: (context) => RunProvider(noticeCenter: context.read<NoticeCenter>()),
         ),

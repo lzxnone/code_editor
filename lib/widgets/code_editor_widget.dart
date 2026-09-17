@@ -8,15 +8,54 @@ import 'package:code_editor/providers/settings_provider.dart';
 import 'package:code_editor/providers/tab_provider.dart';
 import 'package:code_editor/services/file_service.dart';
 import 'package:code_editor/services/file_watcher_service.dart';
+import 'package:code_editor/services/code_completion/smart_prompts_builder.dart';
+import 'package:code_editor/services/lsp/lsp_diagnostics_store.dart';
+import 'package:code_editor/services/lsp/lsp_manager.dart';
+import 'package:code_editor/services/lsp/lsp_protocol.dart';
 import 'package:code_editor/utils/dialog_utils.dart';
 import 'package:code_editor/utils/syntax_highlight_helper.dart';
+import 'package:code_editor/widgets/code_autocomplete_view.dart';
 import 'package:code_editor/widgets/code_editor_menu.dart';
+import 'package:code_editor/widgets/editor/editor_diagnostic_controller.dart';
+import 'package:code_editor/widgets/editor/editor_lsp_coordinator.dart';
+import 'package:code_editor/widgets/editor/editor_overlay_scope.dart';
 import 'package:code_editor/widgets/virtual_keyboard_widget.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:path/path.dart' as p;
 import 'package:provider/provider.dart';
 import 'package:re_editor/re_editor.dart';
+
+/// 行号指示器红/黄圆点装饰器
+class DiagnosticGutterDotDecoration extends Decoration {
+  final Color color;
+  final double radius;
+
+  const DiagnosticGutterDotDecoration({
+    required this.color,
+    this.radius = 3.0,
+  });
+
+  @override
+  BoxPainter createBoxPainter([VoidCallback? onChanged]) {
+    return _DiagnosticGutterDotPainter(this);
+  }
+}
+
+class _DiagnosticGutterDotPainter extends BoxPainter {
+  final DiagnosticGutterDotDecoration decoration;
+  _DiagnosticGutterDotPainter(this.decoration);
+
+  @override
+  void paint(Canvas canvas, Offset offset, ImageConfiguration configuration) {
+    final size = configuration.size ?? Size.zero;
+    final paint = Paint()
+      ..color = decoration.color
+      ..style = PaintingStyle.fill;
+    final center = Offset(offset.dx + 4.0, offset.dy + size.height / 2);
+    canvas.drawCircle(center, decoration.radius, paint);
+  }
+}
 
 class CodeEditorWidget extends StatefulWidget {
   final String? rootPath;
@@ -45,12 +84,15 @@ class _CodeEditorWidgetState extends State<CodeEditorWidget> {
   CodeScrollController? _scrollController;
   final FocusNode _focusNode = FocusNode();
   late final CodeEditorToolbarController _toolbarController;
+  final EditorDiagnosticController _diagnosticController = const EditorDiagnosticController();
+  final EditorLspCoordinator _lspCoordinator = const EditorLspCoordinator();
   bool _isLoading = false;
   int _currentLoadVersion = 0;
   String? _errorMessage;
   String? _currentLoadedPath;
   int? _currentIndentSize;
   bool _isShowingConflictDialog = false;
+  int _currentCursorLine = -1;
 
   // 双指捏合实时缩放字号及中心锚定状态
   final GlobalKey _editorContainerKey = GlobalKey();
@@ -420,10 +462,26 @@ class _CodeEditorWidgetState extends State<CodeEditorWidget> {
     });
   }
 
+  void _onDiagnosticsChanged() {
+    if (!mounted || _controller == null) return;
+    _controller?.forceRepaint();
+    if (WidgetsBinding.instance.schedulerPhase == SchedulerPhase.persistentCallbacks) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) setState(() {});
+      });
+    } else {
+      setState(() {});
+    }
+  }
+
   @override
   void initState() {
     super.initState();
-    _toolbarController = CodeEditorToolbarController(focusNode: _focusNode);
+    _toolbarController = CodeEditorToolbarController(
+      focusNode: _focusNode,
+      filePathGetter: () => _currentLoadedPath ?? widget.filePath,
+    );
+    LspDiagnosticsStore.instance.addListener(_onDiagnosticsChanged);
     _loadFileContent();
   }
 
@@ -454,6 +512,10 @@ class _CodeEditorWidgetState extends State<CodeEditorWidget> {
     try {
       _getTabProvider(context).registerSaveHandler(null);
     } catch (_) {}
+    LspDiagnosticsStore.instance.removeListener(_onDiagnosticsChanged);
+    if (_currentLoadedPath != null) {
+      LspManager.instance.onFileClosed(_currentLoadedPath!);
+    }
     _toolbarController.hide(context);
     final currentTab = _getCurrentTab();
     _saveCurrentTabScrollState(currentTab);
@@ -468,6 +530,19 @@ class _CodeEditorWidgetState extends State<CodeEditorWidget> {
 
   void _onTextChanged() {
     if (!mounted || _controller == null) return;
+
+    final newCursorLine = _controller?.selection.baseIndex ?? -1;
+    if (_currentCursorLine != newCursorLine) {
+      _currentCursorLine = newCursorLine;
+      if (WidgetsBinding.instance.schedulerPhase == SchedulerPhase.persistentCallbacks) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) setState(() {});
+        });
+      } else {
+        setState(() {});
+      }
+    }
+
     final currentTab = _getCurrentTab();
     if (currentTab == null || !currentTab.isLoaded) return;
     // 确保当前活跃 tab 与当前加载的控制器路径严格一致，杜绝切换过程中误写其他 tab
@@ -485,6 +560,15 @@ class _CodeEditorWidgetState extends State<CodeEditorWidget> {
     currentTab.content = current;
     currentTab.isModified = isModified;
 
+    // LSP 文档变更增量/全量同步及本地语法诊断兜底
+    if (_currentLoadedPath != null && _controller != null) {
+      _lspCoordinator.onFileChanged(
+        _currentLoadedPath!,
+        current,
+        _controller!.codeLines,
+      );
+    }
+
     void notifyProvider() {
       if (!mounted) return;
       try {
@@ -498,6 +582,34 @@ class _CodeEditorWidgetState extends State<CodeEditorWidget> {
     } else {
       notifyProvider();
     }
+  }
+
+  /// 依据 LSP 实时诊断结果，为当前行的代码文本施加波浪下划线（保留已有代码高亮色彩）
+  TextSpan _buildDiagnosticSpans({
+    required BuildContext context,
+    required int index,
+    required CodeLine codeLine,
+    required TextSpan textSpan,
+    required TextStyle style,
+  }) {
+    return _diagnosticController.buildDiagnosticSpans(
+      context: context,
+      filePath: _currentLoadedPath ?? widget.filePath,
+      index: index,
+      codeLine: codeLine,
+      textSpan: textSpan,
+      style: style,
+    );
+  }
+
+  Widget _buildDiagnosticBanner(BuildContext context, List<LspDiagnostic> diags, int lineIndex) {
+    return _diagnosticController.buildDiagnosticBanner(
+      context: context,
+      filePath: _currentLoadedPath ?? widget.filePath,
+      controller: _controller,
+      diags: diags,
+      lineIndex: lineIndex,
+    );
   }
 
   Future<bool> _saveFile({bool showToast = false}) async {
@@ -649,6 +761,7 @@ class _CodeEditorWidgetState extends State<CodeEditorWidget> {
     AppFontItem activeEditorFont = AppFonts.editorJetBrainsMono;
     bool showLineNumbers = true;
     bool pinLineNumbers = true;
+    bool enableLspCompletion = true;
     try {
       final settings = _getSettingsProvider(context, listen: true);
       activeTheme = settings.editorTheme;
@@ -659,6 +772,7 @@ class _CodeEditorWidgetState extends State<CodeEditorWidget> {
       enableVirtualKeyboard = settings.enableVirtualKeyboard;
       keyboardConfig = settings.virtualKeyboardConfig;
       activeEditorFont = settings.editorFont;
+      enableLspCompletion = settings.enableLspCompletion;
       if (_currentIndentSize != null && _currentIndentSize != settings.indentSize) {
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (mounted) _loadFileContent();
@@ -683,77 +797,112 @@ class _CodeEditorWidgetState extends State<CodeEditorWidget> {
               onPointerUp: _handlePointerUp,
               onPointerCancel: _handlePointerCancel,
               child: Stack(
+                clipBehavior: Clip.none,
                 children: [
                   IgnorePointer(
                     ignoring: _isPinching,
-                    child: CodeEditor(
-                      key: ValueKey(_currentLoadedPath),
-                      controller: controller,
-                      focusNode: _focusNode,
-                      scrollController: _scrollController,
-                      wordWrap: activeWordWrap,
-                      pinLineNumbers: pinLineNumbers,
-                      toolbarController: _toolbarController,
-                      margin: EdgeInsets.zero,
-                      extraHorizontalScroll: 160.0,
-                      padding: const EdgeInsets.fromLTRB(6.0, 0.0, 0.0, 0.0),
-                      leadingDivider: showLineNumbers
-                          ? Container(
-                              width: 1.0,
-                              color: activeTheme.gutterTextColor.withValues(alpha: 0.25),
-                            )
-                          : null,
-                      style: CodeEditorStyle(
-                        fontSize: displayFontSize,
-                        textColor: activeTheme.textColor,
-                        backgroundColor: activeTheme.backgroundColor,
-                        cursorColor: activeTheme.cursorColor,
-                        cursorLineColor: activeTheme.cursorLineColor,
-                        selectionColor: activeTheme.selectionColor,
-                        fontFamily: activeEditorFont.fontFamily,
-                        fontFamilyFallback: activeEditorFont.fallback,
-                        codeTheme: CodeHighlightTheme(
-                          languages: SyntaxHighlightHelper.getLanguagesForFile(_currentLoadedPath ?? widget.filePath),
-                          theme: activeTheme.highlightTheme,
-                        ),
-                      ),
-                      indicatorBuilder: showLineNumbers
-                          ? (context, editingController, chunkController, notifier) {
-                              return Row(
-                                children: [
-                                  DefaultCodeLineNumber(
-                                    controller: editingController,
-                                    notifier: notifier,
-                                    textStyle: TextStyle(
-                                      color: activeTheme.gutterTextColor,
-                                      fontSize: (displayFontSize - 1).clamp(9.0, 30.0),
-                                      fontFamily: activeEditorFont.fontFamily,
-                                      fontFamilyFallback: activeEditorFont.fallback,
-                                      height: 1.4,
-                                    ),
-                                    focusedTextStyle: TextStyle(
-                                      color: activeTheme.focusedGutterTextColor,
-                                      fontSize: (displayFontSize - 1).clamp(9.0, 30.0),
-                                      fontWeight: FontWeight.bold,
-                                      fontFamily: activeEditorFont.fontFamily,
-                                      fontFamilyFallback: activeEditorFont.fallback,
-                                      height: 1.4,
-                                    ),
-                                  ),
-                                  DefaultCodeChunkIndicator(
-                                    width: 20,
-                                    controller: chunkController,
-                                    notifier: notifier,
-                                    painter: DefaultCodeChunkIndicatorPainter(
-                                      color: activeTheme.gutterTextColor,
-                                    ),
-                                  ),
-                                ],
+                    child: Builder(
+                      builder: (context) {
+                        final promptsBuilder = SmartCodeAutocompletePromptsBuilder(
+                          controller: controller,
+                          filePath: _currentLoadedPath ?? widget.filePath,
+                          enableLspCompletion: enableLspCompletion,
+                        );
+                        return EditorOverlayScope(
+                          key: ValueKey(_currentLoadedPath),
+                          child: CodeAutocomplete(
+                            viewBuilder: (context, notifier, onSelected) {
+                              promptsBuilder.activeNotifier = notifier;
+                              return CodeAutocompleteView(
+                                notifier: notifier,
+                                onSelected: onSelected,
                               );
-                            }
-                          : null,
-                    ),
-                  ),
+                            },
+                            promptsBuilder: promptsBuilder,
+                            child: CodeEditor(
+                              key: ValueKey(_currentLoadedPath),
+                              controller: controller,
+                              focusNode: _focusNode,
+                              scrollController: _scrollController,
+                              wordWrap: activeWordWrap,
+                              pinLineNumbers: pinLineNumbers,
+                              toolbarController: _toolbarController,
+                              margin: EdgeInsets.zero,
+                              extraHorizontalScroll: 160.0,
+                              padding: const EdgeInsets.fromLTRB(6.0, 0.0, 0.0, 0.0),
+                              leadingDivider: showLineNumbers
+                                  ? Container(
+                                      width: 1.0,
+                                      color: activeTheme.gutterTextColor.withValues(alpha: 0.25),
+                                    )
+                                  : null,
+                              style: CodeEditorStyle(
+                                fontSize: displayFontSize,
+                                textColor: activeTheme.textColor,
+                                backgroundColor: activeTheme.backgroundColor,
+                                cursorColor: activeTheme.cursorColor,
+                                cursorLineColor: activeTheme.cursorLineColor,
+                                selectionColor: activeTheme.selectionColor,
+                                fontFamily: activeEditorFont.fontFamily,
+                                fontFamilyFallback: activeEditorFont.fallback,
+                                codeTheme: CodeHighlightTheme(
+                                  languages: SyntaxHighlightHelper.getLanguagesForFile(_currentLoadedPath ?? widget.filePath),
+                                  theme: activeTheme.highlightTheme,
+                                ),
+                              ),
+                              indicatorBuilder: showLineNumbers
+                                  ? (context, editingController, chunkController, notifier) {
+                                      return Row(
+                                        children: [
+                                          DefaultCodeLineNumber(
+                                            controller: editingController,
+                                            notifier: notifier,
+                                            lineDecorationBuilder: (lineIndex) {
+                                              final filePath = _currentLoadedPath ?? widget.filePath;
+                                              if (filePath == null) return null;
+                                              final diags = LspDiagnosticsStore.instance.getDiagnosticsForLine(filePath, lineIndex);
+                                              if (diags.isEmpty) return null;
+                                              final hasError = diags.any((d) => d.severity == LspDiagnosticSeverity.error);
+                                              final hasWarning = diags.any((d) => d.severity == LspDiagnosticSeverity.warning);
+                                              final dotColor = hasError
+                                                  ? Colors.redAccent
+                                                  : (hasWarning ? Colors.amberAccent : Colors.lightBlueAccent);
+                                              return DiagnosticGutterDotDecoration(color: dotColor);
+                                            },
+                                            textStyle: TextStyle(
+                                              color: activeTheme.gutterTextColor,
+                                              fontSize: (displayFontSize - 1).clamp(9.0, 30.0),
+                                              fontFamily: activeEditorFont.fontFamily,
+                                              fontFamilyFallback: activeEditorFont.fallback,
+                                              height: 1.4,
+                                            ),
+                                            focusedTextStyle: TextStyle(
+                                              color: activeTheme.focusedGutterTextColor,
+                                              fontSize: (displayFontSize - 1).clamp(9.0, 30.0),
+                                              fontWeight: FontWeight.bold,
+                                              fontFamily: activeEditorFont.fontFamily,
+                                              fontFamilyFallback: activeEditorFont.fallback,
+                                              height: 1.4,
+                                            ),
+                                          ),
+                                          DefaultCodeChunkIndicator(
+                                            width: 20,
+                                            controller: chunkController,
+                                            notifier: notifier,
+                                            painter: DefaultCodeChunkIndicatorPainter(
+                                              color: activeTheme.gutterTextColor,
+                                            ),
+                                          ),
+                                        ],
+                                      );
+                                    }
+                                  : null,
+                            ),
+                          ),
+                        );
+                  },
+                ),
+              ),
                   // 双指缩放实时字号悬浮胶囊提示
                   if (_isPinching && _activeZoomFontSize != null)
                     Positioned(
@@ -794,6 +943,18 @@ class _CodeEditorWidgetState extends State<CodeEditorWidget> {
               ),
             ),
           ),
+          if (_currentCursorLine >= 0 && (_currentLoadedPath ?? widget.filePath) != null) ...[
+            Builder(
+              builder: (ctx) {
+                final diags = LspDiagnosticsStore.instance.getDiagnosticsForLine(
+                  _currentLoadedPath ?? widget.filePath,
+                  _currentCursorLine,
+                );
+                if (diags.isEmpty) return const SizedBox.shrink();
+                return _buildDiagnosticBanner(ctx, diags, _currentCursorLine);
+              },
+            ),
+          ],
           if (enableVirtualKeyboard && keyboardConfig != null && keyboardConfig.hasKeys)
             VirtualKeyboardWidget(
               controller: controller,
@@ -866,6 +1027,7 @@ class _CodeEditorWidgetState extends State<CodeEditorWidget> {
       final newController = CodeLineEditingController.fromText(
         normalizedContent,
         CodeLineOptions(indentSize: activeIndentSize),
+        _buildDiagnosticSpans,
       );
 
       _controller = newController;
@@ -873,6 +1035,13 @@ class _CodeEditorWidgetState extends State<CodeEditorWidget> {
       _currentIndentSize = activeIndentSize;
       _errorMessage = null;
       _isLoading = false;
+
+      _lspCoordinator.onFileOpened(
+        fullFilePath,
+        normalizedContent,
+        newController.codeLines,
+        workspaceRoot: widget.rootPath,
+      );
 
       // 必须在 _controller 和 tab 状态准备就绪后再挂载文本监听，避免初始化阶段被误判为脏
       newController.addListener(_onTextChanged);
@@ -917,12 +1086,20 @@ class _CodeEditorWidgetState extends State<CodeEditorWidget> {
       final newController = CodeLineEditingController.fromText(
         diskContent,
         CodeLineOptions(indentSize: activeIndentSize),
+        _buildDiagnosticSpans,
       );
 
       _controller = newController;
       _currentLoadedPath = fullFilePath;
       _currentIndentSize = activeIndentSize;
       _errorMessage = null;
+
+      _lspCoordinator.onFileOpened(
+        fullFilePath,
+        diskContent,
+        newController.codeLines,
+        workspaceRoot: widget.rootPath,
+      );
 
       if (tab != null) {
         tab.content = diskContent;

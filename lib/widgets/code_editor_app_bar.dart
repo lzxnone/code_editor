@@ -118,7 +118,7 @@ class CodeEditorAppBar extends StatelessWidget implements PreferredSizeWidget {
               visualDensity: VisualDensity.compact,
               icon: const Icon(Icons.play_arrow),
               tooltip: l10n.run,
-              onPressed: onRun ?? () {},
+              onPressed: (isDetecting || onRun == null) ? null : onRun,
             ),
           ),
           Focus(
@@ -319,7 +319,9 @@ class _MoreMenuButtonState extends State<_MoreMenuButton> with SingleTickerProvi
                         icon: Icons.playlist_play,
                         title: l10n.runTasks,
                         iconColor: onSurfaceColor,
+                        enabled: !widget.isDetecting,
                         onTap: () {
+                          if (widget.isDetecting) return;
                           _closeMenu(onClosed: widget.onRunTasks);
                         },
                       ),

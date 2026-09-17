@@ -20,7 +20,7 @@ class LspConfigService extends ChangeNotifier {
   List<LspLanguageConfig> get configs => List.unmodifiable(_configs);
   bool get isLoaded => _isLoaded;
 
-  /// 获取配置文件路径: `<files>/internal_engine/lsp_languages.json`
+  /// 获取配置文件路径: `<files>/config/lsp_languages.json`
   Future<File> getConfigFile() async {
     final Directory baseDir;
     if (customBaseDir != null) {
@@ -30,7 +30,28 @@ class LspConfigService extends ChangeNotifier {
       final rootPath = p.basename(appDir.path) == 'files'
           ? appDir.path
           : p.join(appDir.path, 'files');
-      baseDir = Directory(p.join(rootPath, 'internal_engine'));
+      baseDir = Directory(p.join(rootPath, 'config'));
+
+      // 自动迁移旧版本放置在 internal_engine 的配置文件并清理旧目录
+      try {
+        final legacyDir = Directory(p.join(rootPath, 'internal_engine'));
+        final legacyFile = File(p.join(legacyDir.path, 'lsp_languages.json'));
+        final targetFile = File(p.join(baseDir.path, 'lsp_languages.json'));
+
+        if (legacyFile.existsSync() && !targetFile.existsSync()) {
+          if (!baseDir.existsSync()) {
+            baseDir.createSync(recursive: true);
+          }
+          legacyFile.copySync(targetFile.path);
+        }
+
+        if (legacyDir.existsSync()) {
+          legacyDir.deleteSync(recursive: true);
+          debugPrint('[LspConfigService] 已迁移并清理旧 internal_engine 目录');
+        }
+      } catch (e) {
+        debugPrint('[LspConfigService] 清理旧 internal_engine 异常: $e');
+      }
     }
 
     if (!baseDir.existsSync()) {
@@ -39,7 +60,7 @@ class LspConfigService extends ChangeNotifier {
     return File(p.join(baseDir.path, 'lsp_languages.json'));
   }
 
-  /// 加载配置，若缺失预设语言则自动增量追加合并并回写
+  /// 加载已安装的配置列表。初始为空数组 []，不存在未安装的占位项
   Future<List<LspLanguageConfig>> loadConfigs({bool forceReload = false}) async {
     if (_isLoaded && !forceReload) {
       return _configs;
@@ -50,33 +71,27 @@ class LspConfigService extends ChangeNotifier {
     bool needSave = false;
 
     if (!file.existsSync()) {
-      loaded = List.from(LspLanguageConfig.defaultPresets);
+      // 初始为空数组，写入持久化文件
+      loaded = [];
       needSave = true;
     } else {
       try {
-        final content = file.readAsStringSync();
-        final dynamic raw = jsonDecode(content);
-        if (raw is List) {
-          loaded = raw
-              .map((e) => e is Map<String, dynamic>
-                  ? LspLanguageConfig.fromJson(e)
-                  : null)
-              .whereType<LspLanguageConfig>()
-              .toList();
+        final content = file.readAsStringSync().trim();
+        if (content.isNotEmpty) {
+          final dynamic raw = jsonDecode(content);
+          if (raw is List) {
+            loaded = raw
+                .map((e) => e is Map<String, dynamic>
+                    ? LspLanguageConfig.fromJson(e)
+                    : null)
+                .whereType<LspLanguageConfig>()
+                .toList();
+          }
         }
       } catch (e) {
-        debugPrint('读取 lsp_languages.json 异常: $e，使用默认预设');
-        loaded = List.from(LspLanguageConfig.defaultPresets);
+        debugPrint('读取 lsp_languages.json 异常: $e');
+        loaded = [];
         needSave = true;
-      }
-
-      // 动态增量合并：对比官方预设，若预设中某项 id 本地缺失，则追加进去，默认 enabled: true
-      final existingIds = loaded.map((e) => e.id).toSet();
-      for (final preset in LspLanguageConfig.defaultPresets) {
-        if (!existingIds.contains(preset.id)) {
-          loaded.add(preset.copyWith(enabled: true));
-          needSave = true;
-        }
       }
     }
 
@@ -118,9 +133,9 @@ class LspConfigService extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// 恢复官方默认预设
+  /// 清空所有已配置的语言项
   Future<void> resetToDefaults() async {
-    _configs = List.from(LspLanguageConfig.defaultPresets);
+    _configs = [];
     await _writeToDisk();
     notifyListeners();
   }
@@ -131,11 +146,10 @@ class LspConfigService extends ChangeNotifier {
     final normalized = ext.startsWith('.') ? ext.toLowerCase() : '.$ext'.toLowerCase();
 
     for (final config in _configs) {
-      if (!config.enabled) continue;
       for (final item in config.fileExtensions) {
         final itemNorm = item.startsWith('.') ? item.toLowerCase() : '.$item'.toLowerCase();
         if (itemNorm == normalized) {
-          return config;
+          return config.enabled ? config : null;
         }
       }
     }

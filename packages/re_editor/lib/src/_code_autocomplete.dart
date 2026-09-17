@@ -136,6 +136,14 @@ class _CodeAutocompleteState extends State<_CodeAutocomplete> {
   ValueChanged<CodeAutocompleteResult>? _onAutocomplete;
   OverlayEntry? _overlayEntry;
   ValueNotifier<CodeAutocompleteEditingValue>? _notifier;
+  Offset? _position;
+  double? _lineHeight;
+  LayerLink? _layerLink;
+
+  final GlobalKey _menuKey = GlobalKey();
+  Offset? _pointerDownPosition;
+  DateTime? _pointerDownTime;
+  bool _isPointerSliding = false;
 
   @override
   void initState() {
@@ -181,15 +189,86 @@ class _CodeAutocompleteState extends State<_CodeAutocomplete> {
   }
 
   @override
+  void dispose() {
+    dismiss();
+    super.dispose();
+  }
+
+  void _handleEditorPointerDown(PointerDownEvent event) {
+    if (_overlayEntry == null) return;
+    _pointerDownPosition = event.position;
+    _pointerDownTime = DateTime.now();
+    _isPointerSliding = false;
+  }
+
+  void _handleEditorPointerMove(PointerMoveEvent event) {
+    if (_overlayEntry == null || _pointerDownPosition == null) return;
+    if ((event.position - _pointerDownPosition!).distance > kTouchSlop) {
+      _isPointerSliding = true;
+    }
+  }
+
+  void _handleEditorPointerUp(PointerUpEvent event) {
+    if (_overlayEntry == null || _pointerDownPosition == null) {
+      _pointerDownPosition = null;
+      _isPointerSliding = false;
+      return;
+    }
+
+    // 用户在编辑区滑动（例如上下或左右滚动代码），坚决不关闭菜单
+    if (_isPointerSliding) {
+      _pointerDownPosition = null;
+      _isPointerSliding = false;
+      return;
+    }
+
+    final duration = DateTime.now().difference(_pointerDownTime ?? DateTime.now());
+    _pointerDownPosition = null;
+    _isPointerSliding = false;
+
+    // 轻触点击判定：时长小于 500ms 且无位移
+    if (duration.inMilliseconds > 500) {
+      return;
+    }
+
+    // 检查点击位置是否在补全菜单内
+    final RenderBox? menuBox = _menuKey.currentContext?.findRenderObject() as RenderBox?;
+    if (menuBox != null && menuBox.hasSize) {
+      final localPos = menuBox.globalToLocal(event.position);
+      if (menuBox.paintBounds.contains(localPos)) {
+        // 点击在菜单内部，由菜单自身交互逻辑处理，不关闭
+        return;
+      }
+    }
+
+    // 只有在菜单区域外的编辑区执行了点击（Tap），才关闭菜单
+    dismiss();
+  }
+
+  void _handleEditorPointerCancel(PointerCancelEvent event) {
+    _pointerDownPosition = null;
+    _isPointerSliding = false;
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Actions(
       actions: {
         CodeShortcutCursorMoveIntent: _navigateAction,
         CodeShortcutNewLineIntent: _selectAction,
       },
-      child: widget.child
+      child: Listener(
+        behavior: HitTestBehavior.translucent,
+        onPointerDown: _handleEditorPointerDown,
+        onPointerMove: _handleEditorPointerMove,
+        onPointerUp: _handleEditorPointerUp,
+        onPointerCancel: _handleEditorPointerCancel,
+        child: widget.child,
+      ),
     );
   }
+
+  int _showVersion = 0;
 
   void show({
     required LayerLink layerLink,
@@ -198,28 +277,84 @@ class _CodeAutocompleteState extends State<_CodeAutocomplete> {
     required CodeLineEditingValue value,
     required ValueChanged<CodeAutocompleteResult> onAutocomplete,
   }) {
-    dismiss();
-    final CodeAutocompleteEditingValue? autocompleteEditingValue = widget.promptsBuilder.build(
+    final int version = ++_showVersion;
+    final dynamic result = widget.promptsBuilder.build(
       context,
       value.codeLines[value.selection.extentIndex],
       value.selection,
     );
-    if (autocompleteEditingValue == null) {
+
+    if (result is Future) {
+      result.then((resolved) {
+        if (!mounted || version != _showVersion) return;
+        if (resolved is CodeAutocompleteEditingValue) {
+          _displayPrompts(
+            layerLink: layerLink,
+            position: position,
+            lineHeight: lineHeight,
+            editingValue: resolved,
+            onAutocomplete: onAutocomplete,
+          );
+        } else {
+          dismiss();
+        }
+      });
       return;
     }
-    _notifier = ValueNotifier(autocompleteEditingValue);
+
+    if (result is CodeAutocompleteEditingValue) {
+      _displayPrompts(
+        layerLink: layerLink,
+        position: position,
+        lineHeight: lineHeight,
+        editingValue: result,
+        onAutocomplete: onAutocomplete,
+      );
+    } else {
+      dismiss();
+    }
+  }
+
+  void _displayPrompts({
+    required LayerLink layerLink,
+    required Offset position,
+    required double lineHeight,
+    required CodeAutocompleteEditingValue editingValue,
+    required ValueChanged<CodeAutocompleteResult> onAutocomplete,
+  }) {
+    _position = position;
+    _lineHeight = lineHeight;
+    _layerLink = layerLink;
+    _onAutocomplete = onAutocomplete;
+
+    if (_overlayEntry != null && _notifier != null) {
+      // 已经处于展开状态，原地更新候选列表并重绘 OverlayEntry 计算自适应高度
+      _notifier!.value = editingValue;
+      _overlayEntry!.markNeedsBuild();
+      return;
+    }
+
+    dismiss();
+    _position = position;
+    _lineHeight = lineHeight;
+    _layerLink = layerLink;
+    _notifier = ValueNotifier(editingValue);
     _onAutocomplete = onAutocomplete;
     _overlayEntry = OverlayEntry(
-      builder:(context) {
-        return _buildWidget(context, layerLink, position, lineHeight);
+      builder: (context) {
+        return _buildWidget(context);
       },
     );
-    Overlay.of(context, rootOverlay: true).insert(_overlayEntry!);
+    final overlay = Overlay.maybeOf(context, rootOverlay: false) ?? Overlay.of(context, rootOverlay: true);
+    overlay.insert(_overlayEntry!);
     _navigateAction.setEnabled(true);
     _selectAction.setEnabled(true);
   }
 
   void dismiss() {
+    _position = null;
+    _lineHeight = null;
+    _layerLink = null;
     _notifier = null;
     _onAutocomplete = null;
     _overlayEntry?.remove();
@@ -228,39 +363,64 @@ class _CodeAutocompleteState extends State<_CodeAutocomplete> {
     _selectAction.setEnabled(false);
   }
 
-  Widget _buildWidget(BuildContext context, LayerLink layerLink, Offset position, double lineHeight) {
+  Widget _buildWidget(BuildContext context) {
+    if (_position == null || _layerLink == null || _notifier == null) {
+      return const SizedBox.shrink();
+    }
     final PreferredSizeWidget child = widget.viewBuilder(context, _notifier!, (result) {
       _onAutocomplete?.call(result);
     });
-    final Size screenSize =  MediaQuery.of(context).size;
-    final double offsetX;
-    if (position.dx + child.preferredSize.width > screenSize.width) {
-      offsetX = screenSize.width - (position.dx + child.preferredSize.width);
-    } else {
-      offsetX = 0;
+    final mediaQuery = MediaQuery.of(context);
+    final Size screenSize = mediaQuery.size;
+    final position = _position!;
+
+    // 水平方向：允许菜单水平自然超出编辑区
+    const double offsetX = 0.0;
+
+    // 计算小键盘及局部 Overlay 的底部边界
+    final overlay = Overlay.maybeOf(context, rootOverlay: false) ?? Overlay.of(context, rootOverlay: true);
+    final RenderBox? overlayBox = overlay.context.findRenderObject() as RenderBox?;
+    double overlayBottomY = screenSize.height;
+    if (overlayBox != null && overlayBox.hasSize) {
+      final overlayTopLeft = overlayBox.localToGlobal(Offset.zero);
+      overlayBottomY = overlayTopLeft.dy + overlayBox.size.height;
     }
-    final double offsetY;
-    if (position.dy + child.preferredSize.height > screenSize.height) {
-      offsetY = -child.preferredSize.height - lineHeight;
+    final double systemKeyboardTop = screenSize.height - mediaQuery.viewInsets.bottom;
+    final double effectiveBottom = min(overlayBottomY, systemKeyboardTop);
+
+    // 计算光标所在行下方的可用高度，并预留 4.0 像素防顶边距
+    const double safetyMargin = 4.0;
+    final double availableHeight = effectiveBottom - position.dy - safetyMargin;
+
+    // 显示位置坚决锁定在当前行下方，绝不在光标上方翻转显示
+    const double offsetY = 0.0;
+
+    // 高度自适应：如果顶到了小键盘，那么高度变小，剩余项在内部滑动
+    final double desiredHeight = child.preferredSize.height;
+    const double minSensibleHeight = 44.0;
+    final double finalHeight;
+    if (availableHeight < desiredHeight) {
+      finalHeight = max(minSensibleHeight, availableHeight);
     } else {
-      offsetY = 0;
+      finalHeight = desiredHeight;
     }
+
     return CompositedTransformFollower(
-      link: layerLink,
+      link: _layerLink!,
       showWhenUnlinked: false,
       offset: Offset(offsetX, offsetY),
       child: Align(
         alignment: Alignment.topLeft,
         child: Material(
           color: Colors.transparent,
-          child: TapRegion(
-            onTapOutside: (event) {
-              dismiss();
-            },
-            child: CodeEditorTapRegion(
-              child: ExcludeSemantics(
+          child: CodeEditorTapRegion(
+            child: ExcludeSemantics(
+              child: SizedBox(
+                key: _menuKey,
+                width: child.preferredSize.width,
+                height: finalHeight,
                 child: child,
-              )
+              ),
             )
           ),
         )

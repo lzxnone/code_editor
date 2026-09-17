@@ -40,8 +40,6 @@ import 'package:code_editor/widgets/virtual_keyboard_page_drawer.dart';
 import 'package:code_editor/widgets/terminal_session_item_widget.dart';
 import 'package:code_editor/models/terminal_session.dart';
 import 'package:code_editor/providers/terminal_provider.dart';
-import 'package:code_editor/providers/distro_provider.dart';
-import 'package:code_editor/widgets/distro_selector_dialog.dart';
 import 'package:code_editor/widgets/code_editor_app_bar.dart';
 import 'package:code_editor/widgets/code_editor_drawer.dart';
 import 'package:code_editor/utils/dialog_utils.dart';
@@ -3114,6 +3112,45 @@ void main() {
       );
     });
 
+    testWidgets('CodeEditorAppBar disables run button and runTasks menu item when isDetecting is true', (tester) async {
+      bool runCalled = false;
+      bool runTasksCalled = false;
+
+      await tester.pumpWidget(
+        localizedApp(
+          Scaffold(
+            appBar: CodeEditorAppBar(
+              filePath: '/test/main.dart',
+              isDetecting: true,
+              onRun: () => runCalled = true,
+              onRunTasks: () => runTasksCalled = true,
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // 1. 运行按钮 (Play) 处于禁用状态
+      final playBtnFinder = find.widgetWithIcon(IconButton, Icons.play_arrow);
+      expect(playBtnFinder, findsOneWidget);
+      final playBtn = tester.widget<IconButton>(playBtnFinder);
+      expect(playBtn.onPressed, isNull);
+
+      // 2. 打开右上角更多菜单
+      final moreBtnFinder = find.byIcon(Icons.more_vert);
+      expect(moreBtnFinder, findsOneWidget);
+      await tester.tap(moreBtnFinder);
+      await tester.pumpAndSettle();
+
+      // 3. 点击运行任务菜单项，验证不会触发回调
+      final runTasksItemFinder = find.byIcon(Icons.playlist_play);
+      expect(runTasksItemFinder, findsOneWidget);
+      await tester.tap(runTasksItemFinder);
+      await tester.pumpAndSettle();
+      expect(runTasksCalled, isFalse);
+      expect(runCalled, isFalse);
+    });
+
     testWidgets('VirtualKeyboardConfigView', (tester) async {
       await pumpNarrow(
         tester,
@@ -3259,27 +3296,6 @@ void main() {
       expect(tester.takeException(), isNull, reason: '更多菜单展开后不应溢出');
 
       await tester.pumpWidget(const SizedBox());
-    });
-
-    testWidgets('DistroSelectorDialog import popup (en)', (tester) async {
-      await pumpNarrow(
-        tester,
-        MultiProvider(
-          providers: [
-            ChangeNotifierProvider<DistroProvider>.value(value: DistroProvider()),
-            ChangeNotifierProvider<TerminalProvider>.value(value: TerminalProvider()),
-          ],
-          child: localizedApp(
-            const Scaffold(body: DistroSelectorDialog()),
-            locale: const Locale('en'),
-          ),
-        ),
-      );
-
-      // 展开“导入系统”弹出菜单
-      await tester.tap(find.byIcon(Icons.add_circle_outline));
-      await tester.pumpAndSettle();
-      expect(tester.takeException(), isNull, reason: '导入菜单展开后不应溢出');
     });
 
     testWidgets('CodeEditorTabBar with many modified tabs', (tester) async {

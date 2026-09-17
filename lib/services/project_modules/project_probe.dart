@@ -4,6 +4,9 @@ import 'package:flutter/foundation.dart';
 
 import '../../models/notice_item.dart';
 import '../../models/run_task.dart';
+import '../background_task/background_task.dart';
+import '../background_task/background_task_scheduler.dart';
+import '../background_task/generic_background_task.dart';
 import '../distro_manager.dart';
 import '../toolchain_service.dart';
 
@@ -297,15 +300,34 @@ class ProjectProbe {
     if (commands.isEmpty) return false;
 
     final script = commands.join(' && ');
-    final result = await runHeadless(
-      script,
-      timeout: const Duration(minutes: 10),
-      onStdout: (chunk) {
-        final line = chunk.trim();
-        if (line.isNotEmpty) setInstallLine(line);
+
+    // 接入统一调度器：通过 TaskExecutionScope.packageManager 保证独占排他锁，
+    // 不与用户同时触发的 LSP 组件安装/卸载冲突
+    final task = GenericBackgroundTask<bool>(
+      id: 'probe:toolchains:${toolchainKeys.join('+')}',
+      scope: TaskExecutionScope.packageManager,
+      priority: TaskPriority.projectLifecycle,
+      showNotice: false, // 模块探测自身已有专用的 ModulePhaseText 弹窗显示
+      runner: (taskContext) async {
+        if (isCancelled || _disposed) return false;
+
+        final result = await runHeadless(
+          script,
+          timeout: const Duration(minutes: 10),
+          onStdout: (chunk) {
+            final line = chunk.trim();
+            if (line.isNotEmpty) setInstallLine(line);
+          },
+        );
+        return result != null && result.exitCode == 0;
       },
     );
-    return result != null && result.exitCode == 0;
+
+    try {
+      return await BackgroundTaskScheduler.instance.submit(task);
+    } catch (_) {
+      return false;
+    }
   }
 
   /// 更新安装进度行（带释放保护，避免取消/释放后写入已 dispose 的 notifier）

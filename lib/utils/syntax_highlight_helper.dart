@@ -1,6 +1,7 @@
 import 'package:path/path.dart' as p;
 import 'package:re_editor/re_editor.dart';
 import 'package:re_highlight/languages/all.dart';
+import 'package:re_highlight/re_highlight.dart';
 
 /// 语法高亮辅助类：
 /// 1. 基于文件后缀与特殊文件名的 O(1) 语法匹配，彻底避免全量遍历
@@ -174,5 +175,12 @@ class SyntaxHighlightHelper {
       return const {};
     }
     return {langId: mode};
+  }
+
+  /// 获取指定文件对应的 re_highlight 原始 Mode 定义（用于提取语言关键字等）
+  static Mode? getGrammarModeForFile(String? filePath) {
+    final langId = getLanguageId(filePath);
+    if (langId == null) return null;
+    return builtinAllLanguages[langId];
   }
 }

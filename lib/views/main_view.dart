@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 import 'package:code_editor/l10n/app_localizations.dart';
 import 'package:code_editor/models/run_task.dart';
 import 'package:code_editor/providers/distro_provider.dart';
@@ -18,12 +19,15 @@ import 'package:code_editor/widgets/code_editor_tab_bar.dart';
 import 'package:code_editor/widgets/code_editor_widget.dart';
 import 'package:code_editor/views/run_task_edit_view.dart';
 import 'package:code_editor/providers/notice_center.dart';
-import 'package:code_editor/widgets/distro_selector_dialog.dart';
+import 'package:code_editor/models/distro_manifest.dart';
+import 'package:code_editor/widgets/distro_extract_dialog.dart';
 import 'package:code_editor/widgets/notice_host.dart';
 import 'package:code_editor/widgets/probe_cancel_guard.dart';
 import 'package:code_editor/widgets/run_tasks_dialog.dart';
 import 'package:code_editor/models/lsp_language_config.dart';
+import 'package:code_editor/services/file_service.dart';
 import 'package:code_editor/services/internal_engine_service.dart';
+import 'package:code_editor/services/lsp/lsp_manager.dart';
 import 'package:code_editor/services/lsp_config_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -32,6 +36,11 @@ import 'package:provider/provider.dart';
 
 class MainView extends StatefulWidget {
   const MainView({super.key});
+
+  /// 清除指定语言或全部语言的防打扰提示记录（卸载组件后恢复提示资格并重置当前文件检查）
+  static void clearPromptedLanguage(String? languageId) {
+    _MainViewState.clearPromptedLanguage(languageId);
+  }
 
   @override
   State<MainView> createState() => _MainViewState();
@@ -43,12 +52,23 @@ class _MainViewState extends State<MainView> {
   /// 最近一次已触发探测的 (工程, 系统) 组合，用于去重与"系统就绪后补探测"
   String? _lastProbeKey;
 
-  String? _lastActiveFile;
+  static String? _globalLastActiveFile;
   static final Set<String> _promptedLspLanguages = {};
+
+  /// 清除指定语言或全部语言的防打扰提示记录（卸载组件后恢复提示资格并重置当前文件检查）
+  static void clearPromptedLanguage(String? languageId) {
+    if (languageId == null) {
+      _promptedLspLanguages.clear();
+    } else {
+      _promptedLspLanguages.remove(languageId);
+    }
+    _globalLastActiveFile = null;
+  }
 
   @override
   void initState() {
     super.initState();
+    LspConfigService.instance.addListener(_handleLspConfigChanged);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
         InternalEngineService.instance.ensureEngineReady(context);
@@ -57,25 +77,101 @@ class _MainViewState extends State<MainView> {
     });
   }
 
-  void _checkLspForFile(String filePath) async {
-    final ext = p.extension(filePath);
-    if (ext.isEmpty) return;
-    await LspConfigService.instance.loadConfigs();
-    final config = LspConfigService.instance.findByExtension(ext);
-    if (config == null) return;
+  @override
+  void dispose() {
+    LspConfigService.instance.removeListener(_handleLspConfigChanged);
+    super.dispose();
+  }
 
-    if (!await InternalEngineService.instance.isEngineInstalled()) return;
+  void _handleLspConfigChanged() {
+    if (!mounted) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      _syncLspForOpenTabs();
+    });
+  }
 
-    final isInstalled = await InternalEngineService.instance.isCommandInstalled(config.serverCommand);
-    if (!isInstalled && mounted) {
-      if (!_promptedLspLanguages.contains(config.id)) {
-        _promptedLspLanguages.add(config.id);
-        _promptInstallLspComponent(config);
+  Future<void> _syncLspForOpenTabs({String? preferredFilePath}) async {
+    if (!mounted) return;
+    final tabProvider = _getTabProvider(context);
+    final projectProvider = _getProjectProvider(context);
+    final workspaceRoot = projectProvider.rootPath;
+
+    final openTabs = tabProvider.openTabs;
+    final currentPath = preferredFilePath ?? tabProvider.currentFilePath;
+
+    final filesToSync = <String, String>{};
+    for (final tab in openTabs) {
+      filesToSync[tab.path] = tab.content;
+    }
+    if (currentPath != null && !filesToSync.containsKey(currentPath)) {
+      filesToSync[currentPath] = '';
+    }
+
+    for (final entry in filesToSync.entries) {
+      final path = entry.key;
+      final ext = p.extension(path);
+      if (ext.isEmpty) continue;
+
+      final config = LspConfigService.instance.findByExtension(ext);
+      if (config == null || !config.enabled) continue;
+
+      final isCmdInstalled = await InternalEngineService.instance.isCommandInstalled(config.serverCommand);
+      if (!isCmdInstalled) continue;
+
+      final existingSession = LspManager.instance.getExistingSession(path);
+      if (existingSession == null || !existingSession.isInitialized) {
+        String content = entry.value;
+        if (content.isEmpty && File(path).existsSync()) {
+          try {
+            content = await FileService.instance.readFileContent(path);
+          } catch (_) {}
+        }
+        await LspManager.instance.onFileOpened(
+          path,
+          content,
+          workspaceRoot: workspaceRoot,
+        );
       }
     }
   }
 
-  Future<void> _promptInstallLspComponent(LspLanguageConfig config) async {
+  void _checkLspForFile(String filePath) async {
+    final ext = p.extension(filePath);
+    if (ext.isEmpty) return;
+    await LspConfigService.instance.loadConfigs();
+
+    // 1. 先检查已安装配置中是否有匹配此后缀的组件
+    final existing = LspConfigService.instance.findByExtension(ext);
+    if (existing != null) return;
+
+    final engineInstalled = await InternalEngineService.instance.isEngineInstalled();
+    if (!engineInstalled) return;
+
+    // 2. 未在已安装配置中，查找代码内置语言预设模版
+    final builtin = LspLanguageConfig.findBuiltinByExtension(ext);
+    if (builtin == null) return;
+
+    final isInstalled = await InternalEngineService.instance.isCommandInstalled(builtin.serverCommand);
+    if (isInstalled) {
+      // 若底层环境意外已存在该命令（例如系统自带或此前安装过），直接补充入库
+      await LspConfigService.instance.updateConfig(builtin);
+      if (mounted) {
+        await _syncLspForOpenTabs(preferredFilePath: filePath);
+      }
+      return;
+    }
+
+    if (mounted) {
+      final alreadyPrompted = _promptedLspLanguages.contains(builtin.id);
+      if (!alreadyPrompted) {
+        _promptedLspLanguages.add(builtin.id);
+        _promptInstallLspComponent(builtin, targetFilePath: filePath);
+      }
+    }
+  }
+
+  Future<void> _promptInstallLspComponent(LspLanguageConfig config, {String? targetFilePath}) async {
     final l10n = AppLocalizations.of(context);
     if (l10n == null || !mounted) return;
 
@@ -83,7 +179,7 @@ class _MainViewState extends State<MainView> {
       context: context,
       builder: (ctx) => AlertDialog(
         title: Text(l10n.lspPackageMissingTitle(config.name)),
-        content: Text(l10n.lspPackageMissingMessage(config.apkPackage, config.serverCommand)),
+        content: Text(l10n.lspPackageMissingMessage),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(false),
@@ -100,15 +196,23 @@ class _MainViewState extends State<MainView> {
     if (install == true && mounted) {
       final success = await DialogUtils.showSyncLoadingDialog<bool>(
         context,
-        message: l10n.installingComponent(config.apkPackage),
-        task: () => InternalEngineService.instance.installPackage(config.apkPackage),
+        message: l10n.installingComponent(config.package),
+        task: () => InternalEngineService.instance.installPackage(config.package),
       );
-      if (!mounted) return;
 
-      if (success) {
-        DialogUtils.showSuccessToast(context, l10n.installComponentSuccess(config.name));
-      } else {
-        DialogUtils.showErrorToast(context, l10n.installComponentFailed('apk add exit with non-zero'));
+      if (mounted) {
+        if (success) {
+          await LspConfigService.instance.updateConfig(config);
+          if (mounted) {
+            DialogUtils.showSuccessToast(context, l10n.installComponentSuccess(config.name));
+            await _syncLspForOpenTabs(preferredFilePath: targetFilePath);
+          }
+        } else {
+          DialogUtils.showErrorToast(
+            context,
+            l10n.installComponentFailed('apt exit non-zero'),
+          );
+        }
       }
     }
   }
@@ -182,7 +286,7 @@ class _MainViewState extends State<MainView> {
     }
   }
 
-  /// 提示用户缺失 Linux 执行环境并引导前往系统管理进行配置
+  /// 提示用户缺失 Linux 执行环境并引导解压安装 Ubuntu
   void _showMissingDistroDialog(BuildContext context, String? targetDistro) {
     final l10n = AppLocalizations.of(context)!;
     showDialog<void>(
@@ -212,12 +316,23 @@ class _MainViewState extends State<MainView> {
             child: Text(l10n.cancel),
           ),
           ElevatedButton.icon(
-            onPressed: () {
+            onPressed: () async {
               Navigator.of(ctx).pop();
-              DistroSelectorDialog.show(context);
+              final distroProvider = _getDistroProvider(context);
+              if (distroProvider != null) {
+                await DistroExtractDialog.show(
+                  context: context,
+                  systemName: DistroRepository.defaultSystemName,
+                  task: (onProgress, isCancelled) => distroProvider.importBuiltinUbuntu(
+                    systemName: DistroRepository.defaultSystemName,
+                    onProgress: onProgress,
+                    isCancelled: isCancelled,
+                  ),
+                );
+              }
             },
-            icon: const Icon(Icons.dns_outlined, size: 18),
-            label: Text(l10n.systemManagement),
+            icon: const Icon(Icons.system_update_alt, size: 18),
+            label: Text(l10n.installNow),
           ),
         ],
       ),
@@ -230,24 +345,14 @@ class _MainViewState extends State<MainView> {
     final distroProvider = _getDistroProvider(context);
     final distroManager = DistroManager();
     try {
-      var targetDistro = distroProvider?.selectedSystem;
-
-      if (targetDistro == null || !(await distroManager.isSystemInstalled(targetDistro))) {
-        if (distroProvider != null) {
+      final isInstalled = await distroManager.isSystemInstalled(DistroRepository.defaultSystemName);
+      if (isInstalled) {
+        if (distroProvider != null && distroProvider.selectedSystem == null) {
           await distroProvider.refreshSystems();
-          targetDistro = distroProvider.selectedSystem;
         }
-        if (targetDistro == null || !(await distroManager.isSystemInstalled(targetDistro))) {
-          final physicalSystems = await distroManager.listInstalledSystems();
-          if (physicalSystems.isNotEmpty) {
-            targetDistro = physicalSystems.first;
-            await distroProvider?.selectSystem(targetDistro);
-          }
-        }
+        return DistroRepository.defaultSystemName;
       }
-
-      final ok = targetDistro != null && await distroManager.isSystemInstalled(targetDistro);
-      return ok ? targetDistro : null;
+      return null;
     } catch (e) {
       debugPrint('[MainView] 系统可用性解析失败: $e');
       return null;
@@ -324,6 +429,10 @@ class _MainViewState extends State<MainView> {
 
     final runProvider = _getRunProvider(context);
     if (runProvider == null) return;
+
+    // 确保针对当前活动文件刷新单文件任务（支持当前文件单任务联动）
+    final currentFilePath = _getTabProvider(context).currentFilePath;
+    runProvider.refreshSingleFileTask(currentFilePath: currentFilePath);
 
     // 优先: 最近运行的任务（若已持久化并存在且确实属于当前打开的工程）
     if (runProvider.currentProjectRoot == rootPath && runProvider.lastRunTask != null) {
@@ -445,7 +554,7 @@ class _MainViewState extends State<MainView> {
 
     DialogUtils.showSuccessToast(
       context,
-      l10n.detectCompletedMessage(runProvider.detectedTasks.length),
+      l10n.detectCompletedMessage(runProvider.allTasks.length),
     );
   }
 
@@ -481,11 +590,12 @@ class _MainViewState extends State<MainView> {
     final systemName = _getDistroProvider(context, listen: true)?.selectedSystem;
     final probeKey = (rootPath == null || systemName == null) ? null : '$rootPath|$systemName';
 
-    if (currentFile != null && currentFile != _lastActiveFile) {
-      _lastActiveFile = currentFile;
+    if (currentFile != null && currentFile != _globalLastActiveFile) {
+      _globalLastActiveFile = currentFile;
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) {
           _checkLspForFile(currentFile);
+          runProvider?.refreshSingleFileTask(currentFilePath: currentFile);
         }
       });
     }
@@ -515,7 +625,7 @@ class _MainViewState extends State<MainView> {
         if (l10n != null && runProvider != null) {
           DialogUtils.showSuccessToast(
             this.context,
-            l10n.detectCompletedMessage(runProvider.detectedTasks.length),
+            l10n.detectCompletedMessage(runProvider.allTasks.length),
           );
         }
       });
