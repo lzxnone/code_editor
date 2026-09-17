@@ -1800,4 +1800,31 @@ class AppLocalizationsEn extends AppLocalizations {
   String containerRebuildFailed(String error) {
     return 'Failed to rebuild container: $error';
   }
+
+  @override
+  String get containerRuntimeMode => 'Container Runtime Mode';
+
+  @override
+  String get containerRuntimeModeAuto => 'Auto';
+
+  @override
+  String get containerRuntimeModeProot => 'PRoot';
+
+  @override
+  String get containerRuntimeModeChroot => 'Chroot';
+
+  @override
+  String get selectContainerRuntimeMode => 'Select Container Runtime Mode';
+
+  @override
+  String containerRuntimeToast(String mode) {
+    return 'Current container runtime: $mode';
+  }
+
+  @override
+  String get chrootDisabledNoRoot => 'Unavailable without Root permission';
+
+  @override
+  String get chrootFailedFallbackToProot =>
+      'Chroot mount or permission failed, automatically fell back to PRoot';
 }

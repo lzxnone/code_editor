@@ -2977,6 +2977,54 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'容器重建失败: {error}'**
   String containerRebuildFailed(String error);
+
+  /// No description provided for @containerRuntimeMode.
+  ///
+  /// In zh, this message translates to:
+  /// **'容器运行模式'**
+  String get containerRuntimeMode;
+
+  /// No description provided for @containerRuntimeModeAuto.
+  ///
+  /// In zh, this message translates to:
+  /// **'自动'**
+  String get containerRuntimeModeAuto;
+
+  /// No description provided for @containerRuntimeModeProot.
+  ///
+  /// In zh, this message translates to:
+  /// **'PRoot'**
+  String get containerRuntimeModeProot;
+
+  /// No description provided for @containerRuntimeModeChroot.
+  ///
+  /// In zh, this message translates to:
+  /// **'Chroot'**
+  String get containerRuntimeModeChroot;
+
+  /// No description provided for @selectContainerRuntimeMode.
+  ///
+  /// In zh, this message translates to:
+  /// **'选择容器运行模式'**
+  String get selectContainerRuntimeMode;
+
+  /// No description provided for @containerRuntimeToast.
+  ///
+  /// In zh, this message translates to:
+  /// **'当前容器运行环境：{mode}'**
+  String containerRuntimeToast(String mode);
+
+  /// No description provided for @chrootDisabledNoRoot.
+  ///
+  /// In zh, this message translates to:
+  /// **'未授予 Root 权限不可用'**
+  String get chrootDisabledNoRoot;
+
+  /// No description provided for @chrootFailedFallbackToProot.
+  ///
+  /// In zh, this message translates to:
+  /// **'Chroot 挂载或权限失败，已自动降级为 PRoot 运行模式'**
+  String get chrootFailedFallbackToProot;
 }
 
 class _AppLocalizationsDelegate

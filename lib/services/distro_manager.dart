@@ -1,12 +1,18 @@
 import 'dart:convert';
 import 'dart:io';
-import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 
+import 'package:shared_preferences/shared_preferences.dart';
+
+import '../l10n/app_localizations.dart';
 import '../models/distro_manifest.dart';
+import '../providers/settings_provider.dart';
+import 'chroot_mount_manager.dart';
 import 'distro_installer.dart';
+import 'root_service.dart';
 
 /// 容器启动配置数据
 class ProotLaunchConfig {
@@ -44,6 +50,12 @@ enum DistroFamily {
   arch,
   fedora,
   unknown,
+}
+
+/// 当前生效的底层容器运行类型
+enum ContainerRuntimeType {
+  proot,
+  chroot,
 }
 
 /// 后台静默命令的取消令牌：把子进程句柄暴露给上层（如任务探测会话），
@@ -98,6 +110,97 @@ class DistroManager {
   /// 自定义手机外部存储 sdcard 路径（主要用于测试）
   @visibleForTesting
   String? customSdcardPath;
+
+  /// 当前生效的容器运行环境（PRoot 或 Chroot）
+  ContainerRuntimeType _activeRuntimeType = ContainerRuntimeType.proot;
+  ContainerRuntimeType get activeRuntimeType => _activeRuntimeType;
+
+  @visibleForTesting
+  set activeRuntimeType(ContainerRuntimeType val) => _activeRuntimeType = val;
+
+  /// 根据设置执行容器运行时检测机制：
+  /// - 自动 (auto)：用户有 root 权限时尝试申请（永远只会申请一次）；
+  ///   被授予 root 权限则尝试挂载 chroot，挂载失败转 proot；没有被授予直接转 proot。
+  /// - proot 显式：直接转 proot。
+  /// - chroot 显式：如果用户设备有 root 但是软件尚未被授予 root 权限，弹出 dialog 尝试申请；
+  ///   被授予则尝试挂载 chroot，失败转 proot；未被授予直接转 proot。
+  ///
+  /// 检测完毕后，通过普通 Toast 告知用户当前生效的环境是 PRoot 还是 Chroot。
+  Future<ContainerRuntimeType> detectAndApplyRuntime({
+    BuildContext? context,
+    required SettingsProvider settings,
+    bool showToast = true,
+  }) async {
+    final mode = settings.containerRuntimeMode;
+    final rootDir = await getSystemRootDir(DistroRepository.defaultSystemName);
+
+    ContainerRuntimeType effective = ContainerRuntimeType.proot;
+
+    switch (mode) {
+      case ContainerRuntimeMode.proot:
+        effective = ContainerRuntimeType.proot;
+        break;
+
+      case ContainerRuntimeMode.auto:
+        bool hasRoot = false;
+        if (RootService.instance.isDeviceRootCapable()) {
+          if (!settings.hasPromptedRootRequest) {
+            hasRoot = await RootService.instance.requestRootPermissionOnce(settings);
+          } else {
+            hasRoot = await RootService.instance.isRootAvailablePassive();
+          }
+        }
+        if (hasRoot && rootDir.existsSync()) {
+          final chrootReady = await ChrootMountManager.instance.prepareChrootEnvironment(
+            rootDir: rootDir,
+          );
+          effective = chrootReady ? ContainerRuntimeType.chroot : ContainerRuntimeType.proot;
+        } else {
+          effective = ContainerRuntimeType.proot;
+        }
+        break;
+
+      case ContainerRuntimeMode.chroot:
+        bool hasRoot = false;
+        if (RootService.instance.isDeviceRootCapable()) {
+          hasRoot = await RootService.instance.isRootAvailablePassive();
+          if (!hasRoot) {
+            hasRoot = await RootService.instance.promptRequestRootExplicit();
+          }
+        }
+        if (hasRoot && rootDir.existsSync()) {
+          final chrootReady = await ChrootMountManager.instance.prepareChrootEnvironment(
+            rootDir: rootDir,
+          );
+          effective = chrootReady ? ContainerRuntimeType.chroot : ContainerRuntimeType.proot;
+        } else {
+          effective = ContainerRuntimeType.proot;
+        }
+        break;
+    }
+
+    _activeRuntimeType = effective;
+
+    if (showToast && context != null && context.mounted) {
+      final l10n = AppLocalizations.of(context);
+      if (l10n != null) {
+        final modeName = effective == ContainerRuntimeType.chroot ? 'Chroot' : 'PRoot';
+        final message = l10n.containerRuntimeToast(modeName);
+        try {
+          ScaffoldMessenger.of(context).removeCurrentSnackBar();
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(message),
+              duration: const Duration(seconds: 2),
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+        } catch (_) {}
+      }
+    }
+
+    return effective;
+  }
 
   /// 获取发行版存储基础目录: `<app_dir>/distros`
   Future<Directory> getBaseDistrosDir() async {
@@ -341,6 +444,7 @@ class DistroManager {
     String prootPath = 'proot',
     String? customCommand,
     Directory? customRootDir,
+    SettingsProvider? settingsProvider,
   }) async {
     // 1. 本地 Shell 特殊处理
     if (systemName == 'host') {
@@ -360,13 +464,116 @@ class DistroManager {
       );
     }
 
-    // 2. Linux 容器 (PRoot 隔离环境)
+    // 2. Linux 容器 (动态判定 Chroot 还是 PRoot)
     final rootDir = customRootDir ?? await getSystemRootDir(systemName);
     // 前置守卫：rootfs 必须先真实存在。否则下方一系列 ensure*（DNS/CA 证书/shm/l2s/sysdata）
     // 会 recursive 地创建出一套空壳目录，把"并不存在的系统"伪造成系统选择器里的已安装项。
     if (!rootDir.existsSync()) {
       throw StateError('目标系统未安装，拒绝构建启动配置: $systemName（rootfs 不存在: ${rootDir.path}）');
     }
+
+    ContainerRuntimeMode runtimeMode = settingsProvider?.containerRuntimeMode ?? ContainerRuntimeMode.auto;
+    if (settingsProvider == null) {
+      try {
+        final prefs = await SharedPreferences.getInstance();
+        final saved = prefs.getString('container_runtime_mode');
+        if (saved != null) {
+          runtimeMode = ContainerRuntimeMode.values.firstWhere(
+            (e) => e.name == saved,
+            orElse: () => ContainerRuntimeMode.auto,
+          );
+        }
+      } catch (_) {}
+    }
+
+    bool shouldTryChroot = false;
+    if (runtimeMode == ContainerRuntimeMode.chroot) {
+      shouldTryChroot = true;
+    } else if (runtimeMode == ContainerRuntimeMode.auto) {
+      shouldTryChroot = await RootService.instance.isRootAvailablePassive();
+    }
+
+    if (shouldTryChroot) {
+      final chrootReady = await ChrootMountManager.instance.prepareChrootEnvironment(
+        rootDir: rootDir,
+        workspacePath: workspacePath,
+      );
+      if (chrootReady) {
+        _activeRuntimeType = ContainerRuntimeType.chroot;
+        return _buildChrootLaunchConfig(
+          rootDir: rootDir,
+          workspacePath: workspacePath,
+          customCommand: customCommand,
+        );
+      } else {
+        _activeRuntimeType = ContainerRuntimeType.proot;
+        debugPrint('[DistroManager] Chroot 环境准备失败，自动优雅降级回 PRoot 模式');
+      }
+    }
+
+    _activeRuntimeType = ContainerRuntimeType.proot;
+    return _buildProotLaunchConfig(
+      systemName: systemName,
+      rootDir: rootDir,
+      workspacePath: workspacePath,
+      prootPath: prootPath,
+      customCommand: customCommand,
+    );
+  }
+
+  /// 构建原生的 Chroot 满血启动配置
+  ProotLaunchConfig _buildChrootLaunchConfig({
+    required Directory rootDir,
+    String? workspacePath,
+    String? customCommand,
+  }) {
+    final targetShell = ChrootMountManager.instance.resolveTargetShell(rootDir);
+    final targetDir = (workspacePath != null && Directory(workspacePath).existsSync())
+        ? '/workspace'
+        : '/root';
+
+    String suPath = 'su';
+    for (final p in ['/system/bin/su', '/system/xbin/su', '/sbin/su', '/su/bin/su']) {
+      try {
+        if (File(p).existsSync()) {
+          suPath = p;
+          break;
+        }
+      } catch (_) {}
+    }
+
+    const envPrefix = 'LD_PRELOAD= exec env -i HOME=/root USER=root TERM=xterm-256color LANG=C.UTF-8 PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin';
+    const chrootBin = '/system/bin/chroot';
+
+    String shellCmd;
+    if (customCommand != null && customCommand.isNotEmpty) {
+      final escapedCmd = customCommand.replaceAll("'", "'\\''");
+      shellCmd = '$chrootBin "${rootDir.path}" $targetShell -c \'cd $targetDir && $escapedCmd\'';
+    } else {
+      shellCmd = '$chrootBin "${rootDir.path}" $targetShell -l';
+    }
+
+    final fullCommand = '$envPrefix $shellCmd';
+
+    return ProotLaunchConfig(
+      executable: suPath,
+      arguments: ['-c', fullCommand],
+      environment: {
+        'TERM': 'xterm-256color',
+        'SHELL': '/system/bin/sh',
+      },
+      workingDirectory: rootDir.path,
+    );
+  }
+
+  /// 构建 PRoot 容器隔离运行配置
+  Future<ProotLaunchConfig> _buildProotLaunchConfig({
+    required String systemName,
+    required Directory rootDir,
+    String? workspacePath,
+    String prootPath = 'proot',
+    String? customCommand,
+  }) async {
     final nativeDir = await getNativeLibraryDir();
     final effectiveProot = (prootPath == 'proot') ? await getProotExecutablePath() : prootPath;
     final targetShell = _resolveTargetShell(rootDir);
@@ -390,13 +597,13 @@ class DistroManager {
     await DistroInstaller.ensureAptPolicyAndDiversions(rootDir);
 
     // 确保独立的 /dev/shm 目录存在（对标 proot-distro shm.py，解决 POSIX 共享内存缺失）
-    final shmDir = await _ensureShmDir(systemName, customBaseDir: customRootDir?.parent);
+    final shmDir = await _ensureShmDir(systemName, customBaseDir: rootDir.parent);
 
     // 确保独立的 .l2s 硬链接目录存在（对标 proot-distro --link2symlink 规范，位于 rootfs/.l2s）
-    final l2sDir = await _ensureL2sDir(systemName, rootDir, customBaseDir: customRootDir?.parent);
+    final l2sDir = await _ensureL2sDir(systemName, rootDir, customBaseDir: rootDir.parent);
 
     // 确保独立的 sysdata 桩目录存在（对标 proot-distro sysdata.py，提供 SELinux 与 Proc 补充数据）
-    final sysdataDir = await _ensureSysdataDir(systemName, customBaseDir: customRootDir?.parent);
+    final sysdataDir = await _ensureSysdataDir(systemName, customBaseDir: rootDir.parent);
 
     String tmpPath = '/tmp';
     try {

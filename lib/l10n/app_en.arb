@@ -994,5 +994,20 @@
         "type": "String"
       }
     }
-  }
+  },
+  "containerRuntimeMode": "Container Runtime Mode",
+  "containerRuntimeModeAuto": "Auto",
+  "containerRuntimeModeProot": "PRoot",
+  "containerRuntimeModeChroot": "Chroot",
+  "selectContainerRuntimeMode": "Select Container Runtime Mode",
+  "containerRuntimeToast": "Current container runtime: {mode}",
+  "@containerRuntimeToast": {
+    "placeholders": {
+      "mode": {
+        "type": "String"
+      }
+    }
+  },
+  "chrootDisabledNoRoot": "Unavailable without Root permission",
+  "chrootFailedFallbackToProot": "Chroot mount or permission failed, automatically fell back to PRoot"
 }

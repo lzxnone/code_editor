@@ -1741,4 +1741,30 @@ class AppLocalizationsZh extends AppLocalizations {
   String containerRebuildFailed(String error) {
     return '容器重建失败: $error';
   }
+
+  @override
+  String get containerRuntimeMode => '容器运行模式';
+
+  @override
+  String get containerRuntimeModeAuto => '自动';
+
+  @override
+  String get containerRuntimeModeProot => 'PRoot';
+
+  @override
+  String get containerRuntimeModeChroot => 'Chroot';
+
+  @override
+  String get selectContainerRuntimeMode => '选择容器运行模式';
+
+  @override
+  String containerRuntimeToast(String mode) {
+    return '当前容器运行环境：$mode';
+  }
+
+  @override
+  String get chrootDisabledNoRoot => '未授予 Root 权限不可用';
+
+  @override
+  String get chrootFailedFallbackToProot => 'Chroot 挂载或权限失败，已自动降级为 PRoot 运行模式';
 }

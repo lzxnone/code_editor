@@ -29,6 +29,7 @@ import 'package:code_editor/services/file_service.dart';
 import 'package:code_editor/services/internal_engine_service.dart';
 import 'package:code_editor/services/lsp/lsp_manager.dart';
 import 'package:code_editor/services/lsp_config_service.dart';
+import 'package:code_editor/providers/settings_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:path/path.dart' as p;
@@ -73,6 +74,11 @@ class _MainViewState extends State<MainView> {
       if (mounted) {
         InternalEngineService.instance.ensureEngineReady(context);
         LspConfigService.instance.loadConfigs();
+        DistroManager().detectAndApplyRuntime(
+          context: context,
+          settings: context.read<SettingsProvider>(),
+          showToast: true,
+        );
       }
     });
   }

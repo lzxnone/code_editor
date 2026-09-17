@@ -6,6 +6,18 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+/// 容器运行模式
+enum ContainerRuntimeMode {
+  /// 自动模式：检测到 Root 权限时优先启用 Chroot，无 Root 或挂载失败自动使用 PRoot
+  auto,
+
+  /// PRoot 模式：纯用户态沙箱运行，无需系统 Root 权限，安全兼容
+  proot,
+
+  /// Chroot 模式：Linux 原生内核执行，无 ptrace 开销，满血性能
+  chroot,
+}
+
 class SettingsProvider extends ChangeNotifier {
   //外观
   static const String _keyAppThemeMode = 'app_theme_mode'; //应用主题
@@ -39,6 +51,10 @@ class SettingsProvider extends ChangeNotifier {
   //语言
   static const String _keyAppLocale = 'app_locale';
 
+  //容器
+  static const String _keyContainerRuntimeMode = 'container_runtime_mode';
+  static const String _keyHasPromptedRootRequest = 'has_prompted_root_request';
+
   /// 字号配置常量（编辑区与终端统一）
   static const double minFontSize = 8.0;
   static const double maxFontSize = 30.0;
@@ -67,12 +83,16 @@ class SettingsProvider extends ChangeNotifier {
   VirtualKeyboardConfig _terminalKeyboardConfig = VirtualKeyboardConfig.defaultTerminalConfiguration();
   bool _showHiddenFiles = true;
   bool _enableLspCompletion = true;
+  ContainerRuntimeMode _containerRuntimeMode = ContainerRuntimeMode.auto;
+  bool _hasPromptedRootRequest = false;
   Locale? _locale;
 
   bool get showHiddenFiles => _showHiddenFiles;
   @Deprecated('本地补全已完全移除')
   bool get enableLocalCompletion => false;
   bool get enableLspCompletion => _enableLspCompletion;
+  ContainerRuntimeMode get containerRuntimeMode => _containerRuntimeMode;
+  bool get hasPromptedRootRequest => _hasPromptedRootRequest;
 
   ThemeMode get appThemeMode => _appThemeMode;
   Color get appThemeColor => _appThemeColor;
@@ -312,8 +332,44 @@ class SettingsProvider extends ChangeNotifier {
         _locale = null;
       }
 
+      //设置容器运行模式与 Root 提示标记
+      final savedRuntimeMode = prefs.getString(_keyContainerRuntimeMode);
+      if (savedRuntimeMode != null) {
+        _containerRuntimeMode = ContainerRuntimeMode.values.firstWhere(
+          (e) => e.name == savedRuntimeMode,
+          orElse: () => ContainerRuntimeMode.auto,
+        );
+      }
+
+      final savedPromptedRoot = prefs.getBool(_keyHasPromptedRootRequest);
+      if (savedPromptedRoot != null) {
+        _hasPromptedRootRequest = savedPromptedRoot;
+      }
+
       notifyListeners();
     }catch (_) {}
+  }
+
+  /// 设置容器运行模式 (auto / proot / chroot)
+  Future<void> setContainerRuntimeMode(ContainerRuntimeMode mode) async {
+    if (_containerRuntimeMode == mode) return;
+    _containerRuntimeMode = mode;
+    notifyListeners();
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(_keyContainerRuntimeMode, mode.name);
+    } catch (_) {}
+  }
+
+  /// 设置是否已主动申请过 Root 权限标记
+  Future<void> setHasPromptedRootRequest(bool value) async {
+    if (_hasPromptedRootRequest == value) return;
+    _hasPromptedRootRequest = value;
+    notifyListeners();
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool(_keyHasPromptedRootRequest, value);
+    } catch (_) {}
   }
 
   Future<void> setAppThemeMode(ThemeMode mode) async {

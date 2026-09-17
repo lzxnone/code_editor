@@ -5,7 +5,9 @@ import 'package:code_editor/models/virtual_keyboard_config.dart';
 import 'package:code_editor/providers/settings_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../services/distro_manager.dart';
 import '../services/internal_engine_service.dart';
+import '../services/root_service.dart';
 import '../widgets/color_palette_dialog.dart';
 import 'code_completion_management_view.dart';
 import 'virtual_keyboard_config_view.dart';
@@ -87,6 +89,7 @@ class SettingsView extends StatelessWidget {
           // 5. 容器分组 (Container)
           // ==============================
           _buildSectionHeader(context, l10n.containerSection),
+          _buildContainerRuntimeModeTile(context, provider, l10n),
           _buildRebuildContainerTile(context, l10n),
 
           const Divider(height: 32, indent: 16, endIndent: 16),
@@ -1136,6 +1139,127 @@ class SettingsView extends StatelessWidget {
       value: provider.showHiddenFiles,
       onChanged: (val) {
         provider.setShowHiddenFiles(val);
+      },
+    );
+  }
+
+  /// 容器：运行模式选择条目 (Auto / PRoot / Chroot)
+  Widget _buildContainerRuntimeModeTile(
+    BuildContext context,
+    SettingsProvider provider,
+    AppLocalizations l10n,
+  ) {
+    final theme = Theme.of(context);
+    final currentMode = provider.containerRuntimeMode;
+    final modeTitle = switch (currentMode) {
+      ContainerRuntimeMode.auto => l10n.containerRuntimeModeAuto,
+      ContainerRuntimeMode.proot => l10n.containerRuntimeModeProot,
+      ContainerRuntimeMode.chroot => l10n.containerRuntimeModeChroot,
+    };
+
+    return ListTile(
+      leading: Icon(Icons.rocket_launch_outlined, color: theme.colorScheme.primary),
+      title: Text(l10n.containerRuntimeMode),
+      subtitle: Text(modeTitle),
+      trailing: const Icon(Icons.chevron_right),
+      onTap: () {
+        _showContainerRuntimeModeSelector(context, provider, l10n);
+      },
+    );
+  }
+
+  Future<void> _showContainerRuntimeModeSelector(
+    BuildContext context,
+    SettingsProvider provider,
+    AppLocalizations l10n,
+  ) async {
+    final currentMode = provider.containerRuntimeMode;
+    final theme = Theme.of(context);
+    final isRootGranted = await RootService.instance.isRootAvailablePassive();
+
+    if (!context.mounted) return;
+
+    final options = [
+      (
+        mode: ContainerRuntimeMode.auto,
+        title: l10n.containerRuntimeModeAuto,
+        icon: Icons.auto_mode_rounded,
+        enabled: true,
+      ),
+      (
+        mode: ContainerRuntimeMode.proot,
+        title: l10n.containerRuntimeModeProot,
+        icon: Icons.shield_outlined,
+        enabled: true,
+      ),
+      (
+        mode: ContainerRuntimeMode.chroot,
+        title: l10n.containerRuntimeModeChroot,
+        icon: Icons.bolt_rounded,
+        enabled: isRootGranted,
+      ),
+    ];
+
+    await showModalBottomSheet<void>(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (sheetContext) {
+        return SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Text(
+                  l10n.selectContainerRuntimeMode,
+                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                ),
+              ),
+              const Divider(height: 1),
+              for (final opt in options) ...[
+                ListTile(
+                  enabled: opt.enabled,
+                  leading: Icon(
+                    opt.icon,
+                    color: opt.enabled
+                        ? (opt.mode == currentMode ? theme.colorScheme.primary : null)
+                        : theme.disabledColor,
+                  ),
+                  title: Text(
+                    opt.title,
+                    style: TextStyle(
+                      fontWeight: opt.mode == currentMode ? FontWeight.bold : FontWeight.normal,
+                      color: opt.enabled
+                          ? (opt.mode == currentMode ? theme.colorScheme.primary : null)
+                          : theme.disabledColor,
+                    ),
+                  ),
+                  trailing: opt.mode == currentMode
+                      ? Icon(Icons.check, color: opt.enabled ? theme.colorScheme.primary : theme.disabledColor)
+                      : (!opt.enabled ? Icon(Icons.lock_outline, size: 18, color: theme.disabledColor) : null),
+                  onTap: opt.enabled
+                      ? () async {
+                          Navigator.of(sheetContext).pop();
+                          if (provider.containerRuntimeMode != opt.mode) {
+                            await provider.setContainerRuntimeMode(opt.mode);
+                          }
+                          if (context.mounted) {
+                            await DistroManager().detectAndApplyRuntime(
+                              context: context,
+                              settings: provider,
+                              showToast: true,
+                            );
+                          }
+                        }
+                      : null,
+                ),
+              ],
+              const SizedBox(height: 12),
+            ],
+          ),
+        );
       },
     );
   }
