@@ -2,9 +2,10 @@ import 'package:code_editor/l10n/app_localizations.dart';
 import 'package:code_editor/providers/distro_provider.dart';
 import 'package:code_editor/providers/notice_center.dart';
 import 'package:code_editor/providers/project_provider.dart';
+import 'package:code_editor/providers/run_provider.dart';
+import 'package:code_editor/providers/search_provider.dart';
 import 'package:code_editor/providers/settings_provider.dart';
 import 'package:code_editor/providers/tab_provider.dart';
-import 'package:code_editor/providers/run_provider.dart';
 import 'package:code_editor/providers/terminal_provider.dart';
 import 'package:code_editor/services/background_task/background_task_scheduler.dart';
 import 'package:code_editor/views/main_view.dart';
@@ -44,6 +45,11 @@ class MyApp extends StatelessWidget {
           create: (_) => TabProvider()..init(),
           update: (_, project, tab) =>
               (tab ?? (TabProvider()..init()))..bindProjectProvider(project),
+        ),
+        ChangeNotifierProxyProvider<ProjectProvider, SearchProvider>(
+          create: (_) => SearchProvider(),
+          update: (_, project, search) =>
+              (search ?? SearchProvider())..bindRootPath(project.rootPath),
         ),
         ChangeNotifierProvider(create: (_) => TerminalProvider()),
         ChangeNotifierProvider(

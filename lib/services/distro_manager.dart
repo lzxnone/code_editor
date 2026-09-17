@@ -161,12 +161,9 @@ class DistroManager {
         break;
 
       case ContainerRuntimeMode.chroot:
-        bool hasRoot = false;
-        if (RootService.instance.isDeviceRootCapable()) {
-          hasRoot = await RootService.instance.isRootAvailablePassive();
-          if (!hasRoot) {
-            hasRoot = await RootService.instance.promptRequestRootExplicit();
-          }
+        bool hasRoot = await RootService.instance.isRootAvailablePassive();
+        if (!hasRoot) {
+          hasRoot = await RootService.instance.promptRequestRootExplicit();
         }
         if (hasRoot && rootDir.existsSync()) {
           final chrootReady = await ChrootMountManager.instance.prepareChrootEnvironment(

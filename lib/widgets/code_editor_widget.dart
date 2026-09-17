@@ -4,6 +4,8 @@ import 'package:code_editor/models/app_font.dart';
 import 'package:code_editor/models/editor_tab_item.dart';
 import 'package:code_editor/models/editor_theme.dart';
 import 'package:code_editor/models/virtual_keyboard_config.dart';
+import 'package:code_editor/models/search_model.dart';
+import 'package:code_editor/providers/search_provider.dart';
 import 'package:code_editor/providers/settings_provider.dart';
 import 'package:code_editor/providers/tab_provider.dart';
 import 'package:code_editor/services/file_service.dart';
@@ -82,6 +84,7 @@ class _CodeEditorWidgetState extends State<CodeEditorWidget> {
 
   CodeLineEditingController? _controller;
   CodeScrollController? _scrollController;
+  CodeFindController? _findController;
   final FocusNode _focusNode = FocusNode();
   late final CodeEditorToolbarController _toolbarController;
   final EditorDiagnosticController _diagnosticController = const EditorDiagnosticController();
@@ -462,6 +465,87 @@ class _CodeEditorWidgetState extends State<CodeEditorWidget> {
     });
   }
 
+  void _handleNavigationTarget(TabProvider tabProvider) {
+    final target = tabProvider.navigationTarget;
+    if (target != null &&
+        _controller != null &&
+        p.equals(target.filePath, _currentLoadedPath ?? '')) {
+      final int totalLines = _controller!.lineCount;
+      final int maxLine = max(0, totalLines - 1);
+      final int line = target.line.clamp(0, maxLine);
+      final lineText = _controller!.codeLines[line].text;
+      final int col = (target.column ?? 0).clamp(0, lineText.length);
+      final int len = (target.length ?? 0).clamp(0, lineText.length - col);
+
+      _controller!.selection = CodeLineSelection(
+        baseIndex: line,
+        baseOffset: col,
+        extentIndex: line,
+        extentOffset: col + len,
+      );
+      _controller!.makePositionCenterIfInvisible(CodeLinePosition(index: line, offset: col));
+      tabProvider.clearNavigationTarget();
+    }
+  }
+
+  void _syncSearchHighlight(SearchProvider? searchProvider) {
+    if (searchProvider == null || _findController == null) return;
+    // 仅在文本内容搜索模式（SearchMode.text）下才同步编辑区高亮；
+    // 文件名搜索模式（SearchMode.fileName）下严禁在代码编辑区高亮匹配词。
+    final isTextSearch = searchProvider.options.mode == SearchMode.text;
+    final query = isTextSearch ? searchProvider.query : '';
+    final curVal = _findController!.value;
+    final curOpt = curVal?.option;
+
+    if (curOpt == null ||
+        curOpt.pattern != query ||
+        curOpt.caseSensitive != searchProvider.caseSensitive ||
+        curOpt.regex != searchProvider.isRegex) {
+      if (query.isEmpty) {
+        if (curVal != null && curOpt?.pattern.isNotEmpty == true) {
+          // 注意：不能直接调用 _findController!.close()，
+          // 因为 re_editor 内部在 value == null 时会强制执行 widget.focusNode.requestFocus()，
+          // 导致侧边抽屉中的搜索输入框在内容清空时瞬间失去焦点。
+          // 此处同时临时锁定 _focusNode.canRequestFocus 并赋空匹配正则，彻底杜绝编辑器抢夺焦点。
+          final wasCanRequest = _focusNode.canRequestFocus;
+          _focusNode.canRequestFocus = false;
+          try {
+            _findController!.value = const CodeFindValue(
+              option: CodeFindOption(
+                pattern: r'(?!)',
+                caseSensitive: false,
+                regex: true,
+              ),
+              replaceMode: false,
+              searching: false,
+            );
+          } finally {
+            _focusNode.canRequestFocus = wasCanRequest;
+          }
+        }
+      } else {
+        final wasCanRequest = _focusNode.canRequestFocus;
+        _focusNode.canRequestFocus = false;
+        try {
+          _findController!.value = CodeFindValue(
+            option: CodeFindOption(
+              pattern: query,
+              caseSensitive: searchProvider.caseSensitive,
+              regex: searchProvider.isRegex,
+            ),
+            replaceMode: false,
+            searching: true,
+          );
+          if (_findController!.findInputController.text != query) {
+            _findController!.findInputController.text = query;
+          }
+        } finally {
+          _focusNode.canRequestFocus = wasCanRequest;
+        }
+      }
+    }
+  }
+
   void _onDiagnosticsChanged() {
     if (!mounted || _controller == null) return;
     _controller?.forceRepaint();
@@ -522,6 +606,8 @@ class _CodeEditorWidgetState extends State<CodeEditorWidget> {
     _scrollController?.verticalScroller.dispose();
     _scrollController?.horizontalScroller.dispose();
     _scrollController?.dispose();
+    _findController?.dispose();
+    _findController = null;
     _controller?.removeListener(_onTextChanged);
     _controller?.dispose();
     _focusNode.dispose();
@@ -702,7 +788,17 @@ class _CodeEditorWidgetState extends State<CodeEditorWidget> {
     try {
       final tabProvider = _getTabProvider(context, listen: true);
       _syncExternalContentIfChanged(tabProvider);
+      if (tabProvider.navigationTarget != null) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) {
+            _handleNavigationTarget(tabProvider);
+          }
+        });
+      }
     } catch (_) {}
+
+    final searchProvider = context.watch<SearchProvider?>();
+    _syncSearchHighlight(searchProvider);
 
     final l10n = AppLocalizations.of(context);
     final hasNoProject = widget.rootPath == null || widget.rootPath!.trim().isEmpty;
@@ -822,6 +918,7 @@ class _CodeEditorWidgetState extends State<CodeEditorWidget> {
                             child: CodeEditor(
                               key: ValueKey(_currentLoadedPath),
                               controller: controller,
+                              findController: _findController,
                               focusNode: _focusNode,
                               scrollController: _scrollController,
                               wordWrap: activeWordWrap,
@@ -843,6 +940,7 @@ class _CodeEditorWidgetState extends State<CodeEditorWidget> {
                                 cursorColor: activeTheme.cursorColor,
                                 cursorLineColor: activeTheme.cursorLineColor,
                                 selectionColor: activeTheme.selectionColor,
+                                highlightColor: const Color(0xFFFFEB3B).withValues(alpha: 0.45),
                                 fontFamily: activeEditorFont.fontFamily,
                                 fontFamilyFallback: activeEditorFont.fallback,
                                 codeTheme: CodeHighlightTheme(
@@ -1031,6 +1129,8 @@ class _CodeEditorWidgetState extends State<CodeEditorWidget> {
       );
 
       _controller = newController;
+      _findController?.dispose();
+      _findController = CodeFindController(newController);
       _currentLoadedPath = fullFilePath;
       _currentIndentSize = activeIndentSize;
       _errorMessage = null;
@@ -1057,6 +1157,11 @@ class _CodeEditorWidgetState extends State<CodeEditorWidget> {
 
       if (mounted) {
         setState(() {});
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) {
+            _handleNavigationTarget(provider);
+          }
+        });
       }
       return;
     }
@@ -1090,6 +1195,8 @@ class _CodeEditorWidgetState extends State<CodeEditorWidget> {
       );
 
       _controller = newController;
+      _findController?.dispose();
+      _findController = CodeFindController(newController);
       _currentLoadedPath = fullFilePath;
       _currentIndentSize = activeIndentSize;
       _errorMessage = null;
@@ -1120,6 +1227,11 @@ class _CodeEditorWidgetState extends State<CodeEditorWidget> {
           provider.setModified(tab?.isModified ?? false);
           provider.registerSaveHandler(() => _saveFile());
         } catch (_) {}
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) {
+            _handleNavigationTarget(provider);
+          }
+        });
       }
     } catch (e) {
       if (!mounted || requestVersion != _currentLoadVersion) return;

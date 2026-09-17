@@ -16,7 +16,7 @@ class RootService {
   @visibleForTesting
   bool? mockRootGranted;
 
-  /// 常见 Linux/Android su 二进制搜索路径
+  /// 常见 Linux/Android su 二进制搜索路径（包含现代 KernelSU / APatch / Magisk 扩展路径）
   static const List<String> _commonSuPaths = [
     '/system/bin/su',
     '/system/xbin/su',
@@ -26,20 +26,64 @@ class RootService {
     '/system/sd/xbin/su',
     '/data/local/xbin/su',
     '/data/local/bin/su',
+    '/data/adb/ksu/bin/su',
+    '/data/adb/ap/bin/su',
+    '/data/adb/magisk/su',
+    '/data/adb/magisk/busybox',
+    '/apex/com.android.runtime/bin/su',
+    '/system_ext/bin/su',
+    '/product/bin/su',
+    '/odm/bin/su',
+    '/vendor/bin/su',
+    '/system/bin/.ext/.su',
+    '/system/usr/we-need-root/su',
+    '/system/xbin/ku.sud',
   ];
 
-  /// 静态检测当前设备是否具备 Root 能力（文件系统存在 su 二进制）
+  /// 常见现代 Root 框架特征目录 (KernelSU / APatch / Magisk)
+  static const List<String> _commonRootIndicatorDirs = [
+    '/data/adb/ksu',
+    '/data/adb/ap',
+    '/data/adb/magisk',
+    '/data/adb/modules',
+  ];
+
+  /// 静态检测当前设备是否具备 Root 能力（文件系统存在 su 二进制或现代 Root 管理器特征）
   ///
-  /// 该方法纯粹检查静态文件路径，绝不调用任何命令，因此绝对不会触发 Magisk / KernelSU / APatch 授权弹窗。
+  /// 该方法纯粹检查静态文件路径与环境变量，绝不调用外部进程命令，因此不会触发授权弹窗。
   bool isDeviceRootCapable() {
     if (mockRootCapable != null) {
       return mockRootCapable!;
     }
 
     if (!kIsWeb && Platform.isAndroid) {
+      // 1. 遍历已知 su 二进制路径
       for (final path in _commonSuPaths) {
         try {
           if (File(path).existsSync()) {
+            return true;
+          }
+        } catch (_) {}
+      }
+
+      // 2. 遍历 PATH 环境变量中的所有目录进行动态检索
+      final pathEnv = Platform.environment['PATH'];
+      if (pathEnv != null && pathEnv.isNotEmpty) {
+        final dirs = pathEnv.split(':');
+        for (final dir in dirs) {
+          if (dir.isEmpty) continue;
+          try {
+            if (File('$dir/su').existsSync()) {
+              return true;
+            }
+          } catch (_) {}
+        }
+      }
+
+      // 3. 探测现代 Root 框架特征目录 (KernelSU / APatch / Magisk)
+      for (final dir in _commonRootIndicatorDirs) {
+        try {
+          if (Directory(dir).existsSync()) {
             return true;
           }
         } catch (_) {}
@@ -74,14 +118,10 @@ class RootService {
 
   /// 被动检测当前是否已获得真实 Root 权限 (uid=0)
   ///
-  /// 仅在用户主动触发 Chroot 操作、或 Auto 模式下准备启动容器时被动调用。
+  /// 直接执行最小命令探针 `su -c 'id -u'`，不受静态文件可见性（Root 隐藏/SELinux 隔离）限制。
   Future<bool> isRootAvailablePassive({Duration timeout = const Duration(seconds: 4)}) async {
     if (mockRootGranted != null) {
       return mockRootGranted!;
-    }
-
-    if (!isDeviceRootCapable()) {
-      return false;
     }
 
     try {

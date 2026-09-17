@@ -1012,5 +1012,94 @@
   "chrootFailedFallbackToProot": "Chroot 挂载或权限失败，已自动降级为 PRoot 运行模式",
   "drawerTabExplorer": "文件",
   "drawerTabSearch": "搜索",
-  "drawerTabGit": "源代码管理"
+  "drawerTabGit": "源代码管理",
+  "searchHint": "搜索",
+  "replaceHint": "替换",
+  "matchCase": "区分大小写",
+  "matchWholeWord": "全字匹配",
+  "useRegularExpression": "使用正则表达式",
+  "invalidRegularExpression": "无效的正则表达式",
+  "projectDirectoryNotFound": "项目目录不存在",
+  "searchMoreOptions": "更多选项",
+  "searchModeText": "内容搜索",
+  "searchModeFileName": "文件名搜索",
+  "replaceAllInFile": "替换此文件中的所有匹配项",
+  "replaceAllInProject": "全部替换",
+  "replaceSingleMatch": "替换",
+  "searchResultStats": "在 {fileCount} 个文件中找到 {matchCount} 处匹配",
+  "@searchResultStats": {
+    "placeholders": {
+      "fileCount": {
+        "type": "int"
+      },
+      "matchCount": {
+        "type": "int"
+      }
+    }
+  },
+  "noSearchResults": "未找到匹配项",
+  "searchError": "搜索失败: {error}",
+  "@searchError": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "replaceSuccess": "已替换 {count} 处匹配",
+  "@replaceSuccess": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "expandAll": "全部展开",
+  "collapseAll": "全部折叠",
+  "searchLoadMoreFiles": "加载更多文件 (还有 {count} 个)",
+  "@searchLoadMoreFiles": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "searchLoadMoreMatches": "加载更多匹配项 (还有 {count} 项)",
+  "@searchLoadMoreMatches": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "confirmReplaceAllTitle": "全部替换确认",
+  "confirmReplaceAllMessage": "确定要在整个项目（共 {fileCount} 个文件）中将全部 {matchCount} 处匹配替换为 \"{replaceText}\" 吗？此操作将直接修改磁盘文件。",
+  "@confirmReplaceAllMessage": {
+    "placeholders": {
+      "matchCount": {
+        "type": "int"
+      },
+      "fileCount": {
+        "type": "int"
+      },
+      "replaceText": {
+        "type": "String"
+      }
+    }
+  },
+  "confirmReplaceFileTitle": "替换文件匹配项确认",
+  "confirmReplaceFileMessage": "确定要在 \"{fileName}\" 中将全部 {matchCount} 处匹配替换为 \"{replaceText}\" 吗？",
+  "@confirmReplaceFileMessage": {
+    "placeholders": {
+      "fileName": {
+        "type": "String"
+      },
+      "matchCount": {
+        "type": "int"
+      },
+      "replaceText": {
+        "type": "String"
+      }
+    }
+  }
 }

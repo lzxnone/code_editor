@@ -9,6 +9,7 @@ import 'package:code_editor/utils/dialog_utils.dart';
 import 'package:code_editor/views/project_management_view.dart';
 import 'package:code_editor/widgets/project_history_widget.dart';
 import 'package:code_editor/widgets/file_tree_widget.dart';
+import 'package:code_editor/widgets/search/search_panel_widget.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:path/path.dart' as p;
@@ -20,6 +21,9 @@ enum _OpenProjectSource {
 }
 
 class CodeEditorDrawer extends StatefulWidget {
+  /// 内存中常驻记录抽屉当前选中的 Tab 索引 (0: 文件, 1: 搜索, 2: Git)
+  static int lastSelectedTabIndex = 0;
+
   const CodeEditorDrawer({super.key});
 
   @override
@@ -27,7 +31,7 @@ class CodeEditorDrawer extends StatefulWidget {
 }
 
 class _CodeEditorDrawerState extends State<CodeEditorDrawer> {
-  int _selectedIndex = 0;
+  int _selectedIndex = CodeEditorDrawer.lastSelectedTabIndex;
 
   static ProjectProvider _getProjectProvider(
     BuildContext context, {
@@ -151,6 +155,7 @@ class _CodeEditorDrawerState extends State<CodeEditorDrawer> {
           if (_selectedIndex != index) {
             setState(() {
               _selectedIndex = index;
+              CodeEditorDrawer.lastSelectedTabIndex = index;
             });
           }
         },
@@ -442,44 +447,7 @@ class _CodeEditorDrawerState extends State<CodeEditorDrawer> {
     );
   }
 
-  Widget _buildSearchPlaceholder(
-    BuildContext context,
-    AppLocalizations l10n,
-    ThemeData theme,
-  ) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Container(
-          decoration: BoxDecoration(
-            color: theme.colorScheme.primaryContainer,
-          ),
-          child: SafeArea(
-            bottom: false,
-            left: false,
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 14.0),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      l10n.drawerTabSearch,
-                      style: theme.textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.bold,
-                      ),
-                      overflow: TextOverflow.ellipsis,
-                      maxLines: 1,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-        const Expanded(child: SizedBox.shrink()),
-      ],
-    );
-  }
+
 
   Widget _buildGitPlaceholder(
     BuildContext context,
@@ -538,7 +506,7 @@ class _CodeEditorDrawerState extends State<CodeEditorDrawer> {
               index: _selectedIndex,
               children: [
                 _buildExplorerPage(context, l10n, theme, rootPath, hasProject),
-                _buildSearchPlaceholder(context, l10n, theme),
+                const SearchPanelWidget(),
                 _buildGitPlaceholder(context, l10n, theme),
               ],
             ),

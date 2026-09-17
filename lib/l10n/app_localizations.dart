@@ -3043,6 +3043,164 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'源代码管理'**
   String get drawerTabGit;
+
+  /// No description provided for @searchHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'搜索'**
+  String get searchHint;
+
+  /// No description provided for @replaceHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'替换'**
+  String get replaceHint;
+
+  /// No description provided for @matchCase.
+  ///
+  /// In zh, this message translates to:
+  /// **'区分大小写'**
+  String get matchCase;
+
+  /// No description provided for @matchWholeWord.
+  ///
+  /// In zh, this message translates to:
+  /// **'全字匹配'**
+  String get matchWholeWord;
+
+  /// No description provided for @useRegularExpression.
+  ///
+  /// In zh, this message translates to:
+  /// **'使用正则表达式'**
+  String get useRegularExpression;
+
+  /// No description provided for @invalidRegularExpression.
+  ///
+  /// In zh, this message translates to:
+  /// **'无效的正则表达式'**
+  String get invalidRegularExpression;
+
+  /// No description provided for @projectDirectoryNotFound.
+  ///
+  /// In zh, this message translates to:
+  /// **'项目目录不存在'**
+  String get projectDirectoryNotFound;
+
+  /// No description provided for @searchMoreOptions.
+  ///
+  /// In zh, this message translates to:
+  /// **'更多选项'**
+  String get searchMoreOptions;
+
+  /// No description provided for @searchModeText.
+  ///
+  /// In zh, this message translates to:
+  /// **'内容搜索'**
+  String get searchModeText;
+
+  /// No description provided for @searchModeFileName.
+  ///
+  /// In zh, this message translates to:
+  /// **'文件名搜索'**
+  String get searchModeFileName;
+
+  /// No description provided for @replaceAllInFile.
+  ///
+  /// In zh, this message translates to:
+  /// **'替换此文件中的所有匹配项'**
+  String get replaceAllInFile;
+
+  /// No description provided for @replaceAllInProject.
+  ///
+  /// In zh, this message translates to:
+  /// **'全部替换'**
+  String get replaceAllInProject;
+
+  /// No description provided for @replaceSingleMatch.
+  ///
+  /// In zh, this message translates to:
+  /// **'替换'**
+  String get replaceSingleMatch;
+
+  /// No description provided for @searchResultStats.
+  ///
+  /// In zh, this message translates to:
+  /// **'在 {fileCount} 个文件中找到 {matchCount} 处匹配'**
+  String searchResultStats(int fileCount, int matchCount);
+
+  /// No description provided for @noSearchResults.
+  ///
+  /// In zh, this message translates to:
+  /// **'未找到匹配项'**
+  String get noSearchResults;
+
+  /// No description provided for @searchError.
+  ///
+  /// In zh, this message translates to:
+  /// **'搜索失败: {error}'**
+  String searchError(String error);
+
+  /// No description provided for @replaceSuccess.
+  ///
+  /// In zh, this message translates to:
+  /// **'已替换 {count} 处匹配'**
+  String replaceSuccess(int count);
+
+  /// No description provided for @expandAll.
+  ///
+  /// In zh, this message translates to:
+  /// **'全部展开'**
+  String get expandAll;
+
+  /// No description provided for @collapseAll.
+  ///
+  /// In zh, this message translates to:
+  /// **'全部折叠'**
+  String get collapseAll;
+
+  /// No description provided for @searchLoadMoreFiles.
+  ///
+  /// In zh, this message translates to:
+  /// **'加载更多文件 (还有 {count} 个)'**
+  String searchLoadMoreFiles(int count);
+
+  /// No description provided for @searchLoadMoreMatches.
+  ///
+  /// In zh, this message translates to:
+  /// **'加载更多匹配项 (还有 {count} 项)'**
+  String searchLoadMoreMatches(int count);
+
+  /// No description provided for @confirmReplaceAllTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'全部替换确认'**
+  String get confirmReplaceAllTitle;
+
+  /// No description provided for @confirmReplaceAllMessage.
+  ///
+  /// In zh, this message translates to:
+  /// **'确定要在整个项目（共 {fileCount} 个文件）中将全部 {matchCount} 处匹配替换为 \"{replaceText}\" 吗？此操作将直接修改磁盘文件。'**
+  String confirmReplaceAllMessage(
+    int matchCount,
+    int fileCount,
+    String replaceText,
+  );
+
+  /// No description provided for @confirmReplaceFileTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'替换文件匹配项确认'**
+  String get confirmReplaceFileTitle;
+
+  /// No description provided for @confirmReplaceFileMessage.
+  ///
+  /// In zh, this message translates to:
+  /// **'确定要在 \"{fileName}\" 中将全部 {matchCount} 处匹配替换为 \"{replaceText}\" 吗？'**
+  String confirmReplaceFileMessage(
+    String fileName,
+    int matchCount,
+    String replaceText,
+  );
 }
 
 class _AppLocalizationsDelegate

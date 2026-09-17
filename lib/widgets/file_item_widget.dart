@@ -4,6 +4,7 @@ import 'package:code_editor/providers/project_provider.dart';
 import 'package:code_editor/providers/tab_provider.dart';
 import 'package:code_editor/services/permission_service.dart';
 import 'package:code_editor/utils/dialog_utils.dart';
+import 'package:code_editor/utils/file_icon_utils.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
@@ -136,36 +137,11 @@ class _FileItemWidgetState extends State<FileItemWidget> {
   }
 
   IconData _getFileIcon(FileItem item) {
-    final lowerName = item.name.toLowerCase();
-    if (lowerName == '.gitignore' || lowerName == '.gitattributes' || lowerName == '.gitmodules') {
-      return Icons.commit_outlined;
-    }
-
-    return switch (item.extension) {
-      '.dart' => Icons.flutter_dash,
-      '.html' || '.htm' => Icons.html,
-      '.css' || '.scss' || '.sass' || '.less' => Icons.css,
-      '.js' || '.mjs' || '.cjs' => Icons.javascript,
-      '.ts' || '.tsx' || '.jsx' || '.vue' || '.svelte' => Icons.code,
-      '.json' => Icons.data_object,
-      '.yaml' || '.yml' || '.toml' || '.ini' || '.env' || '.conf' || '.config' || '.properties' =>
-        Icons.settings_suggest_outlined,
-      '.xml' => Icons.code,
-      '.md' || '.markdown' => Icons.article_outlined,
-      '.pdf' => Icons.picture_as_pdf_outlined,
-      '.py' || '.pyw' || '.java' || '.kt' || '.kts' || '.c' || '.cpp' || '.cc' ||
-      '.h' || '.hpp' || '.cs' || '.go' || '.rs' || '.swift' || '.rb' || '.php' =>
-        Icons.code,
-      '.sh' || '.bash' || '.zsh' || '.bat' || '.cmd' || '.ps1' => Icons.terminal,
-      '.sql' || '.db' || '.sqlite' => Icons.storage_outlined,
-      '.png' || '.jpg' || '.jpeg' || '.gif' || '.webp' || '.svg' || '.ico' || '.bmp' =>
-        Icons.image_outlined,
-      '.mp3' || '.wav' || '.ogg' || '.flac' || '.aac' => Icons.audio_file_outlined,
-      '.mp4' || '.avi' || '.mov' || '.mkv' || '.flv' || '.webm' => Icons.video_file_outlined,
-      '.zip' || '.rar' || '.7z' || '.tar' || '.gz' => Icons.folder_zip_outlined,
-      '.lock' => Icons.lock_outline,
-      _ => Icons.description_outlined,
-    };
+    return FileIconUtils.getIcon(
+      name: item.name,
+      isDirectory: item.isDirectory,
+      isOpen: item.isOpen,
+    );
   }
 
   void _showContextMenu(FileItem item, Offset tapPosition) async {

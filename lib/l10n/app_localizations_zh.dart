@@ -1776,4 +1776,101 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get drawerTabGit => '源代码管理';
+
+  @override
+  String get searchHint => '搜索';
+
+  @override
+  String get replaceHint => '替换';
+
+  @override
+  String get matchCase => '区分大小写';
+
+  @override
+  String get matchWholeWord => '全字匹配';
+
+  @override
+  String get useRegularExpression => '使用正则表达式';
+
+  @override
+  String get invalidRegularExpression => '无效的正则表达式';
+
+  @override
+  String get projectDirectoryNotFound => '项目目录不存在';
+
+  @override
+  String get searchMoreOptions => '更多选项';
+
+  @override
+  String get searchModeText => '内容搜索';
+
+  @override
+  String get searchModeFileName => '文件名搜索';
+
+  @override
+  String get replaceAllInFile => '替换此文件中的所有匹配项';
+
+  @override
+  String get replaceAllInProject => '全部替换';
+
+  @override
+  String get replaceSingleMatch => '替换';
+
+  @override
+  String searchResultStats(int fileCount, int matchCount) {
+    return '在 $fileCount 个文件中找到 $matchCount 处匹配';
+  }
+
+  @override
+  String get noSearchResults => '未找到匹配项';
+
+  @override
+  String searchError(String error) {
+    return '搜索失败: $error';
+  }
+
+  @override
+  String replaceSuccess(int count) {
+    return '已替换 $count 处匹配';
+  }
+
+  @override
+  String get expandAll => '全部展开';
+
+  @override
+  String get collapseAll => '全部折叠';
+
+  @override
+  String searchLoadMoreFiles(int count) {
+    return '加载更多文件 (还有 $count 个)';
+  }
+
+  @override
+  String searchLoadMoreMatches(int count) {
+    return '加载更多匹配项 (还有 $count 项)';
+  }
+
+  @override
+  String get confirmReplaceAllTitle => '全部替换确认';
+
+  @override
+  String confirmReplaceAllMessage(
+    int matchCount,
+    int fileCount,
+    String replaceText,
+  ) {
+    return '确定要在整个项目（共 $fileCount 个文件）中将全部 $matchCount 处匹配替换为 \"$replaceText\" 吗？此操作将直接修改磁盘文件。';
+  }
+
+  @override
+  String get confirmReplaceFileTitle => '替换文件匹配项确认';
+
+  @override
+  String confirmReplaceFileMessage(
+    String fileName,
+    int matchCount,
+    String replaceText,
+  ) {
+    return '确定要在 \"$fileName\" 中将全部 $matchCount 处匹配替换为 \"$replaceText\" 吗？';
+  }
 }

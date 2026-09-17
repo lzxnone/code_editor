@@ -1836,4 +1836,101 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get drawerTabGit => 'Source Control';
+
+  @override
+  String get searchHint => 'Search';
+
+  @override
+  String get replaceHint => 'Replace';
+
+  @override
+  String get matchCase => 'Match Case';
+
+  @override
+  String get matchWholeWord => 'Match Whole Word';
+
+  @override
+  String get useRegularExpression => 'Use Regular Expression';
+
+  @override
+  String get invalidRegularExpression => 'Invalid regular expression';
+
+  @override
+  String get projectDirectoryNotFound => 'Project directory does not exist';
+
+  @override
+  String get searchMoreOptions => 'More Options';
+
+  @override
+  String get searchModeText => 'Text Search';
+
+  @override
+  String get searchModeFileName => 'File Name Search';
+
+  @override
+  String get replaceAllInFile => 'Replace All in This File';
+
+  @override
+  String get replaceAllInProject => 'Replace All';
+
+  @override
+  String get replaceSingleMatch => 'Replace';
+
+  @override
+  String searchResultStats(int fileCount, int matchCount) {
+    return '$matchCount results in $fileCount files';
+  }
+
+  @override
+  String get noSearchResults => 'No results found';
+
+  @override
+  String searchError(String error) {
+    return 'Search failed: $error';
+  }
+
+  @override
+  String replaceSuccess(int count) {
+    return 'Replaced $count occurrences';
+  }
+
+  @override
+  String get expandAll => 'Expand All';
+
+  @override
+  String get collapseAll => 'Collapse All';
+
+  @override
+  String searchLoadMoreFiles(int count) {
+    return 'Load more files ($count remaining)';
+  }
+
+  @override
+  String searchLoadMoreMatches(int count) {
+    return 'Load more matches ($count remaining)';
+  }
+
+  @override
+  String get confirmReplaceAllTitle => 'Confirm Replace All';
+
+  @override
+  String confirmReplaceAllMessage(
+    int matchCount,
+    int fileCount,
+    String replaceText,
+  ) {
+    return 'Are you sure you want to replace all $matchCount occurrences in $fileCount files with \"$replaceText\"? This will modify files on disk.';
+  }
+
+  @override
+  String get confirmReplaceFileTitle => 'Replace in File';
+
+  @override
+  String confirmReplaceFileMessage(
+    String fileName,
+    int matchCount,
+    String replaceText,
+  ) {
+    return 'Are you sure you want to replace all $matchCount occurrences in \"$fileName\" with \"$replaceText\"?';
+  }
 }

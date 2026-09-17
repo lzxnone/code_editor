@@ -1012,5 +1012,94 @@
   "chrootFailedFallbackToProot": "Chroot mount or permission failed, automatically fell back to PRoot",
   "drawerTabExplorer": "Explorer",
   "drawerTabSearch": "Search",
-  "drawerTabGit": "Source Control"
+  "drawerTabGit": "Source Control",
+  "searchHint": "Search",
+  "replaceHint": "Replace",
+  "matchCase": "Match Case",
+  "matchWholeWord": "Match Whole Word",
+  "useRegularExpression": "Use Regular Expression",
+  "invalidRegularExpression": "Invalid regular expression",
+  "projectDirectoryNotFound": "Project directory does not exist",
+  "searchMoreOptions": "More Options",
+  "searchModeText": "Text Search",
+  "searchModeFileName": "File Name Search",
+  "replaceAllInFile": "Replace All in This File",
+  "replaceAllInProject": "Replace All",
+  "replaceSingleMatch": "Replace",
+  "searchResultStats": "{matchCount} results in {fileCount} files",
+  "@searchResultStats": {
+    "placeholders": {
+      "fileCount": {
+        "type": "int"
+      },
+      "matchCount": {
+        "type": "int"
+      }
+    }
+  },
+  "noSearchResults": "No results found",
+  "searchError": "Search failed: {error}",
+  "@searchError": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "replaceSuccess": "Replaced {count} occurrences",
+  "@replaceSuccess": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "expandAll": "Expand All",
+  "collapseAll": "Collapse All",
+  "searchLoadMoreFiles": "Load more files ({count} remaining)",
+  "@searchLoadMoreFiles": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "searchLoadMoreMatches": "Load more matches ({count} remaining)",
+  "@searchLoadMoreMatches": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "confirmReplaceAllTitle": "Confirm Replace All",
+  "confirmReplaceAllMessage": "Are you sure you want to replace all {matchCount} occurrences in {fileCount} files with \"{replaceText}\"? This will modify files on disk.",
+  "@confirmReplaceAllMessage": {
+    "placeholders": {
+      "matchCount": {
+        "type": "int"
+      },
+      "fileCount": {
+        "type": "int"
+      },
+      "replaceText": {
+        "type": "String"
+      }
+    }
+  },
+  "confirmReplaceFileTitle": "Replace in File",
+  "confirmReplaceFileMessage": "Are you sure you want to replace all {matchCount} occurrences in \"{fileName}\" with \"{replaceText}\"?",
+  "@confirmReplaceFileMessage": {
+    "placeholders": {
+      "fileName": {
+        "type": "String"
+      },
+      "matchCount": {
+        "type": "int"
+      },
+      "replaceText": {
+        "type": "String"
+      }
+    }
+  }
 }

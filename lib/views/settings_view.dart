@@ -7,7 +7,6 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../services/distro_manager.dart';
 import '../services/internal_engine_service.dart';
-import '../services/root_service.dart';
 import '../widgets/color_palette_dialog.dart';
 import 'code_completion_management_view.dart';
 import 'virtual_keyboard_config_view.dart';
@@ -1175,7 +1174,6 @@ class SettingsView extends StatelessWidget {
   ) async {
     final currentMode = provider.containerRuntimeMode;
     final theme = Theme.of(context);
-    final isRootGranted = await RootService.instance.isRootAvailablePassive();
 
     if (!context.mounted) return;
 
@@ -1184,19 +1182,16 @@ class SettingsView extends StatelessWidget {
         mode: ContainerRuntimeMode.auto,
         title: l10n.containerRuntimeModeAuto,
         icon: Icons.auto_mode_rounded,
-        enabled: true,
       ),
       (
         mode: ContainerRuntimeMode.proot,
         title: l10n.containerRuntimeModeProot,
         icon: Icons.shield_outlined,
-        enabled: true,
       ),
       (
         mode: ContainerRuntimeMode.chroot,
         title: l10n.containerRuntimeModeChroot,
         icon: Icons.bolt_rounded,
-        enabled: isRootGranted,
       ),
     ];
 
@@ -1220,40 +1215,33 @@ class SettingsView extends StatelessWidget {
               const Divider(height: 1),
               for (final opt in options) ...[
                 ListTile(
-                  enabled: opt.enabled,
                   leading: Icon(
                     opt.icon,
-                    color: opt.enabled
-                        ? (opt.mode == currentMode ? theme.colorScheme.primary : null)
-                        : theme.disabledColor,
+                    color: opt.mode == currentMode ? theme.colorScheme.primary : null,
                   ),
                   title: Text(
                     opt.title,
                     style: TextStyle(
                       fontWeight: opt.mode == currentMode ? FontWeight.bold : FontWeight.normal,
-                      color: opt.enabled
-                          ? (opt.mode == currentMode ? theme.colorScheme.primary : null)
-                          : theme.disabledColor,
+                      color: opt.mode == currentMode ? theme.colorScheme.primary : null,
                     ),
                   ),
                   trailing: opt.mode == currentMode
-                      ? Icon(Icons.check, color: opt.enabled ? theme.colorScheme.primary : theme.disabledColor)
-                      : (!opt.enabled ? Icon(Icons.lock_outline, size: 18, color: theme.disabledColor) : null),
-                  onTap: opt.enabled
-                      ? () async {
-                          Navigator.of(sheetContext).pop();
-                          if (provider.containerRuntimeMode != opt.mode) {
-                            await provider.setContainerRuntimeMode(opt.mode);
-                          }
-                          if (context.mounted) {
-                            await DistroManager().detectAndApplyRuntime(
-                              context: context,
-                              settings: provider,
-                              showToast: true,
-                            );
-                          }
-                        }
+                      ? Icon(Icons.check, color: theme.colorScheme.primary)
                       : null,
+                  onTap: () async {
+                    Navigator.of(sheetContext).pop();
+                    if (provider.containerRuntimeMode != opt.mode) {
+                      await provider.setContainerRuntimeMode(opt.mode);
+                    }
+                    if (context.mounted) {
+                      await DistroManager().detectAndApplyRuntime(
+                        context: context,
+                        settings: provider,
+                        showToast: true,
+                      );
+                    }
+                  },
                 ),
               ],
               const SizedBox(height: 12),

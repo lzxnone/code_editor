@@ -328,7 +328,7 @@ void main() {
   });
 
   group('SettingsView Container Runtime UI Tests', () {
-    testWidgets('SettingsView disables Chroot when root is not granted', (tester) async {
+    testWidgets('SettingsView always enables Chroot option and falls back to PRoot if root denied', (tester) async {
       final settings = SettingsProvider();
       await settings.init();
       RootService.instance.mockRootGranted = false;
@@ -359,16 +359,17 @@ void main() {
       expect(find.text('PRoot'), findsOneWidget);
       expect(find.text('Chroot'), findsOneWidget);
 
-      // Chroot should be disabled (has lock outline icon)
+      // Chroot should be enabled (open to all users)
       final chrootTile = tester.widget<ListTile>(
         find.ancestor(of: find.text('Chroot'), matching: find.byType(ListTile)),
       );
-      expect(chrootTile.enabled, isFalse);
+      expect(chrootTile.enabled, isTrue);
 
-      // Tapping disabled Chroot does not change mode
+      // Tapping Chroot sets setting to chroot, explicitly attempts detection, and falls back to PRoot
       await tester.tap(find.text('Chroot'));
       await tester.pumpAndSettle();
-      expect(settings.containerRuntimeMode, equals(ContainerRuntimeMode.auto));
+      expect(settings.containerRuntimeMode, equals(ContainerRuntimeMode.chroot));
+      expect(find.text('当前容器运行环境：PRoot'), findsOneWidget);
     });
 
     testWidgets('SettingsView allows Chroot selection when root is granted and shows toast', (tester) async {

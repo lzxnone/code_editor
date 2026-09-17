@@ -9,19 +9,55 @@ import 'package:code_editor/utils/dialog_utils.dart';
 import 'package:flutter/material.dart';
 import 'package:path/path.dart' as p;
 
+class EditorNavigationTarget {
+  final String filePath;
+  final int line; // 0-based
+  final int? column; // 0-based
+  final int? length;
+  final int timestamp;
+
+  EditorNavigationTarget({
+    required this.filePath,
+    required this.line,
+    this.column,
+    this.length,
+  }) : timestamp = DateTime.now().microsecondsSinceEpoch;
+}
+
 class TabProvider extends ChangeNotifier {
   List<EditorTabItem> _openTabs = [];
   String? _activeFilePath;
   bool _isModified = false;
   Future<bool> Function()? _saveHandler;
+  EditorNavigationTarget? _navigationTarget;
 
   ProjectProvider? _projectProvider;
 
   List<EditorTabItem> get openTabs => _openTabs;
+  EditorNavigationTarget? get navigationTarget => _navigationTarget;
   EditorTabItem? get activeTab {
     if (_activeFilePath == null) return null;
     final index = _openTabs.indexWhere((tab) => p.equals(tab.path, _activeFilePath!));
     return index != -1 ? _openTabs[index] : null;
+  }
+
+  void navigateTo({
+    required String filePath,
+    required int line,
+    int? column,
+    int? length,
+  }) {
+    _navigationTarget = EditorNavigationTarget(
+      filePath: p.normalize(filePath),
+      line: line,
+      column: column,
+      length: length,
+    );
+    notifyListeners();
+  }
+
+  void clearNavigationTarget() {
+    _navigationTarget = null;
   }
 
   String? get currentFilePath => _activeFilePath;
