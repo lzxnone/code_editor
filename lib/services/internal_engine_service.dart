@@ -13,6 +13,11 @@ import 'distro_installer.dart';
 import 'distro_manager.dart';
 import 'lsp/lsp_manager.dart';
 import 'toolchain_service.dart';
+import '../models/lsp_language_config.dart';
+import '../providers/git_provider.dart';
+import 'git_service.dart';
+import 'lsp_config_service.dart';
+import '../views/main_view.dart';
 
 /// 代码智能与运行时引擎服务（基于统一主系统 Ubuntu 24.04）
 class InternalEngineService extends ChangeNotifier {
@@ -96,16 +101,26 @@ class InternalEngineService extends ChangeNotifier {
     notifyListeners();
 
     TerminalProvider? terminalProvider;
+    GitProvider? gitProvider;
     try {
       terminalProvider = Provider.of<TerminalProvider>(context, listen: false);
     } catch (_) {}
+    try {
+      gitProvider = Provider.of<GitProvider>(context, listen: false);
+    } catch (_) {}
 
     try {
-      // 1. 关闭所有运行中的后台语言服务会话
+      // 1. 关闭所有运行中的后台语言服务会话，清空已安装的补全组件列表，并重置弹窗提示防打扰记录
       await LspManager.instance.disposeAll();
+      await LspConfigService.instance.saveConfigs([]);
+      MainView.clearPromptedLanguage(null);
 
       // 2. 清理终端中属于 ubuntu 的活跃会话
       terminalProvider?.removeSessionsForDistro(DistroRepository.defaultSystemName);
+
+      // 3. 重置 Git 环境可用状态并清理 Git 内存缓存与页面状态
+      GitService.instance.invalidateEnvStatus();
+      gitProvider?.onContainerReset();
 
       // 3. 保护 .l2s 目录，避免外部工程中已建立的 PRoot 硬链接替身文件随容器重装被误删
       Directory? preservedL2s;
@@ -180,6 +195,11 @@ class InternalEngineService extends ChangeNotifier {
         }
       }
 
+      if (success) {
+        // 重建完成后触发 Git 状态探测刷新（若打开了项目，将自动识别到新容器尚未安装 Git 并呈现引导界面）
+        gitProvider?.refresh();
+      }
+
       _isChecking = false;
       notifyListeners();
       return success;
@@ -231,7 +251,7 @@ class InternalEngineService extends ChangeNotifier {
     }
   }
 
-  /// 在 Ubuntu 系统中安装指定 apt 软件包
+  /// 在 Ubuntu 系统中安装指定软件包或执行安装命令
   Future<bool> installPackage(
     String packageName, {
     void Function(String chunk)? onOutput,
@@ -242,10 +262,16 @@ class InternalEngineService extends ChangeNotifier {
 
     try {
       final rootfs = await getRootfsDir();
-      final installCmd =
-          '${ToolchainService.dpkgAutoHealPrefix} '
-          'apt-get update && '
-          'apt-get install -y --no-install-recommends ${packageName.trim()}';
+      final trimmed = packageName.trim();
+      final String installCmd;
+      if (trimmed.contains(' ') || trimmed.contains('&&') || trimmed.contains('|')) {
+        installCmd = '${ToolchainService.dpkgAutoHealPrefix} $trimmed';
+      } else {
+        installCmd =
+            '${ToolchainService.dpkgAutoHealPrefix} '
+            'apt-get update && '
+            'apt-get install -y --no-install-recommends $trimmed';
+      }
 
       final res = await DistroManager().runHeadlessCommand(
         systemName: DistroRepository.defaultSystemName,
@@ -259,6 +285,18 @@ class InternalEngineService extends ChangeNotifier {
       debugPrint('安装引擎软件包异常: $e');
       return false;
     }
+  }
+
+  /// 针对 LSP 组件安装（优先执行完整 installCommand，若未定义则安装指定 package）
+  Future<bool> installLspConfig(
+    LspLanguageConfig config, {
+    void Function(String chunk)? onOutput,
+  }) async {
+    final cmd = config.installCommand?.trim();
+    if (cmd != null && cmd.isNotEmpty) {
+      return installPackage(cmd, onOutput: onOutput);
+    }
+    return installPackage(config.package, onOutput: onOutput);
   }
 
   /// 自动诊断与修复 dpkg 锁及半安装 (reinstreq/half-installed) 死锁状态
@@ -331,7 +369,10 @@ fi
       final uninstallCmd = '''
 ${ToolchainService.dpkgAutoHealPrefix}
 $killSection
-apt-get remove --purge -y $targetsToPurge
+npm uninstall -g $cleanPkg 2>/dev/null || true
+pip uninstall -y $cleanPkg 2>/dev/null || true
+gem uninstall -a -x $cleanPkg 2>/dev/null || true
+apt-get remove --purge -y $targetsToPurge 2>/dev/null || true
 apt-get autoremove --purge -y
 $cmdCleanupSection
 ''';

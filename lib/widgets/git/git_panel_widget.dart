@@ -11,6 +11,7 @@ import '../../utils/dialog_utils.dart';
 import '../../utils/file_icon_utils.dart';
 import 'git_diff_page.dart';
 import 'git_graph_painter.dart';
+import '../../views/git_account_management_view.dart';
 
 /// Git 版本控制侧边栏面板组件
 class GitPanelWidget extends StatefulWidget {
@@ -117,7 +118,7 @@ class _GitPanelWidgetState extends State<GitPanelWidget> {
         bottom: false,
         left: false,
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 14.0, vertical: 8.0),
+          padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 6.0),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             mainAxisSize: MainAxisSize.min,
@@ -125,125 +126,164 @@ class _GitPanelWidgetState extends State<GitPanelWidget> {
               // 第一行：标题、多仓库切换、刷新、更多操作
               Row(
                 children: [
-                  // 标题
-                  Text(
-                    l10n.drawerTabGit,
-                    style: theme.textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.bold,
+                  // 标题与多仓库切换区（自适应宽度，杜绝水平溢出）
+                  Expanded(
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Flexible(
+                          child: Text(
+                            l10n.drawerTabGit,
+                            style: theme.textTheme.titleMedium?.copyWith(
+                              fontWeight: FontWeight.bold,
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                            maxLines: 1,
+                          ),
+                        ),
+                        if (repos.length > 1) ...[
+                          const SizedBox(width: 6),
+                          PopupMenuButton<String>(
+                            tooltip: l10n.gitSwitchRepo,
+                            initialValue: gitProvider.currentRepoPath,
+                            onSelected: (path) => gitProvider.switchRepository(path),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                              decoration: BoxDecoration(
+                                color: theme.colorScheme.surface.withValues(alpha: 0.6),
+                                borderRadius: BorderRadius.circular(6),
+                                border: Border.all(
+                                  color: theme.colorScheme.outlineVariant.withValues(alpha: 0.5),
+                                  width: 0.8,
+                                ),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(
+                                    Icons.source_outlined,
+                                    size: 13,
+                                    color: theme.colorScheme.primary,
+                                  ),
+                                  const SizedBox(width: 3),
+                                  ConstrainedBox(
+                                    constraints: const BoxConstraints(maxWidth: 80),
+                                    child: Text(
+                                      currentRepo?.name ?? l10n.gitRepository,
+                                      style: const TextStyle(
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                      overflow: TextOverflow.ellipsis,
+                                      maxLines: 1,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 1),
+                                  Icon(
+                                    Icons.arrow_drop_down,
+                                    size: 14,
+                                    color: theme.colorScheme.onSurfaceVariant,
+                                  ),
+                                ],
+                              ),
+                            ),
+                            itemBuilder: (ctx) {
+                              return repos.map((r) {
+                                final isSelected = r.rootPath == gitProvider.currentRepoPath;
+                                return PopupMenuItem<String>(
+                                  value: r.rootPath,
+                                  child: Row(
+                                    children: [
+                                      Icon(
+                                        r.isRoot ? Icons.folder_special_outlined : Icons.folder_outlined,
+                                        size: 16,
+                                        color: isSelected ? theme.colorScheme.primary : null,
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            Text(
+                                              r.name,
+                                              style: TextStyle(
+                                                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                                                fontSize: 13,
+                                              ),
+                                              overflow: TextOverflow.ellipsis,
+                                            ),
+                                            if (r.currentBranch != null)
+                                              Text(
+                                                r.currentBranch!,
+                                                style: TextStyle(
+                                                  fontSize: 11,
+                                                  color: theme.colorScheme.onSurfaceVariant,
+                                                ),
+                                              ),
+                                          ],
+                                        ),
+                                      ),
+                                      if (isSelected)
+                                        Icon(Icons.check, size: 16, color: theme.colorScheme.primary),
+                                    ],
+                                  ),
+                                );
+                              }).toList();
+                            },
+                          ),
+                        ],
+                      ],
                     ),
                   ),
 
-                  const SizedBox(width: 8),
+                  const SizedBox(width: 4),
 
-                  // 多仓库切换下拉菜单（若发现多个仓库）
-                  if (repos.length > 1) ...[
-                    PopupMenuButton<String>(
-                      tooltip: l10n.gitSwitchRepo,
-                      initialValue: gitProvider.currentRepoPath,
-                      onSelected: (path) => gitProvider.switchRepository(path),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: theme.colorScheme.surface.withValues(alpha: 0.6),
-                          borderRadius: BorderRadius.circular(6),
-                          border: Border.all(
-                            color: theme.colorScheme.outlineVariant.withValues(alpha: 0.5),
-                            width: 0.8,
-                          ),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(
-                              Icons.source_outlined,
-                              size: 14,
-                              color: theme.colorScheme.primary,
-                            ),
-                            const SizedBox(width: 4),
-                            ConstrainedBox(
-                              constraints: const BoxConstraints(maxWidth: 110),
-                              child: Text(
-                                currentRepo?.name ?? l10n.gitRepository,
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w600,
-                                  color: theme.colorScheme.onSurface,
-                                ),
-                                overflow: TextOverflow.ellipsis,
-                                maxLines: 1,
-                              ),
-                            ),
-                            const SizedBox(width: 2),
-                            Icon(
-                              Icons.arrow_drop_down,
-                              size: 16,
-                              color: theme.colorScheme.onSurfaceVariant,
-                            ),
-                          ],
+                  // 顶部操作按钮组
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      // Git 账号管理入口
+                      SizedBox(
+                        width: 24,
+                        height: 24,
+                        child: IconButton(
+                          icon: const Icon(Icons.manage_accounts_outlined, size: 18),
+                          tooltip: l10n.gitAccountManagement,
+                          padding: EdgeInsets.zero,
+                          constraints: const BoxConstraints(),
+                          onPressed: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(builder: (_) => const GitAccountManagementView()),
+                            );
+                          },
                         ),
                       ),
-                      itemBuilder: (ctx) {
-                        return repos.map((r) {
-                          final isSelected = r.rootPath == gitProvider.currentRepoPath;
-                          return PopupMenuItem<String>(
-                            value: r.rootPath,
-                            child: Row(
-                              children: [
-                                Icon(
-                                  r.isRoot ? Icons.folder_special_outlined : Icons.folder_outlined,
-                                  size: 16,
-                                  color: isSelected ? theme.colorScheme.primary : null,
-                                ),
-                                const SizedBox(width: 8),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      Text(
-                                        r.name,
-                                        style: TextStyle(
-                                          fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                                          fontSize: 13,
-                                        ),
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                      if (r.currentBranch != null)
-                                        Text(
-                                          r.currentBranch!,
-                                          style: TextStyle(
-                                            fontSize: 11,
-                                            color: theme.colorScheme.onSurfaceVariant,
-                                          ),
-                                        ),
-                                    ],
-                                  ),
-                                ),
-                                if (isSelected)
-                                  Icon(Icons.check, size: 16, color: theme.colorScheme.primary),
-                              ],
-                            ),
-                          );
-                        }).toList();
-                      },
-                    ),
-                    const SizedBox(width: 6),
-                  ],
 
-                  const Spacer(),
+                      // 刷新按钮
+                      if (gitProvider.hasProject && gitProvider.gitInstalled) ...[
+                        const SizedBox(width: 4),
+                        SizedBox(
+                          width: 24,
+                          height: 24,
+                          child: IconButton(
+                            icon: const Icon(Icons.refresh, size: 18),
+                            tooltip: l10n.gitRefresh,
+                            padding: EdgeInsets.zero,
+                            constraints: const BoxConstraints(),
+                            onPressed: gitProvider.isLoading ? null : () => gitProvider.refresh(),
+                          ),
+                        ),
+                      ],
 
-                  // 刷新按钮
-                  if (gitProvider.hasProject && gitProvider.gitInstalled)
-                    IconButton(
-                      icon: const Icon(Icons.refresh, size: 18),
-                      tooltip: l10n.gitRefresh,
-                      visualDensity: VisualDensity.compact,
-                      onPressed: gitProvider.isLoading ? null : () => gitProvider.refresh(),
-                    ),
-
-                  // 更多操作 (撤销上次提交、Stash 贮藏等)
-                  if (gitProvider.hasProject && gitProvider.gitInstalled && gitProvider.hasRepository)
-                    _buildMoreActionsMenu(context, theme, l10n, gitProvider),
+                      // 更多操作 (撤销上次提交、Stash 贮藏等)
+                      if (gitProvider.hasProject && gitProvider.gitInstalled && gitProvider.hasRepository) ...[
+                        const SizedBox(width: 4),
+                        _buildMoreActionsMenu(context, theme, l10n, gitProvider),
+                      ],
+                    ],
+                  ),
                 ],
               ),
 
@@ -511,11 +551,14 @@ class _GitPanelWidgetState extends State<GitPanelWidget> {
     AppLocalizations l10n,
     GitProvider gitProvider,
   ) {
-    return PopupMenuButton<String>(
-      icon: const Icon(Icons.more_vert, size: 18),
-      tooltip: l10n.gitMoreActions,
-      padding: EdgeInsets.zero,
-      onSelected: (action) async {
+    return SizedBox(
+      width: 24,
+      height: 24,
+      child: PopupMenuButton<String>(
+        icon: const Icon(Icons.more_vert, size: 18),
+        tooltip: l10n.gitMoreActions,
+        padding: EdgeInsets.zero,
+        onSelected: (action) async {
         switch (action) {
           case 'undo_commit':
             _handleUndoLastCommit(context, l10n, gitProvider);
@@ -566,7 +609,8 @@ class _GitPanelWidgetState extends State<GitPanelWidget> {
           ),
         ),
       ],
-    );
+    ),
+  );
   }
 
   /// 创建新分支对话框

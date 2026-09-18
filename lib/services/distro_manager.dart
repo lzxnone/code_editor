@@ -130,9 +130,10 @@ class DistroManager {
     BuildContext? context,
     required SettingsProvider settings,
     bool showToast = true,
+    Directory? customRootDir,
   }) async {
     final mode = settings.containerRuntimeMode;
-    final rootDir = await getSystemRootDir(DistroRepository.defaultSystemName);
+    final rootDir = customRootDir ?? await getSystemRootDir(DistroRepository.defaultSystemName);
 
     ContainerRuntimeType effective = ContainerRuntimeType.proot;
 

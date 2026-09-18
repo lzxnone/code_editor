@@ -52,7 +52,7 @@ class ToolchainService {
     'git': ToolchainRequirement(
       checkBinary: 'git',
       displayName: 'Git 版本控制工具',
-      installCommand: 'DEBIAN_FRONTEND=noninteractive apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y git',
+      installCommand: 'DEBIAN_FRONTEND=noninteractive apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y git openssh-client',
     ),
     'make': ToolchainRequirement(
       checkBinary: 'make',

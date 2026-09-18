@@ -2264,4 +2264,164 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get replaceCurrentMatch => '替换';
+
+  @override
+  String get gitAccountManagement => 'Git 账号管理';
+
+  @override
+  String get gitEdit => '编辑';
+
+  @override
+  String get gitHostedAccounts => '托管账号';
+
+  @override
+  String get gitSshKeys => 'SSH 密钥';
+
+  @override
+  String get gitAddAccount => '添加 Git 账号';
+
+  @override
+  String get gitEditAccount => '编辑 Git 账号';
+
+  @override
+  String get gitNoAccountsTitle => '暂未绑定 Git 账号';
+
+  @override
+  String get gitNoAccountsSubtitle =>
+      '绑定 GitHub 或 Gitee 等账号后，推送代码、拉取私有仓库将全程免密认证。';
+
+  @override
+  String get gitAddFirstAccount => '添加第一个 Git 账号';
+
+  @override
+  String get gitDefaultAccountBadge => '默认';
+
+  @override
+  String get gitSetAsDefault => '设为默认账号';
+
+  @override
+  String get gitSetAsDefaultSuccess => '已设为默认账号';
+
+  @override
+  String get gitTestConnection => '测试连接';
+
+  @override
+  String get gitTestingConnection => '正在验证平台连接...';
+
+  @override
+  String gitTestConnectionSuccess(String username) {
+    return '连接成功！已验证用户: $username';
+  }
+
+  @override
+  String get gitTestConnectionFailed => '验证失败';
+
+  @override
+  String get gitDeleteAccount => '删除账号';
+
+  @override
+  String gitDeleteAccountConfirmTitle(String name) {
+    return '删除账号 $name？';
+  }
+
+  @override
+  String get gitDeleteAccountConfirmMessage =>
+      '删除后该账号凭据将从本地及容器内移除，相关远程操作将需要重新认证。';
+
+  @override
+  String get gitDeleteAccountSuccess => '已删除账号';
+
+  @override
+  String get gitAccountSavedSuccess => '账号添加成功';
+
+  @override
+  String get gitAccountUpdatedSuccess => '账号已更新';
+
+  @override
+  String get gitContainerSshTitle => '容器内置 SSH 密钥对';
+
+  @override
+  String get gitContainerSshSubtitle =>
+      '用于 SSH 协议免密克隆与推送 (git@github.com:... 或 git@gitee.com:...)。';
+
+  @override
+  String get gitCopyPublicKey => '一键复制公钥';
+
+  @override
+  String get gitPublicKeyCopied => '公钥已复制到剪贴板';
+
+  @override
+  String get gitRegenerateKey => '重新生成';
+
+  @override
+  String get gitNoSshKeyNotice =>
+      '当前尚未生成 SSH 密钥对。生成后即可一键复制并粘贴至 GitHub/Gitee 的 SSH Keys 设置中。';
+
+  @override
+  String get gitGenerateEd25519Key => '生成 Ed25519 SSH 密钥';
+
+  @override
+  String get gitGeneratingSshKey => '正在生成 SSH 密钥...';
+
+  @override
+  String get gitSshKeyGenerateSuccess => 'SSH 密钥生成成功';
+
+  @override
+  String get gitSshKeyGenerateFailed => '生成失败';
+
+  @override
+  String get gitRegenerateSshConfirmTitle => '重新生成 SSH 密钥？';
+
+  @override
+  String get gitRegenerateSshConfirmMessage =>
+      '重新生成将覆盖现有的 SSH 密钥，旧公钥在 GitHub/Gitee 上将失效，需重新粘贴新公钥。';
+
+  @override
+  String get gitOverwrite => '确定覆盖';
+
+  @override
+  String get gitSshGuideTitle => '如何配置到云端平台？';
+
+  @override
+  String get gitSshGuideStep1 => '点击上方【一键复制公钥】；';
+
+  @override
+  String get gitSshGuideStep2 =>
+      '在浏览器打开 GitHub 或 Gitee 的设置页 (Settings -> SSH Keys)；';
+
+  @override
+  String get gitSshGuideStep3 => '点击 \"New SSH Key\"，将公钥粘贴到 Key 输入框中保存即可。';
+
+  @override
+  String get gitServerUrl => '服务器地址';
+
+  @override
+  String get gitTokenLabel => '访问令牌';
+
+  @override
+  String get gitTokenHint => '输入在平台创建的 PAT 令牌';
+
+  @override
+  String get gitGetToken => '获取 Token';
+
+  @override
+  String get gitTokenCopiedOpeningBrowser => 'Token 创建链接已复制，正在前往浏览器...';
+
+  @override
+  String get gitEnterTokenPrompt => '请输入访问令牌';
+
+  @override
+  String get gitTokenVerifyFailed => 'Token 校验失败，请核对权限或有效性';
+
+  @override
+  String get gitVerifyAndSave => '验证并保存';
+
+  @override
+  String get gitAuthTypeToken => '个人访问令牌';
+
+  @override
+  String get gitAuthTypeSsh => 'SSH 密钥对';
+
+  @override
+  String get gitPlatformGeneric => '通用 / 自建 Git';
 }

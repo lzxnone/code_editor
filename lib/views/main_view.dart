@@ -144,18 +144,19 @@ class _MainViewState extends State<MainView> {
 
   void _checkLspForFile(String filePath) async {
     final ext = p.extension(filePath);
-    if (ext.isEmpty) return;
+    final filename = p.basename(filePath);
+    if (ext.isEmpty && filename.isEmpty) return;
     await LspConfigService.instance.loadConfigs();
 
-    // 1. 先检查已安装配置中是否有匹配此后缀的组件
-    final existing = LspConfigService.instance.findByExtension(ext);
+    // 1. 先检查已安装配置中是否有匹配此后缀/文件名的组件
+    final existing = LspConfigService.instance.findByExtension(ext, filename: filename);
     if (existing != null) return;
 
     final engineInstalled = await InternalEngineService.instance.isEngineInstalled();
     if (!engineInstalled) return;
 
     // 2. 未在已安装配置中，查找代码内置语言预设模版
-    final builtin = LspLanguageConfig.findBuiltinByExtension(ext);
+    final builtin = LspLanguageConfig.findBuiltinByExtension(ext, filename: filename);
     if (builtin == null) return;
 
     final isInstalled = await InternalEngineService.instance.isCommandInstalled(builtin.serverCommand);
@@ -202,8 +203,8 @@ class _MainViewState extends State<MainView> {
     if (install == true && mounted) {
       final success = await DialogUtils.showSyncLoadingDialog<bool>(
         context,
-        message: l10n.installingComponent(config.package),
-        task: () => InternalEngineService.instance.installPackage(config.package),
+        message: l10n.installingComponent(config.name),
+        task: () => InternalEngineService.instance.installLspConfig(config),
       );
 
       if (mounted) {

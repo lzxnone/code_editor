@@ -105,12 +105,12 @@ class _CodeCompletionManagementViewState
       final l10n = AppLocalizations.of(context);
       if (l10n == null) return;
 
-      final hasPkg = newConfig.package.trim().isNotEmpty;
+      final hasPkg = newConfig.package.trim().isNotEmpty || (newConfig.installCommand?.trim().isNotEmpty ?? false);
       if (hasPkg) {
         final success = await DialogUtils.showSyncLoadingDialog<bool>(
           context,
-          message: l10n.installingComponent(newConfig.package),
-          task: () => InternalEngineService.instance.installPackage(newConfig.package),
+          message: l10n.installingComponent(newConfig.name),
+          task: () => InternalEngineService.instance.installLspConfig(newConfig),
         );
 
         if (!mounted) return;

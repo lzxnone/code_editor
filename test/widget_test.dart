@@ -45,6 +45,8 @@ import 'package:code_editor/widgets/code_editor_drawer.dart';
 import 'package:code_editor/utils/dialog_utils.dart';
 import 'package:code_editor/services/file_watcher_service.dart';
 import 'package:code_editor/utils/syntax_highlight_helper.dart';
+import 'package:code_editor/providers/git_provider.dart';
+import 'package:code_editor/widgets/git/git_panel_widget.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 /// 记录调用参数的测试用 sink，用于断言键盘组件把什么语义交给了下方实现
@@ -3414,6 +3416,23 @@ void main() {
         ),
       );
       await scrollAll(tester);
+    });
+
+    testWidgets('GitPanelWidget header on narrow drawer in English (no overflow)', (tester) async {
+      final gitProvider = GitProvider();
+      await pumpNarrow(
+        tester,
+        MultiProvider(
+          providers: [
+            ChangeNotifierProvider<GitProvider>.value(value: gitProvider),
+          ],
+          child: localizedApp(
+            const Scaffold(body: GitPanelWidget()),
+            locale: const Locale('en'),
+          ),
+        ),
+      );
+      expect(find.text('Source Control'), findsOneWidget);
     });
   });
 

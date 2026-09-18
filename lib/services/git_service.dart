@@ -37,6 +37,11 @@ class GitService {
   /// 缓存的 Git 环境可用状态
   GitEnvironmentStatus? _cachedEnvStatus;
 
+  /// 清除 Git 运行环境检测缓存（在容器重置、重装或安装 Git 后调用）
+  void invalidateEnvStatus() {
+    _cachedEnvStatus = null;
+  }
+
   /// 重置测试环境状态与进程注入
   void resetForTesting() {
     processRunner = null;
@@ -362,7 +367,10 @@ class GitService {
     // 2. 内置引擎环境安装 (Ubuntu PRoot)
     final engine = InternalEngineService.instance;
     if (await engine.isEngineInstalled()) {
-      final success = await engine.installPackage('git', onOutput: onProgress);
+      final success = await engine.installPackage(
+        'apt-get update && apt-get install -y git openssh-client',
+        onOutput: onProgress,
+      );
       if (success) {
         _cachedEnvStatus = null;
         final env = await checkGitInstalled(forceRefresh: true);

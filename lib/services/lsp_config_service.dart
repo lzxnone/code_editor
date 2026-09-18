@@ -140,16 +140,29 @@ class LspConfigService extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// 根据文件扩展名查找匹配的已启用语言配置
-  LspLanguageConfig? findByExtension(String ext) {
+  /// 根据文件扩展名或特殊文件名查找匹配的已启用语言配置
+  LspLanguageConfig? findByExtension(String ext, {String? filename}) {
+    final cleanName = filename?.trim().toLowerCase();
+    if (cleanName != null && cleanName.isNotEmpty) {
+      for (final config in _configs) {
+        for (final item in config.fileExtensions) {
+          if (!item.startsWith('.') && item.toLowerCase() == cleanName) {
+            return config.enabled ? config : null;
+          }
+        }
+      }
+    }
+
     if (ext.isEmpty) return null;
     final normalized = ext.startsWith('.') ? ext.toLowerCase() : '.$ext'.toLowerCase();
 
     for (final config in _configs) {
       for (final item in config.fileExtensions) {
-        final itemNorm = item.startsWith('.') ? item.toLowerCase() : '.$item'.toLowerCase();
-        if (itemNorm == normalized) {
-          return config.enabled ? config : null;
+        if (item.startsWith('.')) {
+          final itemNorm = item.toLowerCase();
+          if (itemNorm == normalized) {
+            return config.enabled ? config : null;
+          }
         }
       }
     }

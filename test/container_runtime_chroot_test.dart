@@ -14,17 +14,29 @@ import 'package:code_editor/views/settings_view.dart';
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
+  late Directory tempBaseDir;
+
   setUp(() {
     SharedPreferences.setMockInitialValues({});
     RootService.instance.mockRootCapable = null;
     RootService.instance.mockRootGranted = null;
     ChrootMountManager.instance.mockPrepareSuccess = null;
+
+    tempBaseDir = Directory.systemTemp.createTempSync('distro_test_');
+    DistroManager().customBaseDir = tempBaseDir;
+    final ubuntuRootfs = Directory('${tempBaseDir.path}/ubuntu/rootfs')..createSync(recursive: true);
+    Directory('${ubuntuRootfs.path}/etc').createSync(recursive: true);
+    Directory('${ubuntuRootfs.path}/bin').createSync(recursive: true);
   });
 
   tearDown(() {
     RootService.instance.mockRootCapable = null;
     RootService.instance.mockRootGranted = null;
     ChrootMountManager.instance.mockPrepareSuccess = null;
+    DistroManager().customBaseDir = null;
+    try {
+      tempBaseDir.deleteSync(recursive: true);
+    } catch (_) {}
   });
 
   group('RootService Tests', () {
@@ -242,6 +254,7 @@ void main() {
         context: testContext,
         settings: settings,
         showToast: true,
+        customRootDir: mockRootDir,
       );
 
       expect(result, equals(ContainerRuntimeType.proot));
@@ -280,6 +293,7 @@ void main() {
         context: testContext,
         settings: settings,
         showToast: true,
+        customRootDir: mockRootDir,
       );
 
       expect(result, equals(ContainerRuntimeType.chroot));
@@ -318,6 +332,7 @@ void main() {
         context: testContext,
         settings: settings,
         showToast: true,
+        customRootDir: mockRootDir,
       );
 
       // Should smoothly fall back to proot

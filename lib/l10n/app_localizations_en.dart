@@ -2329,4 +2329,167 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get replaceCurrentMatch => 'Replace';
+
+  @override
+  String get gitAccountManagement => 'Git Accounts';
+
+  @override
+  String get gitEdit => 'Edit';
+
+  @override
+  String get gitHostedAccounts => 'Hosted Accounts';
+
+  @override
+  String get gitSshKeys => 'SSH Keys';
+
+  @override
+  String get gitAddAccount => 'Add Git Account';
+
+  @override
+  String get gitEditAccount => 'Edit Git Account';
+
+  @override
+  String get gitNoAccountsTitle => 'No Git Accounts Connected';
+
+  @override
+  String get gitNoAccountsSubtitle =>
+      'Connect GitHub, Gitee, etc. for seamless passwordless pushing and pulling.';
+
+  @override
+  String get gitAddFirstAccount => 'Add First Git Account';
+
+  @override
+  String get gitDefaultAccountBadge => 'Default';
+
+  @override
+  String get gitSetAsDefault => 'Set as Default';
+
+  @override
+  String get gitSetAsDefaultSuccess => 'Set as default account';
+
+  @override
+  String get gitTestConnection => 'Test Connection';
+
+  @override
+  String get gitTestingConnection => 'Testing platform connection...';
+
+  @override
+  String gitTestConnectionSuccess(String username) {
+    return 'Connection successful! Verified user: $username';
+  }
+
+  @override
+  String get gitTestConnectionFailed => 'Verification failed';
+
+  @override
+  String get gitDeleteAccount => 'Delete Account';
+
+  @override
+  String gitDeleteAccountConfirmTitle(String name) {
+    return 'Delete account $name?';
+  }
+
+  @override
+  String get gitDeleteAccountConfirmMessage =>
+      'Credentials will be removed from local storage and the container. Remote operations will require re-authentication.';
+
+  @override
+  String get gitDeleteAccountSuccess => 'Account deleted';
+
+  @override
+  String get gitAccountSavedSuccess => 'Account added successfully';
+
+  @override
+  String get gitAccountUpdatedSuccess => 'Account updated successfully';
+
+  @override
+  String get gitContainerSshTitle => 'Container Built-in SSH Key';
+
+  @override
+  String get gitContainerSshSubtitle =>
+      'Used for SSH clone and push (git@github.com:... or git@gitee.com:...).';
+
+  @override
+  String get gitCopyPublicKey => 'Copy Public Key';
+
+  @override
+  String get gitPublicKeyCopied => 'Public key copied to clipboard';
+
+  @override
+  String get gitRegenerateKey => 'Regenerate';
+
+  @override
+  String get gitNoSshKeyNotice =>
+      'No SSH key pair generated yet. Once generated, you can copy and paste it into GitHub/Gitee SSH Keys settings.';
+
+  @override
+  String get gitGenerateEd25519Key => 'Generate Ed25519 SSH Key';
+
+  @override
+  String get gitGeneratingSshKey => 'Generating SSH Key...';
+
+  @override
+  String get gitSshKeyGenerateSuccess => 'SSH key generated successfully';
+
+  @override
+  String get gitSshKeyGenerateFailed => 'Generation failed';
+
+  @override
+  String get gitRegenerateSshConfirmTitle => 'Regenerate SSH Key?';
+
+  @override
+  String get gitRegenerateSshConfirmMessage =>
+      'Regenerating will overwrite the existing key. The old public key on GitHub/Gitee will become invalid.';
+
+  @override
+  String get gitOverwrite => 'Overwrite';
+
+  @override
+  String get gitSshGuideTitle => 'How to configure on cloud platforms?';
+
+  @override
+  String get gitSshGuideStep1 => 'Click [Copy Public Key] above;';
+
+  @override
+  String get gitSshGuideStep2 =>
+      'Open GitHub or Gitee settings in browser (Settings -> SSH Keys);';
+
+  @override
+  String get gitSshGuideStep3 =>
+      'Click \"New SSH Key\", paste the public key into the Key field and save.';
+
+  @override
+  String get gitServerUrl => 'Server URL';
+
+  @override
+  String get gitTokenLabel => 'Personal Access Token';
+
+  @override
+  String get gitTokenHint => 'Enter PAT created on platform';
+
+  @override
+  String get gitGetToken => 'Get Token';
+
+  @override
+  String get gitTokenCopiedOpeningBrowser =>
+      'Token URL copied, opening browser...';
+
+  @override
+  String get gitEnterTokenPrompt => 'Please enter Personal Access Token';
+
+  @override
+  String get gitTokenVerifyFailed =>
+      'Token verification failed. Please check permissions or validity';
+
+  @override
+  String get gitVerifyAndSave => 'Verify & Save';
+
+  @override
+  String get gitAuthTypeToken => 'Personal Access Token';
+
+  @override
+  String get gitAuthTypeSsh => 'SSH Key Pair';
+
+  @override
+  String get gitPlatformGeneric => 'Generic / Self-hosted Git';
 }

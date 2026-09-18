@@ -20,9 +20,10 @@ class LspManager extends ChangeNotifier {
   /// 获取或拉起匹配当前文件的语言服务会话
   Future<LspSession?> getOrCreateSession(String filePath, {String? workspaceRoot}) async {
     final ext = p.extension(filePath);
-    if (ext.isEmpty) return null;
+    final filename = p.basename(filePath);
+    if (ext.isEmpty && filename.isEmpty) return null;
 
-    final config = LspConfigService.instance.findByExtension(ext);
+    final config = LspConfigService.instance.findByExtension(ext, filename: filename);
     if (config == null || !config.enabled) return null;
 
     // 检查是否已有存活会话
@@ -134,8 +135,9 @@ class LspManager extends ChangeNotifier {
   /// 获取当前已存活的会话（不触发异步拉起）
   LspSession? getExistingSession(String filePath) {
     final ext = p.extension(filePath);
-    if (ext.isEmpty) return null;
-    final config = LspConfigService.instance.findByExtension(ext);
+    final filename = p.basename(filePath);
+    if (ext.isEmpty && filename.isEmpty) return null;
+    final config = LspConfigService.instance.findByExtension(ext, filename: filename);
     if (config == null) return null;
     final session = _activeSessions[config.id];
     if (session != null && !session.client.isClosed) {

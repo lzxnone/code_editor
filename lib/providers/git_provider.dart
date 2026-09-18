@@ -140,6 +140,25 @@ class GitProvider extends ChangeNotifier {
     }
   }
 
+  /// 响应底层运行容器被销毁重建：立即失效环境缓存，清空内存仓库与分支状态，恢复未安装引导
+  void onContainerReset() {
+    _gitService.invalidateEnvStatus();
+    _gitInstalled = false;
+    _gitVersion = null;
+    _repositories = [];
+    _currentRepoPath = null;
+    _changedFiles = [];
+    _rebuildStatusMaps();
+    _currentBranch = null;
+    _branches = [];
+    _tags = [];
+    _commits = [];
+    _stashCount = 0;
+    _errorMessage = '底层容器已重置，需重新安装 Git 工具链';
+    _isLoading = false;
+    notifyListeners();
+  }
+
   int _refreshSeq = 0;
 
   /// 刷新 Git 状态与仓库信息

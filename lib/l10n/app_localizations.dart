@@ -3909,6 +3909,306 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'替换'**
   String get replaceCurrentMatch;
+
+  /// No description provided for @gitAccountManagement.
+  ///
+  /// In zh, this message translates to:
+  /// **'Git 账号管理'**
+  String get gitAccountManagement;
+
+  /// No description provided for @gitEdit.
+  ///
+  /// In zh, this message translates to:
+  /// **'编辑'**
+  String get gitEdit;
+
+  /// No description provided for @gitHostedAccounts.
+  ///
+  /// In zh, this message translates to:
+  /// **'托管账号'**
+  String get gitHostedAccounts;
+
+  /// No description provided for @gitSshKeys.
+  ///
+  /// In zh, this message translates to:
+  /// **'SSH 密钥'**
+  String get gitSshKeys;
+
+  /// No description provided for @gitAddAccount.
+  ///
+  /// In zh, this message translates to:
+  /// **'添加 Git 账号'**
+  String get gitAddAccount;
+
+  /// No description provided for @gitEditAccount.
+  ///
+  /// In zh, this message translates to:
+  /// **'编辑 Git 账号'**
+  String get gitEditAccount;
+
+  /// No description provided for @gitNoAccountsTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'暂未绑定 Git 账号'**
+  String get gitNoAccountsTitle;
+
+  /// No description provided for @gitNoAccountsSubtitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'绑定 GitHub 或 Gitee 等账号后，推送代码、拉取私有仓库将全程免密认证。'**
+  String get gitNoAccountsSubtitle;
+
+  /// No description provided for @gitAddFirstAccount.
+  ///
+  /// In zh, this message translates to:
+  /// **'添加第一个 Git 账号'**
+  String get gitAddFirstAccount;
+
+  /// No description provided for @gitDefaultAccountBadge.
+  ///
+  /// In zh, this message translates to:
+  /// **'默认'**
+  String get gitDefaultAccountBadge;
+
+  /// No description provided for @gitSetAsDefault.
+  ///
+  /// In zh, this message translates to:
+  /// **'设为默认账号'**
+  String get gitSetAsDefault;
+
+  /// No description provided for @gitSetAsDefaultSuccess.
+  ///
+  /// In zh, this message translates to:
+  /// **'已设为默认账号'**
+  String get gitSetAsDefaultSuccess;
+
+  /// No description provided for @gitTestConnection.
+  ///
+  /// In zh, this message translates to:
+  /// **'测试连接'**
+  String get gitTestConnection;
+
+  /// No description provided for @gitTestingConnection.
+  ///
+  /// In zh, this message translates to:
+  /// **'正在验证平台连接...'**
+  String get gitTestingConnection;
+
+  /// No description provided for @gitTestConnectionSuccess.
+  ///
+  /// In zh, this message translates to:
+  /// **'连接成功！已验证用户: {username}'**
+  String gitTestConnectionSuccess(String username);
+
+  /// No description provided for @gitTestConnectionFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'验证失败'**
+  String get gitTestConnectionFailed;
+
+  /// No description provided for @gitDeleteAccount.
+  ///
+  /// In zh, this message translates to:
+  /// **'删除账号'**
+  String get gitDeleteAccount;
+
+  /// No description provided for @gitDeleteAccountConfirmTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'删除账号 {name}？'**
+  String gitDeleteAccountConfirmTitle(String name);
+
+  /// No description provided for @gitDeleteAccountConfirmMessage.
+  ///
+  /// In zh, this message translates to:
+  /// **'删除后该账号凭据将从本地及容器内移除，相关远程操作将需要重新认证。'**
+  String get gitDeleteAccountConfirmMessage;
+
+  /// No description provided for @gitDeleteAccountSuccess.
+  ///
+  /// In zh, this message translates to:
+  /// **'已删除账号'**
+  String get gitDeleteAccountSuccess;
+
+  /// No description provided for @gitAccountSavedSuccess.
+  ///
+  /// In zh, this message translates to:
+  /// **'账号添加成功'**
+  String get gitAccountSavedSuccess;
+
+  /// No description provided for @gitAccountUpdatedSuccess.
+  ///
+  /// In zh, this message translates to:
+  /// **'账号已更新'**
+  String get gitAccountUpdatedSuccess;
+
+  /// No description provided for @gitContainerSshTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'容器内置 SSH 密钥对'**
+  String get gitContainerSshTitle;
+
+  /// No description provided for @gitContainerSshSubtitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'用于 SSH 协议免密克隆与推送 (git@github.com:... 或 git@gitee.com:...)。'**
+  String get gitContainerSshSubtitle;
+
+  /// No description provided for @gitCopyPublicKey.
+  ///
+  /// In zh, this message translates to:
+  /// **'一键复制公钥'**
+  String get gitCopyPublicKey;
+
+  /// No description provided for @gitPublicKeyCopied.
+  ///
+  /// In zh, this message translates to:
+  /// **'公钥已复制到剪贴板'**
+  String get gitPublicKeyCopied;
+
+  /// No description provided for @gitRegenerateKey.
+  ///
+  /// In zh, this message translates to:
+  /// **'重新生成'**
+  String get gitRegenerateKey;
+
+  /// No description provided for @gitNoSshKeyNotice.
+  ///
+  /// In zh, this message translates to:
+  /// **'当前尚未生成 SSH 密钥对。生成后即可一键复制并粘贴至 GitHub/Gitee 的 SSH Keys 设置中。'**
+  String get gitNoSshKeyNotice;
+
+  /// No description provided for @gitGenerateEd25519Key.
+  ///
+  /// In zh, this message translates to:
+  /// **'生成 Ed25519 SSH 密钥'**
+  String get gitGenerateEd25519Key;
+
+  /// No description provided for @gitGeneratingSshKey.
+  ///
+  /// In zh, this message translates to:
+  /// **'正在生成 SSH 密钥...'**
+  String get gitGeneratingSshKey;
+
+  /// No description provided for @gitSshKeyGenerateSuccess.
+  ///
+  /// In zh, this message translates to:
+  /// **'SSH 密钥生成成功'**
+  String get gitSshKeyGenerateSuccess;
+
+  /// No description provided for @gitSshKeyGenerateFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'生成失败'**
+  String get gitSshKeyGenerateFailed;
+
+  /// No description provided for @gitRegenerateSshConfirmTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'重新生成 SSH 密钥？'**
+  String get gitRegenerateSshConfirmTitle;
+
+  /// No description provided for @gitRegenerateSshConfirmMessage.
+  ///
+  /// In zh, this message translates to:
+  /// **'重新生成将覆盖现有的 SSH 密钥，旧公钥在 GitHub/Gitee 上将失效，需重新粘贴新公钥。'**
+  String get gitRegenerateSshConfirmMessage;
+
+  /// No description provided for @gitOverwrite.
+  ///
+  /// In zh, this message translates to:
+  /// **'确定覆盖'**
+  String get gitOverwrite;
+
+  /// No description provided for @gitSshGuideTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'如何配置到云端平台？'**
+  String get gitSshGuideTitle;
+
+  /// No description provided for @gitSshGuideStep1.
+  ///
+  /// In zh, this message translates to:
+  /// **'点击上方【一键复制公钥】；'**
+  String get gitSshGuideStep1;
+
+  /// No description provided for @gitSshGuideStep2.
+  ///
+  /// In zh, this message translates to:
+  /// **'在浏览器打开 GitHub 或 Gitee 的设置页 (Settings -> SSH Keys)；'**
+  String get gitSshGuideStep2;
+
+  /// No description provided for @gitSshGuideStep3.
+  ///
+  /// In zh, this message translates to:
+  /// **'点击 \"New SSH Key\"，将公钥粘贴到 Key 输入框中保存即可。'**
+  String get gitSshGuideStep3;
+
+  /// No description provided for @gitServerUrl.
+  ///
+  /// In zh, this message translates to:
+  /// **'服务器地址'**
+  String get gitServerUrl;
+
+  /// No description provided for @gitTokenLabel.
+  ///
+  /// In zh, this message translates to:
+  /// **'访问令牌'**
+  String get gitTokenLabel;
+
+  /// No description provided for @gitTokenHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'输入在平台创建的 PAT 令牌'**
+  String get gitTokenHint;
+
+  /// No description provided for @gitGetToken.
+  ///
+  /// In zh, this message translates to:
+  /// **'获取 Token'**
+  String get gitGetToken;
+
+  /// No description provided for @gitTokenCopiedOpeningBrowser.
+  ///
+  /// In zh, this message translates to:
+  /// **'Token 创建链接已复制，正在前往浏览器...'**
+  String get gitTokenCopiedOpeningBrowser;
+
+  /// No description provided for @gitEnterTokenPrompt.
+  ///
+  /// In zh, this message translates to:
+  /// **'请输入访问令牌'**
+  String get gitEnterTokenPrompt;
+
+  /// No description provided for @gitTokenVerifyFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'Token 校验失败，请核对权限或有效性'**
+  String get gitTokenVerifyFailed;
+
+  /// No description provided for @gitVerifyAndSave.
+  ///
+  /// In zh, this message translates to:
+  /// **'验证并保存'**
+  String get gitVerifyAndSave;
+
+  /// No description provided for @gitAuthTypeToken.
+  ///
+  /// In zh, this message translates to:
+  /// **'个人访问令牌'**
+  String get gitAuthTypeToken;
+
+  /// No description provided for @gitAuthTypeSsh.
+  ///
+  /// In zh, this message translates to:
+  /// **'SSH 密钥对'**
+  String get gitAuthTypeSsh;
+
+  /// No description provided for @gitPlatformGeneric.
+  ///
+  /// In zh, this message translates to:
+  /// **'通用 / 自建 Git'**
+  String get gitPlatformGeneric;
 }
 
 class _AppLocalizationsDelegate
