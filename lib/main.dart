@@ -1,5 +1,6 @@
 import 'package:code_editor/l10n/app_localizations.dart';
 import 'package:code_editor/providers/distro_provider.dart';
+import 'package:code_editor/providers/git_provider.dart';
 import 'package:code_editor/providers/notice_center.dart';
 import 'package:code_editor/providers/project_provider.dart';
 import 'package:code_editor/providers/run_provider.dart';
@@ -50,6 +51,11 @@ class MyApp extends StatelessWidget {
           create: (_) => SearchProvider(),
           update: (_, project, search) =>
               (search ?? SearchProvider())..bindRootPath(project.rootPath),
+        ),
+        ChangeNotifierProxyProvider<ProjectProvider, GitProvider>(
+          create: (_) => GitProvider(),
+          update: (_, project, git) =>
+              (git ?? GitProvider())..bindRootPath(project.rootPath),
         ),
         ChangeNotifierProvider(create: (_) => TerminalProvider()),
         ChangeNotifierProvider(

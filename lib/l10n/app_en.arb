@@ -1101,5 +1101,60 @@
         "type": "String"
       }
     }
+  },
+  "gitNotInstalled": "Git Not Found",
+  "gitNotInstalledDesc": "Git command-line tool was not found on your system. Please install git in your terminal or Linux container (e.g. apt update && apt install -y git).",
+  "gitNeedInstall": "Git Installation Required",
+  "gitInstallAction": "Install Git",
+  "gitInstallingProgress": "Installing Git...",
+  "gitInstallSuccess": "Git installed successfully",
+  "gitInstallFailed": "Failed to install Git: {error}",
+  "@gitInstallFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "gitNoRepoFound": "No Git Repository",
+  "gitNoRepoDesc": "Initialize a Git repository to start version control, branch management, and tracking code changes.",
+  "gitInitRepo": "Initialize Repository",
+  "gitInitializing": "Initializing Git repository...",
+  "gitInitSuccess": "Git repository initialized successfully",
+  "gitInitFailed": "Failed to initialize Git repository: {error}",
+  "@gitInitFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "gitRepository": "Repository",
+  "gitCurrentBranch": "Branch: {branch}",
+  "@gitCurrentBranch": {
+    "placeholders": {
+      "branch": {
+        "type": "String"
+      }
+    }
+  },
+  "gitSwitchRepo": "Switch Repository",
+  "gitRefresh": "Refresh Git",
+  "gitChanges": "Changes",
+  "gitStagedChanges": "Staged Changes",
+  "gitNoChanges": "No changes detected",
+  "gitStatusUntracked": "Untracked",
+  "gitStatusModified": "Modified",
+  "gitStatusAdded": "Added",
+  "gitStatusDeleted": "Deleted",
+  "gitStatusRenamed": "Renamed",
+  "gitStatusConflict": "Conflict",
+  "gitMultipleReposDetected": "Multiple Repositories ({count})",
+  "@gitMultipleReposDetected": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
   }
 }
