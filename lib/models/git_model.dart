@@ -100,3 +100,68 @@ class GitCommandResult {
     );
   }
 }
+
+/// Git 提交记录与图表节点模型
+class GitCommit {
+  final String hash;
+  final String shortHash;
+  final List<String> parentHashes;
+  final String authorName;
+  final String authorEmail;
+  final DateTime authorDate;
+  final String relativeDate;
+  final String subject;
+  final List<String> refs; // e.g. ["HEAD -> main", "origin/main", "tag: v1.0.0"]
+
+  /// 线性图表拓扑布局字段
+  final int lane; // 列通道索引 (0, 1, 2...)
+  final List<int> activeLanes; // 经过当前行的活跃通道列表
+  final List<int> outgoingLanes; // 当前节点连接向父节点的通道列表
+
+  const GitCommit({
+    required this.hash,
+    required this.shortHash,
+    required this.parentHashes,
+    required this.authorName,
+    required this.authorEmail,
+    required this.authorDate,
+    required this.relativeDate,
+    required this.subject,
+    this.refs = const [],
+    this.lane = 0,
+    this.activeLanes = const [],
+    this.outgoingLanes = const [],
+  });
+
+  bool get isHead => refs.any((r) => r.startsWith('HEAD'));
+
+  GitCommit copyWith({
+    String? hash,
+    String? shortHash,
+    List<String>? parentHashes,
+    String? authorName,
+    String? authorEmail,
+    DateTime? authorDate,
+    String? relativeDate,
+    String? subject,
+    List<String>? refs,
+    int? lane,
+    List<int>? activeLanes,
+    List<int>? outgoingLanes,
+  }) {
+    return GitCommit(
+      hash: hash ?? this.hash,
+      shortHash: shortHash ?? this.shortHash,
+      parentHashes: parentHashes ?? this.parentHashes,
+      authorName: authorName ?? this.authorName,
+      authorEmail: authorEmail ?? this.authorEmail,
+      authorDate: authorDate ?? this.authorDate,
+      relativeDate: relativeDate ?? this.relativeDate,
+      subject: subject ?? this.subject,
+      refs: refs ?? this.refs,
+      lane: lane ?? this.lane,
+      activeLanes: activeLanes ?? this.activeLanes,
+      outgoingLanes: outgoingLanes ?? this.outgoingLanes,
+    );
+  }
+}

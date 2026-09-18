@@ -1,7 +1,9 @@
 import 'dart:io';
 import 'package:code_editor/l10n/app_localizations.dart';
+import 'package:code_editor/models/editor_tab_item.dart';
 import 'package:code_editor/models/project_history.dart';
 import 'package:code_editor/models/search_model.dart';
+import 'package:code_editor/providers/git_provider.dart';
 import 'package:code_editor/providers/project_provider.dart';
 import 'package:code_editor/providers/run_provider.dart';
 import 'package:code_editor/providers/search_provider.dart';
@@ -13,6 +15,7 @@ import 'package:code_editor/widgets/code_editor_drawer.dart';
 import 'package:code_editor/widgets/code_editor_widget.dart';
 import 'package:code_editor/widgets/search/search_panel_widget.dart';
 import 'package:flutter/material.dart';
+import 'package:re_editor/re_editor.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
 import 'package:provider/provider.dart';
@@ -28,6 +31,7 @@ void main() {
   late SettingsProvider settingsProvider;
   late RunProvider runProvider;
   late SearchProvider searchProvider;
+  late GitProvider gitProvider;
 
   setUp(() async {
     SharedPreferences.setMockInitialValues({});
@@ -42,6 +46,7 @@ void main() {
     settingsProvider = SettingsProvider();
     runProvider = RunProvider();
     searchProvider = SearchProvider()..bindRootPath(testProjectDir.path);
+    gitProvider = GitProvider();
 
     await projectProvider.switchProject(
       ProjectHistory(
@@ -197,6 +202,7 @@ void main() {
         ChangeNotifierProvider<SettingsProvider>.value(value: settingsProvider),
         ChangeNotifierProvider<RunProvider>.value(value: runProvider),
         ChangeNotifierProvider<SearchProvider>.value(value: searchProvider),
+        ChangeNotifierProvider<GitProvider>.value(value: gitProvider),
       ],
       child: MaterialApp(
         localizationsDelegates: AppLocalizations.localizationsDelegates,
@@ -396,6 +402,7 @@ void main() {
             ChangeNotifierProvider<SettingsProvider>.value(value: settingsProvider),
             ChangeNotifierProvider<RunProvider>.value(value: runProvider),
             ChangeNotifierProvider<SearchProvider>.value(value: searchProvider),
+            ChangeNotifierProvider<GitProvider>.value(value: gitProvider),
           ],
           child: const MaterialApp(
             localizationsDelegates: AppLocalizations.localizationsDelegates,
@@ -570,6 +577,7 @@ void main() {
             ChangeNotifierProvider<SettingsProvider>.value(value: settingsProvider),
             ChangeNotifierProvider<RunProvider>.value(value: runProvider),
             ChangeNotifierProvider<SearchProvider>.value(value: searchProvider),
+            ChangeNotifierProvider<GitProvider>.value(value: gitProvider),
           ],
           child: MaterialApp(
             localizationsDelegates: AppLocalizations.localizationsDelegates,
@@ -657,6 +665,76 @@ void main() {
       expect(searchProvider.displayedFilesLimit, equals(30));
       expect(mockFiles[1].isExpanded, isTrue);
       expect(searchProvider.scrollOffset, equals(150.0));
+    });
+
+    testWidgets('Editor focus and keyboard stability: focus is not lost or bounced during editing or search clear', (tester) async {
+      final mainPath = p.normalize(p.join(testProjectDir.path, 'lib', 'main.dart'));
+      final tabMain = EditorTabItem(
+        path: mainPath,
+        content: 'void main() {\n  print("hello");\n}\n',
+        originalContent: 'void main() {\n  print("hello");\n}\n',
+        isLoaded: true,
+        isModified: false,
+      );
+      tabProvider.setOpenTabsForTesting([tabMain], activePath: mainPath);
+
+      await tester.pumpWidget(
+        MultiProvider(
+          providers: [
+            ChangeNotifierProvider<ProjectProvider>.value(value: projectProvider),
+            ChangeNotifierProvider<TabProvider>.value(value: tabProvider),
+            ChangeNotifierProvider<SettingsProvider>.value(value: settingsProvider),
+            ChangeNotifierProvider<RunProvider>.value(value: runProvider),
+            ChangeNotifierProvider<SearchProvider>.value(value: searchProvider),
+          ],
+          child: MaterialApp(
+            localizationsDelegates: AppLocalizations.localizationsDelegates,
+            supportedLocales: AppLocalizations.supportedLocales,
+            locale: const Locale('zh'),
+            home: Scaffold(
+              body: CodeEditorWidget(
+                filePath: mainPath,
+                rootPath: testProjectDir.path,
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+      await tester.pump();
+
+      // Find CodeEditor focus node
+      final codeEditorFinder = find.byType(CodeEditor);
+      expect(codeEditorFinder, findsOneWidget);
+      final codeEditor = tester.widget<CodeEditor>(codeEditorFinder);
+      final focusNode = codeEditor.focusNode!;
+
+      // 1. Focus the editor (user taps editor to bring up soft keyboard)
+      focusNode.requestFocus();
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 50));
+      expect(focusNode.hasFocus, isTrue);
+      expect(focusNode.canRequestFocus, isTrue);
+
+      // 2. Perform search in text mode
+      searchProvider.setMode(SearchMode.text);
+      searchProvider.setQuery('void');
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 50));
+
+      // Focus should NOT be lost or disabled
+      expect(focusNode.hasFocus, isTrue);
+      expect(focusNode.canRequestFocus, isTrue);
+
+      // 3. Clear search query to empty (simulating user deleting search text)
+      searchProvider.setQuery('');
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 50));
+
+      // Focus must remain rock solid! canRequestFocus must NEVER be set to false!
+      expect(focusNode.hasFocus, isTrue);
+      expect(focusNode.canRequestFocus, isTrue);
     });
   });
 }

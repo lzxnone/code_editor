@@ -1,6 +1,7 @@
 import 'package:code_editor/l10n/app_localizations.dart';
 import 'package:code_editor/models/editor_tab_item.dart';
 import 'package:code_editor/models/file_item.dart';
+import 'package:code_editor/providers/git_provider.dart';
 import 'package:code_editor/providers/project_provider.dart';
 import 'package:code_editor/services/project_history_service.dart';
 import 'package:code_editor/services/file_service.dart';
@@ -72,6 +73,12 @@ class TabProvider extends ChangeNotifier {
     projectProvider.onProjectChanged = handleProjectChanged;
     projectProvider.onExternalFileModified = handleExternalFileModified;
     projectProvider.onExternalFileDeleted = handleExternalFileDeleted;
+  }
+
+  GitProvider? _gitProvider;
+
+  void bindGitProvider(GitProvider gitProvider) {
+    _gitProvider = gitProvider;
   }
 
   bool isFileSelected(String path) {
@@ -451,6 +458,7 @@ class TabProvider extends ChangeNotifier {
           tab.originalContent = tab.content;
           tab.isModified = false;
           _isModified = false;
+          _gitProvider?.refresh();
           notifyListeners();
         }
         return ok;
@@ -462,6 +470,7 @@ class TabProvider extends ChangeNotifier {
       if (_activeFilePath != null && p.equals(tab.path, _activeFilePath!)) {
         _isModified = false;
       }
+      _gitProvider?.refresh();
       notifyListeners();
       return true;
     } catch (e) {

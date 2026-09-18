@@ -1101,5 +1101,231 @@
         "type": "String"
       }
     }
-  }
+  },
+  "gitNotInstalled": "未检测到 Git",
+  "gitNotInstalledDesc": "系统中未检测到 Git 命令行工具。请在系统终端或 Linux 容器中安装 git（如执行 apt update && apt install -y git）。",
+  "gitNeedInstall": "需要安装 Git",
+  "gitInstallAction": "安装 Git",
+  "gitInstallingProgress": "正在安装 Git...",
+  "gitInstallSuccess": "Git 安装成功",
+  "gitInstallFailed": "Git 安装失败: {error}",
+  "@gitInstallFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "gitNoRepoFound": "当前工程尚未初始化为 Git 仓库",
+  "gitNoRepoDesc": "初始化本地 Git 仓库后，即可使用版本控制、分支管理及变更追踪功能。",
+  "gitInitRepo": "初始化 Git 仓库",
+  "gitInitializing": "正在初始化 Git 仓库...",
+  "gitInitSuccess": "Git 仓库初始化成功",
+  "gitInitFailed": "Git 仓库初始化失败: {error}",
+  "@gitInitFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "gitRepository": "仓库",
+  "gitCurrentBranch": "当前分支: {branch}",
+  "@gitCurrentBranch": {
+    "placeholders": {
+      "branch": {
+        "type": "String"
+      }
+    }
+  },
+  "gitSwitchRepo": "切换仓库",
+  "gitRefresh": "刷新 Git 状态",
+  "gitChanges": "更改",
+  "gitStagedChanges": "暂存的更改",
+  "gitNoChanges": "暂无任何文件更改",
+  "gitStatusUntracked": "未跟踪",
+  "gitStatusModified": "已修改",
+  "gitStatusAdded": "新增",
+  "gitStatusDeleted": "已删除",
+  "gitStatusRenamed": "重命名",
+  "gitStatusConflict": "冲突",
+  "gitMultipleReposDetected": "检测到多个 Git 仓库 ({count})",
+  "@gitMultipleReposDetected": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "gitStageChange": "暂存更改",
+  "gitUnstageChange": "取消暂存更改",
+  "gitStageAll": "全部暂存更改",
+  "gitUnstageAll": "全部取消暂存更改",
+  "gitStageSuccess": "已暂存",
+  "gitUnstageSuccess": "已取消暂存",
+  "gitCommit": "提交",
+  "gitCommitMessageHint": "提交信息",
+  "gitCommitSuccess": "提交成功",
+  "gitCommitFailed": "提交失败: {error}",
+  "@gitCommitFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "gitDiscardChange": "放弃更改",
+  "gitDiscardConfirm": "放弃更改？",
+  "gitDiscardConfirmDesc": "确定要放弃对 \"{fileName}\" 的所有未暂存更改吗？此操作无法撤销。",
+  "@gitDiscardConfirmDesc": {
+    "placeholders": {
+      "fileName": {
+        "type": "String"
+      }
+    }
+  },
+  "gitNoCommitMessage": "请输入提交信息",
+  "gitNoStagedChangesToCommit": "暂存区没有已暂存的更改，是否全部暂存并直接提交？",
+  "gitStageAllAndCommit": "全部暂存并提交",
+  "gitGraphTitle": "图表",
+  "gitNoCommits": "暂无提交历史",
+  "gitCommitDetails": "提交详情",
+  "gitCommitAuthor": "作者",
+  "gitCommitDate": "提交日期",
+  "gitCommitHash": "提交哈希",
+  "gitCopyHash": "复制哈希",
+  "gitHashCopied": "已复制提交哈希到剪贴板",
+  "gitCommitParent": "父提交",
+  "gitDiscardAll": "全部放弃更改",
+  "gitDiscardAllChangesTitle": "放弃所有未暂存更改？",
+  "gitDiscardAllChangesConfirm": "确定要放弃所有未暂存更改吗？所有已修改的文件将恢复，未跟踪的新文件将被清除，此操作无法撤销。",
+  "gitDiscardAllStagedTitle": "放弃所有已暂存更改？",
+  "gitDiscardAllStagedConfirm": "确定要放弃所有已暂存的更改吗？所选文件的修改将被彻底恢复，此操作无法撤销。",
+  "gitBranches": "分支",
+  "gitCreateBranch": "创建新分支",
+  "gitBranchNameHint": "输入新分支名称",
+  "gitSwitchBranchSuccess": "已切换至分支 {branch}",
+  "@gitSwitchBranchSuccess": {
+    "placeholders": {
+      "branch": {
+        "type": "String"
+      }
+    }
+  },
+  "gitCreateBranchSuccess": "已创建并切换至新分支 {branch}",
+  "@gitCreateBranchSuccess": {
+    "placeholders": {
+      "branch": {
+        "type": "String"
+      }
+    }
+  },
+  "gitDeleteBranch": "删除分支",
+  "gitDeleteBranchConfirm": "确定要删除本地分支 {branch} 吗？",
+  "@gitDeleteBranchConfirm": {
+    "placeholders": {
+      "branch": {
+        "type": "String"
+      }
+    }
+  },
+  "gitDeleteBranchSuccess": "已删除分支 {branch}",
+  "@gitDeleteBranchSuccess": {
+    "placeholders": {
+      "branch": {
+        "type": "String"
+      }
+    }
+  },
+  "gitCannotDeleteCurrentBranch": "无法删除当前所在分支",
+  "gitUndoLastCommit": "撤销上次提交",
+  "gitUndoLastCommitConfirm": "确定要撤销上一次提交吗？代码更改将保留在暂存区。",
+  "gitUndoLastCommitSuccess": "已撤销上一次提交",
+  "gitStash": "贮藏",
+  "gitStashChanges": "贮藏当前更改",
+  "gitStashChangesSuccess": "已将当前更改暂存至贮藏栈",
+  "gitStashPop": "恢复最近贮藏 (Pop)",
+  "gitStashPopSuccess": "已恢复最近的贮藏更改",
+  "gitNoStashFound": "当前没有可恢复的贮藏记录",
+  "gitAddToGitignore": "添加到 .gitignore",
+  "gitAddedToGitignore": "已添加至 .gitignore",
+  "gitMoreActions": "更多操作",
+  "gitOpenFile": "打开文件",
+  "gitTags": "标签",
+  "gitCreateTag": "创建新标签",
+  "gitTagNameHint": "输入标签名称 (例如 v1.0.0)",
+  "gitTagMessageHint": "标签附注信息 (可选)",
+  "gitDeleteTag": "删除标签",
+  "gitDeleteTagConfirm": "确定要删除本地标签 {tag} 吗？",
+  "@gitDeleteTagConfirm": {
+    "placeholders": {
+      "tag": {
+        "type": "String"
+      }
+    }
+  },
+  "gitCreateTagSuccess": "已创建标签 {tag}",
+  "@gitCreateTagSuccess": {
+    "placeholders": {
+      "tag": {
+        "type": "String"
+      }
+    }
+  },
+  "gitDeleteTagSuccess": "已删除标签 {tag}",
+  "@gitDeleteTagSuccess": {
+    "placeholders": {
+      "tag": {
+        "type": "String"
+      }
+    }
+  },
+  "gitSwitchTagSuccess": "已检出至标签 {tag}",
+  "@gitSwitchTagSuccess": {
+    "placeholders": {
+      "tag": {
+        "type": "String"
+      }
+    }
+  },
+  "gitNoTags": "暂无标签",
+  "gitSelectBranchToDelete": "选择要删除的分支",
+  "gitSelectTagToDelete": "选择要删除的标签",
+  "gitSearchBranches": "搜索分支...",
+  "gitSearchTags": "搜索标签...",
+  "gitNoBranches": "暂无分支",
+  "gitDiff": "差异对比",
+  "gitDiffOriginal": "原始版本",
+  "gitDiffModified": "修改版本",
+  "gitDiffSplitView": "双屏分栏",
+  "gitDiffUnifiedView": "单屏内联",
+  "gitDiffPrevChange": "上一处更改",
+  "gitDiffNextChange": "下一处更改",
+  "gitDiffBinaryOrEmpty": "二进制或不支持比较的文件",
+  "gitDiffNoChanges": "该文件与基准版本完全一致，暂无差异",
+  "gitDiffStageTooltip": "暂存此文件更改",
+  "gitDiffUnstageTooltip": "取消暂存此文件",
+  "gitDiffDiscardTooltip": "放弃此文件更改",
+  "gitExpandAll": "全部展开",
+  "gitLoadMoreCommits": "加载更多提交 ({count})",
+  "@gitLoadMoreCommits": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "gitLoadedCommitsCount": "已显示 {loaded} / {total} 个提交",
+  "@gitLoadedCommitsCount": {
+    "placeholders": {
+      "loaded": { "type": "int" },
+      "total": { "type": "int" }
+    }
+  },
+  "gitAllCommitsLoaded": "已显示全部 {count} 个提交",
+  "@gitAllCommitsLoaded": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "gitLoadingMoreCommits": "正在加载更多提交...",
+  "searchExpandAllMatchesInFile": "展开全部匹配项"
 }

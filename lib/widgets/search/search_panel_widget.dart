@@ -459,6 +459,15 @@ class _SearchPanelWidgetState extends State<SearchPanelWidget> {
                       maxLines: 1,
                     ),
                   ),
+                  if (options.mode == SearchMode.fileName && result.fileResults.isNotEmpty) ...[
+                    IconButton(
+                      visualDensity: VisualDensity.compact,
+                      iconSize: 18,
+                      tooltip: l10n.expandAll,
+                      icon: const Icon(Icons.unfold_more),
+                      onPressed: () => searchProvider.loadAllFiles(),
+                    ),
+                  ],
                   if (options.mode == SearchMode.text && result.fileResults.isNotEmpty) ...[
                     IconButton(
                       visualDensity: VisualDensity.compact,
@@ -781,6 +790,44 @@ class _SearchPanelWidgetState extends State<SearchPanelWidget> {
                     final visibleFiles = allFiles.take(visibleFilesCount).toList();
                     final hasMoreFiles = allFiles.length > visibleFilesCount;
                     final remainingFilesCount = allFiles.length - visibleFilesCount;
+                    final isFileNameMode = options.mode == SearchMode.fileName;
+
+                    // 将搜索树状结构扁平化为一维条目列表，供单一 ListView.builder 进行真正的行级虚拟化
+                    final List<_SearchRowItem> flattenedItems = [];
+                    if (isFileNameMode) {
+                      for (final file in visibleFiles) {
+                        flattenedItems.add(_SearchFileNameRowItem(file));
+                      }
+                    } else {
+                      for (final file in visibleFiles) {
+                        flattenedItems.add(_SearchFileHeaderRowItem(file));
+                        if (file.isExpanded) {
+                          final currentMatchesLimit = searchProvider.getFileMatchesLimit(
+                            file.filePath,
+                            SearchPanelWidget.defaultFileMatchesPageSize,
+                          );
+                          final allMatches = file.matches;
+                          final visibleMatchesCount = allMatches.length < currentMatchesLimit
+                              ? allMatches.length
+                              : currentMatchesLimit;
+                          for (var i = 0; i < visibleMatchesCount; i++) {
+                            flattenedItems.add(_SearchMatchLineRowItem(file, allMatches[i]));
+                          }
+                          if (allMatches.length > visibleMatchesCount) {
+                            flattenedItems.add(
+                              _SearchLoadMoreMatchesRowItem(
+                                file,
+                                allMatches.length - visibleMatchesCount,
+                              ),
+                            );
+                          }
+                        }
+                      }
+                    }
+
+                    if (hasMoreFiles) {
+                      flattenedItems.add(_SearchLoadMoreFilesRowItem(remainingFilesCount));
+                    }
 
                     return MediaQuery.removePadding(
                       context: context,
@@ -789,377 +836,55 @@ class _SearchPanelWidgetState extends State<SearchPanelWidget> {
                         key: const PageStorageKey('project_search_results_list'),
                         controller: _scrollController,
                         padding: EdgeInsets.zero,
-                        itemCount: visibleFiles.length + (hasMoreFiles ? 1 : 0),
-                        itemBuilder: (context, fileIndex) {
-                          if (fileIndex == visibleFiles.length) {
-                            return _buildLoadMoreFilesTile(
-                              theme,
-                              l10n,
-                              remainingFilesCount,
-                              searchProvider,
-                            );
-                          }
-
-                          final fileResult = visibleFiles[fileIndex];
-                          final isExpanded = fileResult.isExpanded;
-                          final dirName = p.dirname(fileResult.relativePath);
-                          final hasDir = dirName != '.' && dirName.isNotEmpty;
-
-                          final currentMatchesLimit = searchProvider.getFileMatchesLimit(
-                            fileResult.filePath,
-                            SearchPanelWidget.defaultFileMatchesPageSize,
-                          );
-                          final allMatches = fileResult.matches;
-                          final visibleMatchesCount = allMatches.length < currentMatchesLimit
-                              ? allMatches.length
-                              : currentMatchesLimit;
-                          final visibleMatches = allMatches.take(visibleMatchesCount).toList();
-                          final hasMoreMatches = allMatches.length > visibleMatchesCount;
-                          final remainingMatchesCount = allMatches.length - visibleMatchesCount;
-
-                          final isFileNameMode = options.mode == SearchMode.fileName;
-
-                          if (isFileNameMode) {
-                            // 文件名/文件夹名匹配模式：普通扁平 item，不折叠，高亮直接绘制在主标题文件名上
-                            final match = fileResult.matches.isNotEmpty ? fileResult.matches.first : null;
-                            final iconData = FileIconUtils.getIcon(
-                              name: fileResult.fileName,
-                              isDirectory: fileResult.isDirectory,
-                            );
-
-                            return InkWell(
-                              onTap: () async {
-                                if (fileResult.isDirectory) {
-                                  // 点击文件夹搜索项：展开并跳转到目录
-                                  final projectProvider = context.read<ProjectProvider?>();
-                                  if (projectProvider != null) {
-                                    final cleanRoot = projectProvider.rootPath;
-                                    if (cleanRoot != null) {
-                                      final updatedOpenPaths = List<String>.from(projectProvider.openDirectoryPaths);
-                                      if (!updatedOpenPaths.contains(fileResult.filePath)) {
-                                        updatedOpenPaths.add(fileResult.filePath);
-                                      }
-                                      await projectProvider.toggleDirectory(
-                                        FileItem(
-                                          path: fileResult.filePath,
-                                          name: fileResult.fileName,
-                                          relativePath: fileResult.relativePath,
-                                          isDirectory: true,
-                                        ),
-                                        true,
-                                      );
-                                    }
-                                  }
-                                } else {
-                                  // 点击文件搜索项：打开并进入编辑该文件
-                                  if (tabProvider != null) {
-                                    await tabProvider.openFile(fileResult.filePath);
-                                  }
-                                }
-                                if (context.mounted) {
-                                  Navigator.of(context).maybePop();
-                                }
-                              },
-                              child: Padding(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 10.0,
-                                  vertical: 6.0,
-                                ),
-                                child: Row(
-                                  children: [
-                                    Icon(
-                                      iconData,
-                                      size: 18,
-                                      color: fileResult.isDirectory
-                                          ? theme.colorScheme.primary
-                                          : theme.colorScheme.onSurfaceVariant,
-                                    ),
-                                    const SizedBox(width: 8),
-                                    Expanded(
-                                      child: Column(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: [
-                                          // 主标题：文件名带关键词高亮
-                                          _buildFileNameHighlightedTitle(
-                                            fileResult.fileName,
-                                            match,
-                                            theme,
-                                          ),
-                                          if (hasDir)
-                                            Padding(
-                                              padding: const EdgeInsets.only(top: 2.0),
-                                              child: Text(
-                                                dirName,
-                                                style: TextStyle(
-                                                  fontSize: 11,
-                                                  color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.7),
-                                                ),
-                                                overflow: TextOverflow.ellipsis,
-                                                maxLines: 1,
-                                              ),
-                                            ),
-                                        ],
-                                      ),
-                                    ),
-                                  ],
-                                ),
+                        itemCount: flattenedItems.length,
+                        itemBuilder: (context, index) {
+                          final item = flattenedItems[index];
+                          return switch (item) {
+                            _SearchFileNameRowItem(:final file) => _buildFileNameTile(
+                                context,
+                                theme,
+                                file,
+                                tabProvider,
                               ),
-                            );
-                          }
-
-                          // 文本内容匹配模式：可折叠树形结构展示
-                          final iconData = FileIconUtils.getIcon(
-                            name: fileResult.fileName,
-                            isDirectory: fileResult.isDirectory,
-                          );
-
-                          return Column(
-                            crossAxisAlignment: CrossAxisAlignment.stretch,
-                            children: [
-                              // 文件分组条目
-                              InkWell(
-                                onTap: () => searchProvider.toggleFileExpanded(fileResult),
-                                child: Padding(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 10.0,
-                                    vertical: 6.0,
-                                  ),
-                                  child: Row(
-                                    children: [
-                                      Icon(
-                                        isExpanded
-                                            ? Icons.keyboard_arrow_down
-                                            : Icons.keyboard_arrow_right,
-                                        size: 18,
-                                        color: theme.colorScheme.onSurfaceVariant,
-                                      ),
-                                      const SizedBox(width: 4),
-                                      Icon(
-                                        iconData,
-                                        size: 16,
-                                        color: theme.colorScheme.primary,
-                                      ),
-                                      const SizedBox(width: 8),
-                                      // 主标题文件名，副标题相对路径（一上一下）
-                                      Expanded(
-                                        child: Column(
-                                          crossAxisAlignment: CrossAxisAlignment.start,
-                                          mainAxisSize: MainAxisSize.min,
-                                          children: [
-                                            Text(
-                                              fileResult.fileName,
-                                              style: const TextStyle(
-                                                fontWeight: FontWeight.w600,
-                                                fontSize: 13,
-                                              ),
-                                              overflow: TextOverflow.ellipsis,
-                                              maxLines: 1,
-                                            ),
-                                            if (hasDir)
-                                              Padding(
-                                                padding: const EdgeInsets.only(top: 2.0),
-                                                child: Text(
-                                                  dirName,
-                                                  style: TextStyle(
-                                                    fontSize: 11,
-                                                    color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.7),
-                                                  ),
-                                                  overflow: TextOverflow.ellipsis,
-                                                  maxLines: 1,
-                                                ),
-                                              ),
-                                          ],
-                                        ),
-                                      ),
-                                      const SizedBox(width: 6),
-
-                                      // 匹配次数 Badge
-                                      Container(
-                                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                        decoration: BoxDecoration(
-                                          color: theme.colorScheme.surfaceContainerHighest,
-                                          borderRadius: BorderRadius.circular(10),
-                                        ),
-                                        child: Text(
-                                          '${fileResult.matchCount}',
-                                          style: TextStyle(
-                                            fontSize: 10.5,
-                                            fontWeight: FontWeight.bold,
-                                            color: theme.colorScheme.onSurfaceVariant,
-                                          ),
-                                        ),
-                                      ),
-
-                                      // 文件级全部替换按钮：仅在展开替换输入框时展示
-                                      if (options.mode == SearchMode.text && options.isReplaceExpanded)
-                                        IconButton(
-                                          visualDensity: VisualDensity.compact,
-                                          style: IconButton.styleFrom(
-                                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                                            minimumSize: Size.zero,
-                                            padding: const EdgeInsets.all(4),
-                                          ),
-                                          constraints: const BoxConstraints(
-                                            minWidth: 24,
-                                            minHeight: 24,
-                                          ),
-                                          iconSize: 16,
-                                          icon: const Icon(Icons.find_replace),
-                                          tooltip: l10n.replaceAllInFile,
-                                          onPressed: tabProvider == null
-                                              ? null
-                                              : () async {
-                                                  final confirmed = await DialogUtils.showConfirmDialog(
-                                                    context,
-                                                    title: l10n.confirmReplaceFileTitle,
-                                                    message: l10n.confirmReplaceFileMessage(
-                                                      fileResult.fileName,
-                                                      fileResult.matchCount,
-                                                      options.replaceText,
-                                                    ),
-                                                    confirmText: l10n.replaceSingleMatch,
-                                                  );
-                                                  if (!confirmed || !context.mounted) return;
-
-                                                  final count = await searchProvider.replaceFileMatches(
-                                                    file: fileResult,
-                                                    tabProvider: tabProvider,
-                                                  );
-                                                  if (context.mounted && count > 0) {
-                                                    DialogUtils.showSuccessToast(
-                                                      context,
-                                                      l10n.replaceSuccess(count),
-                                                    );
-                                                  }
-                                                },
-                                        ),
-                                    ],
-                                  ),
-                                ),
+                            _SearchFileHeaderRowItem(:final file) => _buildFileHeaderTile(
+                                context,
+                                theme,
+                                l10n,
+                                file,
+                                searchProvider,
+                                tabProvider,
+                                options,
                               ),
-
-                              // 展开展示具体匹配行（按需分页加载）
-                              if (isExpanded) ...[
-                                ...visibleMatches.map((match) {
-                                  return InkWell(
-                                    onTap: () async {
-                                      if (tabProvider != null) {
-                                        // 1. 打开文件并切换 tab
-                                        await tabProvider.openFile(fileResult.filePath);
-                                        // 2. 发送行定位与选区高亮事件
-                                        tabProvider.navigateTo(
-                                          filePath: fileResult.filePath,
-                                          line: match.lineNumber - 1,
-                                          column: match.matchStart,
-                                          length: match.matchEnd - match.matchStart,
-                                        );
-                                      }
-                                      // 3. 移动端抽屉收起（保留宽屏适配）
-                                      if (context.mounted) {
-                                        Navigator.of(context).maybePop();
-                                      }
-                                    },
-                                    child: Padding(
-                                      padding: const EdgeInsets.fromLTRB(36.0, 4.0, 10.0, 4.0),
-                                      child: Row(
-                                        children: [
-                                          // 行号
-                                          ConstrainedBox(
-                                            constraints: const BoxConstraints(minWidth: 28),
-                                            child: Text(
-                                              '${match.lineNumber}:',
-                                              style: TextStyle(
-                                                fontFamily: 'JetBrains Mono',
-                                                fontSize: 11.5,
-                                                color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.6),
-                                              ),
-                                            ),
-                                          ),
-                                          const SizedBox(width: 4),
-
-                                          // 代码文本摘要（黄色高亮匹配部分）
-                                          Expanded(
-                                            child: _buildHighlightedSnippet(match, theme),
-                                          ),
-
-                                          // 行单项替换按钮：仅在展开替换输入框时展示
-                                          if (options.mode == SearchMode.text && options.isReplaceExpanded)
-                                            IconButton(
-                                              visualDensity: VisualDensity.compact,
-                                              style: IconButton.styleFrom(
-                                                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                                                minimumSize: Size.zero,
-                                                padding: const EdgeInsets.all(3),
-                                              ),
-                                              constraints: const BoxConstraints(
-                                                minWidth: 22,
-                                                minHeight: 22,
-                                              ),
-                                              iconSize: 15,
-                                              icon: const Icon(Icons.redo),
-                                              tooltip: l10n.replaceSingleMatch,
-                                              onPressed: tabProvider == null
-                                              ? null
-                                              : () async {
-                                                  final success = await searchProvider.replaceSingleMatch(
-                                                    file: fileResult,
-                                                    match: match,
-                                                    tabProvider: tabProvider,
-                                                  );
-                                                  if (context.mounted && success) {
-                                                    DialogUtils.showSuccessToast(
-                                                      context,
-                                                      l10n.replaceSuccess(1),
-                                                    );
-                                                  }
-                                                },
-                                            ),
-                                        ],
-                                      ),
-                                    ),
-                                  );
-                                }),
-
-                                // 文件内更多匹配项加载按钮
-                                if (hasMoreMatches)
-                                  InkWell(
-                                    onTap: () {
-                                      searchProvider.loadMoreMatches(
-                                        fileResult.filePath,
-                                        SearchPanelWidget.defaultFileMatchesPageSize,
-                                        SearchPanelWidget.defaultFileMatchesPageSize,
-                                      );
-                                    },
-                                    child: Padding(
-                                      padding: const EdgeInsets.fromLTRB(36.0, 6.0, 10.0, 8.0),
-                                      child: Row(
-                                        children: [
-                                          Icon(
-                                            Icons.more_horiz,
-                                            size: 16,
-                                            color: theme.colorScheme.primary,
-                                          ),
-                                          const SizedBox(width: 6),
-                                          Expanded(
-                                            child: Text(
-                                              l10n.searchLoadMoreMatches(remainingMatchesCount),
-                                              style: TextStyle(
-                                                fontSize: 11.5,
-                                                color: theme.colorScheme.primary,
-                                                fontWeight: FontWeight.w500,
-                                              ),
-                                              overflow: TextOverflow.ellipsis,
-                                              maxLines: 1,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                  ),
-                              ],
-                            ],
-                          );
+                            _SearchMatchLineRowItem(:final file, :final match) =>
+                              _buildMatchLineTile(
+                                context,
+                                theme,
+                                l10n,
+                                file,
+                                match,
+                                searchProvider,
+                                tabProvider,
+                                options,
+                              ),
+                            _SearchLoadMoreMatchesRowItem(
+                              :final file,
+                              :final remainingMatchesCount
+                            ) =>
+                              _buildLoadMoreMatchesTile(
+                                theme,
+                                l10n,
+                                file,
+                                remainingMatchesCount,
+                                searchProvider,
+                              ),
+                            _SearchLoadMoreFilesRowItem(:final remainingFilesCount) =>
+                              _buildLoadMoreFilesTile(
+                                theme,
+                                l10n,
+                                remainingFilesCount,
+                                searchProvider,
+                              ),
+                          };
                         },
                       ),
                     );
@@ -1206,4 +931,426 @@ class _SearchPanelWidgetState extends State<SearchPanelWidget> {
       ),
     );
   }
+
+  /// 构建文件名/目录名匹配模式的单项条目
+  Widget _buildFileNameTile(
+    BuildContext context,
+    ThemeData theme,
+    FileSearchResult fileResult,
+    TabProvider? tabProvider,
+  ) {
+    final match = fileResult.matches.isNotEmpty ? fileResult.matches.first : null;
+    final iconData = FileIconUtils.getIcon(
+      name: fileResult.fileName,
+      isDirectory: fileResult.isDirectory,
+    );
+    final dirName = p.dirname(fileResult.relativePath);
+    final hasDir = dirName != '.' && dirName.isNotEmpty;
+
+    return InkWell(
+      onTap: () async {
+        if (fileResult.isDirectory) {
+          final projectProvider = context.read<ProjectProvider?>();
+          if (projectProvider != null) {
+            final cleanRoot = projectProvider.rootPath;
+            if (cleanRoot != null) {
+              final updatedOpenPaths = List<String>.from(projectProvider.openDirectoryPaths);
+              if (!updatedOpenPaths.contains(fileResult.filePath)) {
+                updatedOpenPaths.add(fileResult.filePath);
+              }
+              await projectProvider.toggleDirectory(
+                FileItem(
+                  path: fileResult.filePath,
+                  name: fileResult.fileName,
+                  relativePath: fileResult.relativePath,
+                  isDirectory: true,
+                ),
+                true,
+              );
+            }
+          }
+        } else {
+          if (tabProvider != null) {
+            await tabProvider.openFile(fileResult.filePath);
+          }
+        }
+        if (context.mounted) {
+          Navigator.of(context).maybePop();
+        }
+      },
+      child: Padding(
+        padding: const EdgeInsets.symmetric(
+          horizontal: 10.0,
+          vertical: 6.0,
+        ),
+        child: Row(
+          children: [
+            Icon(
+              iconData,
+              size: 18,
+              color: fileResult.isDirectory
+                  ? theme.colorScheme.primary
+                  : theme.colorScheme.onSurfaceVariant,
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  _buildFileNameHighlightedTitle(
+                    fileResult.fileName,
+                    match,
+                    theme,
+                  ),
+                  if (hasDir)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 2.0),
+                      child: Text(
+                        dirName,
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.7),
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                        maxLines: 1,
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// 构建文本匹配模式下的文件分组头部条目
+  Widget _buildFileHeaderTile(
+    BuildContext context,
+    ThemeData theme,
+    AppLocalizations l10n,
+    FileSearchResult fileResult,
+    SearchProvider searchProvider,
+    TabProvider? tabProvider,
+    SearchOptions options,
+  ) {
+    final isExpanded = fileResult.isExpanded;
+    final dirName = p.dirname(fileResult.relativePath);
+    final hasDir = dirName != '.' && dirName.isNotEmpty;
+    final iconData = FileIconUtils.getIcon(
+      name: fileResult.fileName,
+      isDirectory: fileResult.isDirectory,
+    );
+
+    return InkWell(
+      onTap: () => searchProvider.toggleFileExpanded(fileResult),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(
+          horizontal: 10.0,
+          vertical: 6.0,
+        ),
+        child: Row(
+          children: [
+            Icon(
+              isExpanded
+                  ? Icons.keyboard_arrow_down
+                  : Icons.keyboard_arrow_right,
+              size: 18,
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+            const SizedBox(width: 4),
+            Icon(
+              iconData,
+              size: 16,
+              color: theme.colorScheme.primary,
+            ),
+            const SizedBox(width: 8),
+            // 主标题文件名，副标题相对路径（一上一下）
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    fileResult.fileName,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w600,
+                      fontSize: 13,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                    maxLines: 1,
+                  ),
+                  if (hasDir)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 2.0),
+                      child: Text(
+                        dirName,
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.7),
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                        maxLines: 1,
+                      ),
+                    ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 6),
+
+            // 匹配次数 Badge
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+              decoration: BoxDecoration(
+                color: theme.colorScheme.surfaceContainerHighest,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Text(
+                '${fileResult.matchCount}',
+                style: TextStyle(
+                  fontSize: 10.5,
+                  fontWeight: FontWeight.bold,
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+              ),
+            ),
+
+            // 该文件折叠项全部展开按钮：一键展开并展示该文件内所有匹配行
+            IconButton(
+              visualDensity: VisualDensity.compact,
+              style: IconButton.styleFrom(
+                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                minimumSize: Size.zero,
+                padding: const EdgeInsets.all(4),
+              ),
+              constraints: const BoxConstraints(
+                minWidth: 24,
+                minHeight: 24,
+              ),
+              iconSize: 16,
+              icon: const Icon(Icons.unfold_more_rounded),
+              tooltip: l10n.searchExpandAllMatchesInFile,
+              onPressed: () {
+                searchProvider.expandAndLoadAllMatchesForFile(fileResult);
+              },
+            ),
+
+            // 文件级全部替换按钮：仅在展开替换输入框时展示
+            if (options.mode == SearchMode.text && options.isReplaceExpanded)
+              IconButton(
+                visualDensity: VisualDensity.compact,
+                style: IconButton.styleFrom(
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  minimumSize: Size.zero,
+                  padding: const EdgeInsets.all(4),
+                ),
+                constraints: const BoxConstraints(
+                  minWidth: 24,
+                  minHeight: 24,
+                ),
+                iconSize: 16,
+                icon: const Icon(Icons.find_replace),
+                tooltip: l10n.replaceAllInFile,
+                onPressed: tabProvider == null
+                    ? null
+                    : () async {
+                        final confirmed = await DialogUtils.showConfirmDialog(
+                          context,
+                          title: l10n.confirmReplaceFileTitle,
+                          message: l10n.confirmReplaceFileMessage(
+                            fileResult.fileName,
+                            fileResult.matchCount,
+                            options.replaceText,
+                          ),
+                          confirmText: l10n.replaceSingleMatch,
+                        );
+                        if (!confirmed || !context.mounted) return;
+
+                        final count = await searchProvider.replaceFileMatches(
+                          file: fileResult,
+                          tabProvider: tabProvider,
+                        );
+                        if (context.mounted && count > 0) {
+                          DialogUtils.showSuccessToast(
+                            context,
+                            l10n.replaceSuccess(count),
+                          );
+                        }
+                      },
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// 构建具体代码匹配行条目
+  Widget _buildMatchLineTile(
+    BuildContext context,
+    ThemeData theme,
+    AppLocalizations l10n,
+    FileSearchResult fileResult,
+    LineMatch match,
+    SearchProvider searchProvider,
+    TabProvider? tabProvider,
+    SearchOptions options,
+  ) {
+    return InkWell(
+      onTap: () async {
+        if (tabProvider != null) {
+          // 1. 打开文件并切换 tab
+          await tabProvider.openFile(fileResult.filePath);
+          // 2. 发送行定位与选区高亮事件
+          tabProvider.navigateTo(
+            filePath: fileResult.filePath,
+            line: match.lineNumber - 1,
+            column: match.matchStart,
+            length: match.matchEnd - match.matchStart,
+          );
+        }
+        // 3. 移动端抽屉收起（保留宽屏适配）
+        if (context.mounted) {
+          Navigator.of(context).maybePop();
+        }
+      },
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(36.0, 4.0, 10.0, 4.0),
+        child: Row(
+          children: [
+            // 行号
+            ConstrainedBox(
+              constraints: const BoxConstraints(minWidth: 28),
+              child: Text(
+                '${match.lineNumber}:',
+                style: TextStyle(
+                  fontFamily: 'JetBrains Mono',
+                  fontSize: 11.5,
+                  color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.6),
+                ),
+              ),
+            ),
+            const SizedBox(width: 4),
+
+            // 代码文本摘要（黄色高亮匹配部分）
+            Expanded(
+              child: _buildHighlightedSnippet(match, theme),
+            ),
+
+            // 行单项替换按钮：仅在展开替换输入框时展示
+            if (options.mode == SearchMode.text && options.isReplaceExpanded)
+              IconButton(
+                visualDensity: VisualDensity.compact,
+                style: IconButton.styleFrom(
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  minimumSize: Size.zero,
+                  padding: const EdgeInsets.all(3),
+                ),
+                constraints: const BoxConstraints(
+                  minWidth: 22,
+                  minHeight: 22,
+                ),
+                iconSize: 15,
+                icon: const Icon(Icons.redo),
+                tooltip: l10n.replaceSingleMatch,
+                onPressed: tabProvider == null
+                    ? null
+                    : () async {
+                        final success = await searchProvider.replaceSingleMatch(
+                          file: fileResult,
+                          match: match,
+                          tabProvider: tabProvider,
+                        );
+                        if (context.mounted && success) {
+                          DialogUtils.showSuccessToast(
+                            context,
+                            l10n.replaceSuccess(1),
+                          );
+                        }
+                      },
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// 构建文件内更多匹配项加载按钮条目
+  Widget _buildLoadMoreMatchesTile(
+    ThemeData theme,
+    AppLocalizations l10n,
+    FileSearchResult fileResult,
+    int remainingMatchesCount,
+    SearchProvider searchProvider,
+  ) {
+    return InkWell(
+      onTap: () {
+        searchProvider.loadMoreMatches(
+          fileResult.filePath,
+          SearchPanelWidget.defaultFileMatchesPageSize,
+          SearchPanelWidget.defaultFileMatchesPageSize,
+        );
+      },
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(36.0, 6.0, 10.0, 8.0),
+        child: Row(
+          children: [
+            Icon(
+              Icons.more_horiz,
+              size: 16,
+              color: theme.colorScheme.primary,
+            ),
+            const SizedBox(width: 6),
+            Expanded(
+              child: Text(
+                l10n.searchLoadMoreMatches(remainingMatchesCount),
+                style: TextStyle(
+                  fontSize: 11.5,
+                  color: theme.colorScheme.primary,
+                  fontWeight: FontWeight.w500,
+                ),
+                overflow: TextOverflow.ellipsis,
+                maxLines: 1,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// 扁平化虚拟条目抽象基类
+sealed class _SearchRowItem {}
+
+/// 文件名检索模式条目
+class _SearchFileNameRowItem extends _SearchRowItem {
+  final FileSearchResult file;
+  _SearchFileNameRowItem(this.file);
+}
+
+/// 文本内容检索模式下的文件分组头部条目
+class _SearchFileHeaderRowItem extends _SearchRowItem {
+  final FileSearchResult file;
+  _SearchFileHeaderRowItem(this.file);
+}
+
+/// 文本内容检索模式下的具体代码匹配行条目
+class _SearchMatchLineRowItem extends _SearchRowItem {
+  final FileSearchResult file;
+  final LineMatch match;
+  _SearchMatchLineRowItem(this.file, this.match);
+}
+
+/// 文件内加载更多匹配项条目
+class _SearchLoadMoreMatchesRowItem extends _SearchRowItem {
+  final FileSearchResult file;
+  final int remainingMatchesCount;
+  _SearchLoadMoreMatchesRowItem(this.file, this.remainingMatchesCount);
+}
+
+/// 搜索结果底部加载更多文件条目
+class _SearchLoadMoreFilesRowItem extends _SearchRowItem {
+  final int remainingFilesCount;
+  _SearchLoadMoreFilesRowItem(this.remainingFilesCount);
 }

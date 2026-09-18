@@ -2,6 +2,7 @@ import '../../models/distro_manifest.dart';
 import '../../models/notice_item.dart';
 import '../distro_manager.dart';
 import '../internal_engine_service.dart';
+import '../toolchain_service.dart';
 import 'background_task.dart';
 
 /// Ubuntu APT 软件包安装与卸载任务
@@ -74,12 +75,10 @@ class AptPackageTask extends BackgroundTask<bool> {
     final rootfs = await engine.getRootfsDir();
 
     final cmd = isUninstall
-        ? 'export DEBIAN_FRONTEND=noninteractive DEBCONF_NONINTERACTIVE_SEEN=true; '
-            'dpkg --configure -a 2>/dev/null || true; '
+        ? '${ToolchainService.dpkgAutoHealPrefix} '
             'apt-get remove --purge -y ${packageName.trim()} && '
             'apt-get autoremove -y'
-        : 'export DEBIAN_FRONTEND=noninteractive DEBCONF_NONINTERACTIVE_SEEN=true; '
-            'dpkg --configure -a 2>/dev/null || true; '
+        : '${ToolchainService.dpkgAutoHealPrefix} '
             'apt-get update && '
             'apt-get install -y --no-install-recommends ${packageName.trim()}';
 

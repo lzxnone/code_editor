@@ -38,6 +38,22 @@ class SearchProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// 一键解除分页限制，加载/展示全部匹配文件
+  void loadAllFiles() {
+    if (_result.fileResults.isNotEmpty) {
+      _displayedFilesLimit = _result.fileResults.length;
+      notifyListeners();
+    }
+  }
+
+  /// 展开指定文件并加载展示其全部匹配行
+  void expandAndLoadAllMatchesForFile(FileSearchResult fileResult) {
+    fileResult.isExpanded = true;
+    _fileExpandedStates[fileResult.filePath] = true;
+    _displayedMatchesLimits[fileResult.filePath] = fileResult.matches.length;
+    notifyListeners();
+  }
+
   int getFileMatchesLimit(String filePath, int defaultSize) {
     return _displayedMatchesLimits[filePath] ?? defaultSize;
   }

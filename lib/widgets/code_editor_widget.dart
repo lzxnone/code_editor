@@ -501,47 +501,24 @@ class _CodeEditorWidgetState extends State<CodeEditorWidget> {
         curOpt.pattern != query ||
         curOpt.caseSensitive != searchProvider.caseSensitive ||
         curOpt.regex != searchProvider.isRegex) {
-      if (query.isEmpty) {
-        if (curVal != null && curOpt?.pattern.isNotEmpty == true) {
-          // 注意：不能直接调用 _findController!.close()，
-          // 因为 re_editor 内部在 value == null 时会强制执行 widget.focusNode.requestFocus()，
-          // 导致侧边抽屉中的搜索输入框在内容清空时瞬间失去焦点。
-          // 此处同时临时锁定 _focusNode.canRequestFocus 并赋空匹配正则，彻底杜绝编辑器抢夺焦点。
-          final wasCanRequest = _focusNode.canRequestFocus;
-          _focusNode.canRequestFocus = false;
-          try {
-            _findController!.value = const CodeFindValue(
-              option: CodeFindOption(
-                pattern: r'(?!)',
-                caseSensitive: false,
-                regex: true,
-              ),
-              replaceMode: false,
-              searching: false,
-            );
-          } finally {
-            _focusNode.canRequestFocus = wasCanRequest;
-          }
-        }
-      } else {
-        final wasCanRequest = _focusNode.canRequestFocus;
-        _focusNode.canRequestFocus = false;
-        try {
-          _findController!.value = CodeFindValue(
-            option: CodeFindOption(
-              pattern: query,
-              caseSensitive: searchProvider.caseSensitive,
-              regex: searchProvider.isRegex,
-            ),
-            replaceMode: false,
-            searching: true,
-          );
-          if (_findController!.findInputController.text != query) {
-            _findController!.findInputController.text = query;
-          }
-        } finally {
-          _focusNode.canRequestFocus = wasCanRequest;
-        }
+      // 严禁设置 _focusNode.canRequestFocus = false！
+      // 在 Flutter 框架中，当编辑区拥有焦点时（用户正在编辑代码输入），
+      // 将 canRequestFocus 置为 false 会强制触发 unfocus()，紧接着在输入时又重获焦点，
+      // 造成软键盘反复弹起收起（一跳一跳的致命抖动）。
+      // 同时此处保持 _findController.value 非 null（pattern 为 query），
+      // re_editor 在 pattern 为空时会自动将 matches 清空，既彻底清除了高亮，
+      // 又避免了在 value == null 时触发 re_editor 内部偷夺焦点的 requestFocus()。
+      _findController!.value = CodeFindValue(
+        option: CodeFindOption(
+          pattern: query,
+          caseSensitive: searchProvider.caseSensitive,
+          regex: searchProvider.isRegex,
+        ),
+        replaceMode: false,
+        searching: query.isNotEmpty,
+      );
+      if (_findController!.findInputController.text != query) {
+        _findController!.findInputController.text = query;
       }
     }
   }
@@ -798,7 +775,11 @@ class _CodeEditorWidgetState extends State<CodeEditorWidget> {
     } catch (_) {}
 
     final searchProvider = context.watch<SearchProvider?>();
-    _syncSearchHighlight(searchProvider);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        _syncSearchHighlight(searchProvider);
+      }
+    });
 
     final l10n = AppLocalizations.of(context);
     final hasNoProject = widget.rootPath == null || widget.rootPath!.trim().isEmpty;
@@ -1130,7 +1111,18 @@ class _CodeEditorWidgetState extends State<CodeEditorWidget> {
 
       _controller = newController;
       _findController?.dispose();
-      _findController = CodeFindController(newController);
+      _findController = CodeFindController(
+        newController,
+        const CodeFindValue(
+          option: CodeFindOption(
+            pattern: '',
+            caseSensitive: false,
+            regex: false,
+          ),
+          replaceMode: false,
+          searching: false,
+        ),
+      );
       _currentLoadedPath = fullFilePath;
       _currentIndentSize = activeIndentSize;
       _errorMessage = null;
@@ -1196,7 +1188,18 @@ class _CodeEditorWidgetState extends State<CodeEditorWidget> {
 
       _controller = newController;
       _findController?.dispose();
-      _findController = CodeFindController(newController);
+      _findController = CodeFindController(
+        newController,
+        const CodeFindValue(
+          option: CodeFindOption(
+            pattern: '',
+            caseSensitive: false,
+            regex: false,
+          ),
+          replaceMode: false,
+          searching: false,
+        ),
+      );
       _currentLoadedPath = fullFilePath;
       _currentIndentSize = activeIndentSize;
       _errorMessage = null;

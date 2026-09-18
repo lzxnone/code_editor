@@ -19,9 +19,9 @@ class ToolchainRequirement {
     required this.installCommand,
   });
 
-  /// 获取安装命令（带自动修复前缀）
+  /// 获取安装命令（带自动修复与防死锁前缀）
   String get effectiveInstallCommand =>
-      'DEBIAN_FRONTEND=noninteractive dpkg --configure -a 2>/dev/null || true; $installCommand';
+      '${ToolchainService.dpkgAutoHealPrefix} $installCommand';
 
   /// 兼容接口
   String? getInstallCommand([DistroFamily? family]) {
@@ -32,8 +32,28 @@ class ToolchainRequirement {
 
 /// 预编译软件源与工具链检测/安装适配服务（专为 Ubuntu 24.04 深度优化）
 class ToolchainService {
+  /// 全局 Dpkg 自动修复与防死锁前置指令：
+  /// 1. 设置非交互式环境变量，防止无终端卡死；
+  /// 2. 清除残留的 lock 锁文件（防止异常中断遗留死锁）；
+  /// 3. 自动扫描并强制清理处于 reinstreq 或半安装 (half-installed/half-configured) 状态的损坏包，
+  ///    防止其导致后续 dpkg --configure 及 apt-get 陷入死锁；
+  /// 4. 自动执行 dpkg --configure -a 恢复环境。
+  static const String dpkgAutoHealPrefix =
+      'export DEBIAN_FRONTEND=noninteractive DEBCONF_NONINTERACTIVE_SEEN=true; '
+      'rm -f /var/lib/dpkg/lock* /var/lib/apt/lists/lock* /var/cache/apt/archives/lock* 2>/dev/null || true; '
+      'for p in \$(dpkg-query -W -f=\'\${Package} \${Status}\\n\' 2>/dev/null | grep -E \'reinstreq|half-\' | cut -d\' \' -f1); do '
+      '  rm -f /var/lib/dpkg/info/\$p.* 2>/dev/null || true; '
+      '  dpkg --remove --force-all --force-remove-reinstreq "\$p" 2>/dev/null || true; '
+      'done; '
+      'dpkg --configure -a 2>/dev/null || true;';
+
   /// 已注册的常用编译器与开发工具链元数据
   static const Map<String, ToolchainRequirement> supportedTools = {
+    'git': ToolchainRequirement(
+      checkBinary: 'git',
+      displayName: 'Git 版本控制工具',
+      installCommand: 'DEBIAN_FRONTEND=noninteractive apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y git',
+    ),
     'make': ToolchainRequirement(
       checkBinary: 'make',
       displayName: 'make 编译构建工具',

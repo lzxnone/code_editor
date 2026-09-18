@@ -42,20 +42,22 @@ class MyApp extends StatelessWidget {
             return pp;
           },
         ),
-        ChangeNotifierProxyProvider<ProjectProvider, TabProvider>(
+        ChangeNotifierProxyProvider<ProjectProvider, GitProvider>(
+          create: (_) => GitProvider(),
+          update: (_, project, git) =>
+              (git ?? GitProvider())..bindRootPath(project.rootPath),
+        ),
+        ChangeNotifierProxyProvider2<ProjectProvider, GitProvider, TabProvider>(
           create: (_) => TabProvider()..init(),
-          update: (_, project, tab) =>
-              (tab ?? (TabProvider()..init()))..bindProjectProvider(project),
+          update: (_, project, git, tab) =>
+              (tab ?? (TabProvider()..init()))
+                ..bindProjectProvider(project)
+                ..bindGitProvider(git),
         ),
         ChangeNotifierProxyProvider<ProjectProvider, SearchProvider>(
           create: (_) => SearchProvider(),
           update: (_, project, search) =>
               (search ?? SearchProvider())..bindRootPath(project.rootPath),
-        ),
-        ChangeNotifierProxyProvider<ProjectProvider, GitProvider>(
-          create: (_) => GitProvider(),
-          update: (_, project, git) =>
-              (git ?? GitProvider())..bindRootPath(project.rootPath),
         ),
         ChangeNotifierProvider(create: (_) => TerminalProvider()),
         ChangeNotifierProvider(

@@ -1933,4 +1933,382 @@ class AppLocalizationsEn extends AppLocalizations {
   ) {
     return 'Are you sure you want to replace all $matchCount occurrences in \"$fileName\" with \"$replaceText\"?';
   }
+
+  @override
+  String get gitNotInstalled => 'Git Not Found';
+
+  @override
+  String get gitNotInstalledDesc =>
+      'Git command-line tool was not found on your system. Please install git in your terminal or Linux container (e.g. apt update && apt install -y git).';
+
+  @override
+  String get gitNeedInstall => 'Git Installation Required';
+
+  @override
+  String get gitInstallAction => 'Install Git';
+
+  @override
+  String get gitInstallingProgress => 'Installing Git...';
+
+  @override
+  String get gitInstallSuccess => 'Git installed successfully';
+
+  @override
+  String gitInstallFailed(String error) {
+    return 'Failed to install Git: $error';
+  }
+
+  @override
+  String get gitNoRepoFound => 'No Git Repository';
+
+  @override
+  String get gitNoRepoDesc =>
+      'Initialize a Git repository to start version control, branch management, and tracking code changes.';
+
+  @override
+  String get gitInitRepo => 'Initialize Repository';
+
+  @override
+  String get gitInitializing => 'Initializing Git repository...';
+
+  @override
+  String get gitInitSuccess => 'Git repository initialized successfully';
+
+  @override
+  String gitInitFailed(String error) {
+    return 'Failed to initialize Git repository: $error';
+  }
+
+  @override
+  String get gitRepository => 'Repository';
+
+  @override
+  String gitCurrentBranch(String branch) {
+    return 'Branch: $branch';
+  }
+
+  @override
+  String get gitSwitchRepo => 'Switch Repository';
+
+  @override
+  String get gitRefresh => 'Refresh Git';
+
+  @override
+  String get gitChanges => 'Changes';
+
+  @override
+  String get gitStagedChanges => 'Staged Changes';
+
+  @override
+  String get gitNoChanges => 'No changes detected';
+
+  @override
+  String get gitStatusUntracked => 'Untracked';
+
+  @override
+  String get gitStatusModified => 'Modified';
+
+  @override
+  String get gitStatusAdded => 'Added';
+
+  @override
+  String get gitStatusDeleted => 'Deleted';
+
+  @override
+  String get gitStatusRenamed => 'Renamed';
+
+  @override
+  String get gitStatusConflict => 'Conflict';
+
+  @override
+  String gitMultipleReposDetected(int count) {
+    return 'Multiple Repositories ($count)';
+  }
+
+  @override
+  String get gitStageChange => 'Stage Changes';
+
+  @override
+  String get gitUnstageChange => 'Unstage Changes';
+
+  @override
+  String get gitStageAll => 'Stage All Changes';
+
+  @override
+  String get gitUnstageAll => 'Unstage All Changes';
+
+  @override
+  String get gitStageSuccess => 'Staged';
+
+  @override
+  String get gitUnstageSuccess => 'Unstaged';
+
+  @override
+  String get gitCommit => 'Commit';
+
+  @override
+  String get gitCommitMessageHint => 'Message';
+
+  @override
+  String get gitCommitSuccess => 'Commit successful';
+
+  @override
+  String gitCommitFailed(String error) {
+    return 'Commit failed: $error';
+  }
+
+  @override
+  String get gitDiscardChange => 'Discard Changes';
+
+  @override
+  String get gitDiscardConfirm => 'Discard Changes?';
+
+  @override
+  String gitDiscardConfirmDesc(String fileName) {
+    return 'Are you sure you want to discard all unstaged changes in \"$fileName\"? This cannot be undone.';
+  }
+
+  @override
+  String get gitNoCommitMessage => 'Please enter a commit message';
+
+  @override
+  String get gitNoStagedChangesToCommit =>
+      'There are no staged changes. Would you like to stage all changes and commit?';
+
+  @override
+  String get gitStageAllAndCommit => 'Stage All and Commit';
+
+  @override
+  String get gitGraphTitle => 'Graph';
+
+  @override
+  String get gitNoCommits => 'No commit history';
+
+  @override
+  String get gitCommitDetails => 'Commit Details';
+
+  @override
+  String get gitCommitAuthor => 'Author';
+
+  @override
+  String get gitCommitDate => 'Date';
+
+  @override
+  String get gitCommitHash => 'Commit Hash';
+
+  @override
+  String get gitCopyHash => 'Copy Hash';
+
+  @override
+  String get gitHashCopied => 'Commit hash copied to clipboard';
+
+  @override
+  String get gitCommitParent => 'Parent';
+
+  @override
+  String get gitDiscardAll => 'Discard All Changes';
+
+  @override
+  String get gitDiscardAllChangesTitle => 'Discard All Changes?';
+
+  @override
+  String get gitDiscardAllChangesConfirm =>
+      'Are you sure you want to discard all unstaged changes? Modified files will be restored and untracked files will be cleaned. This cannot be undone.';
+
+  @override
+  String get gitDiscardAllStagedTitle => 'Discard All Staged Changes?';
+
+  @override
+  String get gitDiscardAllStagedConfirm =>
+      'Are you sure you want to discard all staged changes? This cannot be undone.';
+
+  @override
+  String get gitBranches => 'Branches';
+
+  @override
+  String get gitCreateBranch => 'Create Branch';
+
+  @override
+  String get gitBranchNameHint => 'Enter branch name';
+
+  @override
+  String gitSwitchBranchSuccess(String branch) {
+    return 'Switched to branch $branch';
+  }
+
+  @override
+  String gitCreateBranchSuccess(String branch) {
+    return 'Created and switched to branch $branch';
+  }
+
+  @override
+  String get gitDeleteBranch => 'Delete Branch';
+
+  @override
+  String gitDeleteBranchConfirm(String branch) {
+    return 'Are you sure you want to delete branch $branch?';
+  }
+
+  @override
+  String gitDeleteBranchSuccess(String branch) {
+    return 'Deleted branch $branch';
+  }
+
+  @override
+  String get gitCannotDeleteCurrentBranch => 'Cannot delete the current branch';
+
+  @override
+  String get gitUndoLastCommit => 'Undo Last Commit';
+
+  @override
+  String get gitUndoLastCommitConfirm =>
+      'Are you sure you want to undo the last commit? Changes will be kept in the staging area.';
+
+  @override
+  String get gitUndoLastCommitSuccess => 'Undid last commit';
+
+  @override
+  String get gitStash => 'Stash';
+
+  @override
+  String get gitStashChanges => 'Stash Changes';
+
+  @override
+  String get gitStashChangesSuccess => 'Stashed current changes';
+
+  @override
+  String get gitStashPop => 'Pop Latest Stash';
+
+  @override
+  String get gitStashPopSuccess => 'Restored latest stash';
+
+  @override
+  String get gitNoStashFound => 'No stashes found';
+
+  @override
+  String get gitAddToGitignore => 'Add to .gitignore';
+
+  @override
+  String get gitAddedToGitignore => 'Added to .gitignore';
+
+  @override
+  String get gitMoreActions => 'More Actions';
+
+  @override
+  String get gitOpenFile => 'Open File';
+
+  @override
+  String get gitTags => 'Tags';
+
+  @override
+  String get gitCreateTag => 'Create Tag';
+
+  @override
+  String get gitTagNameHint => 'Enter tag name (e.g. v1.0.0)';
+
+  @override
+  String get gitTagMessageHint => 'Tag message (optional)';
+
+  @override
+  String get gitDeleteTag => 'Delete Tag';
+
+  @override
+  String gitDeleteTagConfirm(String tag) {
+    return 'Are you sure you want to delete tag $tag?';
+  }
+
+  @override
+  String gitCreateTagSuccess(String tag) {
+    return 'Created tag $tag';
+  }
+
+  @override
+  String gitDeleteTagSuccess(String tag) {
+    return 'Deleted tag $tag';
+  }
+
+  @override
+  String gitSwitchTagSuccess(String tag) {
+    return 'Checked out to tag $tag';
+  }
+
+  @override
+  String get gitNoTags => 'No tags';
+
+  @override
+  String get gitSelectBranchToDelete => 'Select branch to delete';
+
+  @override
+  String get gitSelectTagToDelete => 'Select tag to delete';
+
+  @override
+  String get gitSearchBranches => 'Search branches...';
+
+  @override
+  String get gitSearchTags => 'Search tags...';
+
+  @override
+  String get gitNoBranches => 'No branches';
+
+  @override
+  String get gitDiff => 'Diff';
+
+  @override
+  String get gitDiffOriginal => 'Original';
+
+  @override
+  String get gitDiffModified => 'Modified';
+
+  @override
+  String get gitDiffSplitView => 'Split View';
+
+  @override
+  String get gitDiffUnifiedView => 'Unified View';
+
+  @override
+  String get gitDiffPrevChange => 'Previous Change';
+
+  @override
+  String get gitDiffNextChange => 'Next Change';
+
+  @override
+  String get gitDiffBinaryOrEmpty =>
+      'Binary or unsupported file for comparison';
+
+  @override
+  String get gitDiffNoChanges =>
+      'This file is identical to the base version, no differences found';
+
+  @override
+  String get gitDiffStageTooltip => 'Stage this file';
+
+  @override
+  String get gitDiffUnstageTooltip => 'Unstage this file';
+
+  @override
+  String get gitDiffDiscardTooltip => 'Discard changes in this file';
+
+  @override
+  String get gitExpandAll => 'Expand All';
+
+  @override
+  String gitLoadMoreCommits(int count) {
+    return 'Load more commits ($count)';
+  }
+
+  @override
+  String gitLoadedCommitsCount(int loaded, int total) {
+    return 'Showing $loaded of $total commits';
+  }
+
+  @override
+  String gitAllCommitsLoaded(int count) {
+    return 'All $count commits loaded';
+  }
+
+  @override
+  String get gitLoadingMoreCommits => 'Loading more commits...';
+
+  @override
+  String get searchExpandAllMatchesInFile => 'Expand all matches';
 }

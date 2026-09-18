@@ -1,5 +1,6 @@
 import 'package:code_editor/l10n/app_localizations.dart';
 import 'package:code_editor/providers/distro_provider.dart';
+import 'package:code_editor/providers/git_provider.dart';
 import 'package:code_editor/providers/project_provider.dart';
 import 'package:code_editor/providers/run_provider.dart';
 import 'package:code_editor/providers/tab_provider.dart';
@@ -9,6 +10,7 @@ import 'package:code_editor/utils/dialog_utils.dart';
 import 'package:code_editor/views/project_management_view.dart';
 import 'package:code_editor/widgets/project_history_widget.dart';
 import 'package:code_editor/widgets/file_tree_widget.dart';
+import 'package:code_editor/widgets/git/git_panel_widget.dart';
 import 'package:code_editor/widgets/search/search_panel_widget.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
@@ -142,6 +144,7 @@ class _CodeEditorDrawerState extends State<CodeEditorDrawer> {
     required int index,
     required IconData icon,
     required String label,
+    int? badgeCount,
   }) {
     final theme = Theme.of(context);
     final isSelected = _selectedIndex == index;
@@ -188,6 +191,36 @@ class _CodeEditorDrawerState extends State<CodeEditorDrawer> {
                     ? colorScheme.primary
                     : colorScheme.onSurfaceVariant.withValues(alpha: 0.7),
               ),
+              if (badgeCount != null && badgeCount > 0)
+                Positioned(
+                  right: 4,
+                  bottom: 5,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                    constraints: const BoxConstraints(
+                      minWidth: 16,
+                      minHeight: 16,
+                    ),
+                    decoration: BoxDecoration(
+                      color: colorScheme.primary,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(
+                        color: theme.colorScheme.surfaceContainerLow,
+                        width: 1.2,
+                      ),
+                    ),
+                    alignment: Alignment.center,
+                    child: Text(
+                      badgeCount > 99 ? '99+' : badgeCount.toString(),
+                      style: TextStyle(
+                        fontSize: 9,
+                        fontWeight: FontWeight.bold,
+                        color: colorScheme.onPrimary,
+                        height: 1.1,
+                      ),
+                    ),
+                  ),
+                ),
             ],
           ),
         ),
@@ -200,6 +233,9 @@ class _CodeEditorDrawerState extends State<CodeEditorDrawer> {
     AppLocalizations l10n,
     ThemeData theme,
   ) {
+    final gitProvider = context.watch<GitProvider?>();
+    final gitBadgeCount = (gitProvider?.isGitRepo ?? false) ? (gitProvider?.totalChangedCount ?? 0) : 0;
+
     return Container(
       width: 48,
       decoration: BoxDecoration(
@@ -236,6 +272,7 @@ class _CodeEditorDrawerState extends State<CodeEditorDrawer> {
               index: 2,
               icon: Icons.alt_route_rounded,
               label: l10n.drawerTabGit,
+              badgeCount: gitBadgeCount,
             ),
           ],
         ),
@@ -449,45 +486,6 @@ class _CodeEditorDrawerState extends State<CodeEditorDrawer> {
 
 
 
-  Widget _buildGitPlaceholder(
-    BuildContext context,
-    AppLocalizations l10n,
-    ThemeData theme,
-  ) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Container(
-          decoration: BoxDecoration(
-            color: theme.colorScheme.primaryContainer,
-          ),
-          child: SafeArea(
-            bottom: false,
-            left: false,
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 14.0),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      l10n.drawerTabGit,
-                      style: theme.textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.bold,
-                      ),
-                      overflow: TextOverflow.ellipsis,
-                      maxLines: 1,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-        const Expanded(child: SizedBox.shrink()),
-      ],
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -502,17 +500,67 @@ class _CodeEditorDrawerState extends State<CodeEditorDrawer> {
         children: [
           _buildActivityBar(context, l10n, theme),
           Expanded(
-            child: IndexedStack(
+            child: _LazyIndexedStack(
               index: _selectedIndex,
-              children: [
-                _buildExplorerPage(context, l10n, theme, rootPath, hasProject),
-                const SearchPanelWidget(),
-                _buildGitPlaceholder(context, l10n, theme),
+              builders: [
+                (ctx) => _buildExplorerPage(ctx, l10n, theme, rootPath, hasProject),
+                (ctx) => const SearchPanelWidget(),
+                (ctx) => const GitPanelWidget(),
               ],
             ),
           ),
         ],
       ),
+    );
+  }
+}
+
+/// 惰性按需挂载的 IndexedStack，仅在 Tab 首次被激活时实例化子 Widget，
+/// 并通过 Offstage + TickerMode 永久保持状态与滚动偏移，杜绝抽屉初次滑出时全量构建卡顿。
+class _LazyIndexedStack extends StatefulWidget {
+  final int index;
+  final List<WidgetBuilder> builders;
+
+  const _LazyIndexedStack({
+    required this.index,
+    required this.builders,
+  });
+
+  @override
+  State<_LazyIndexedStack> createState() => _LazyIndexedStackState();
+}
+
+class _LazyIndexedStackState extends State<_LazyIndexedStack> {
+  late final Set<int> _activatedIndices;
+
+  @override
+  void initState() {
+    super.initState();
+    _activatedIndices = {widget.index};
+  }
+
+  @override
+  void didUpdateWidget(covariant _LazyIndexedStack oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    _activatedIndices.add(widget.index);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Stack(
+      fit: StackFit.expand,
+      children: List.generate(widget.builders.length, (i) {
+        final isActivated = _activatedIndices.contains(i);
+        final isSelected = widget.index == i;
+
+        return Offstage(
+          offstage: !isSelected,
+          child: TickerMode(
+            enabled: isSelected,
+            child: isActivated ? widget.builders[i](context) : const SizedBox.shrink(),
+          ),
+        );
+      }),
     );
   }
 }

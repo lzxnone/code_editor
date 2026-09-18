@@ -1,10 +1,12 @@
 import 'package:code_editor/l10n/app_localizations.dart';
 import 'package:code_editor/models/file_item.dart';
+import 'package:code_editor/providers/git_provider.dart';
 import 'package:code_editor/providers/project_provider.dart';
 import 'package:code_editor/providers/tab_provider.dart';
 import 'package:code_editor/services/permission_service.dart';
 import 'package:code_editor/utils/dialog_utils.dart';
 import 'package:code_editor/utils/file_icon_utils.dart';
+import 'package:code_editor/utils/git_decoration_utils.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
@@ -30,6 +32,14 @@ class _FileItemWidgetState extends State<FileItemWidget> {
     return listen ? context.watch<TabProvider>() : context.read<TabProvider>();
   }
 
+  static GitProvider? _getGitProvider(BuildContext context, {bool listen = false}) {
+    try {
+      return listen ? context.watch<GitProvider>() : context.read<GitProvider>();
+    } catch (_) {
+      return null;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return _buildFileItem(context, widget.fileItem);
@@ -39,7 +49,26 @@ class _FileItemWidgetState extends State<FileItemWidget> {
     final theme = Theme.of(context);
     final projectProvider = _getProjectProvider(context, listen: true);
     final tabProvider = _getTabProvider(context, listen: true);
+    final gitProvider = _getGitProvider(context, listen: true);
+    final isDark = theme.brightness == Brightness.dark;
+
     final indent = EdgeInsets.only(left: item.depth * 16.0 + 8.0, right: 8.0);
+
+    // 获取 Git 状态修饰
+    final gitFileStatus = !item.isDirectory && gitProvider != null
+        ? gitProvider.getFileStatus(item.path)
+        : null;
+    final gitDirStatusType = item.isDirectory && gitProvider != null
+        ? gitProvider.getDirectoryStatus(item.path)
+        : null;
+
+    final Color? gitColor = !item.isDirectory
+        ? (gitFileStatus != null
+            ? GitDecorationUtils.getStatusColor(gitFileStatus.statusType, isDark: isDark)
+            : null)
+        : (gitDirStatusType != null
+            ? GitDecorationUtils.getStatusColor(gitDirStatusType, isDark: isDark)
+            : null);
 
     // 判断该文件是否处于被剪切状态
     final isCut = projectProvider.isItemCut(item.path);
@@ -47,14 +76,14 @@ class _FileItemWidgetState extends State<FileItemWidget> {
     // 判断该文件是否为当前正在编辑/修改的文件
     final isSelected = !item.isDirectory && tabProvider.isFileSelected(item.path);
 
-    // 文字样式：剪切时变灰，选中时高亮，其余正常
+    // 文字样式：剪切时变灰，选中时高亮，有 Git 状态时使用 Git 状态色，其余正常
     final itemTextStyle = theme.textTheme.bodyMedium?.copyWith(
       fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
       color: isCut
           ? theme.colorScheme.onSurface.withValues(alpha: 0.38)
           : isSelected
               ? theme.colorScheme.primary
-              : null,
+              : gitColor,
     );
 
     final iconColor = isCut
@@ -64,36 +93,95 @@ class _FileItemWidgetState extends State<FileItemWidget> {
             : null;
 
     if (item.isDirectory) {
+      Widget? dirTrailing;
+      if (gitColor != null && gitDirStatusType != null) {
+        dirTrailing = SizedBox(
+          width: 18,
+          height: 18,
+          child: Center(
+            child: Container(
+              width: 7,
+              height: 7,
+              decoration: BoxDecoration(
+                color: gitColor,
+                shape: BoxShape.circle,
+              ),
+            ),
+          ),
+        );
+      }
+
       return GestureDetector(
         onLongPressStart: (details) {
           _showContextMenu(item, details.globalPosition);
         },
-        child: ExpansionTile(
-          key: PageStorageKey(item.path),
-          initiallyExpanded: item.isOpen,
-          tilePadding: indent,
-          leading: Icon(
-            item.isOpen ? Icons.folder_open_outlined : Icons.folder_outlined,
-            color: isCut ? iconColor : null,
-            size: 20,
+        child: Container(
+          margin: const EdgeInsets.symmetric(vertical: 1.0),
+          child: Material(
+            color: Colors.transparent,
+            child: ListTile(
+              contentPadding: indent,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8.0),
+              ),
+              dense: true,
+              leading: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    item.isOpen ? Icons.keyboard_arrow_down : Icons.keyboard_arrow_right,
+                    size: 16,
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                  const SizedBox(width: 4),
+                  Icon(
+                    item.isOpen ? Icons.folder_open_outlined : Icons.folder_outlined,
+                    color: isCut ? iconColor : (item.isOpen ? theme.colorScheme.primary : null),
+                    size: 20,
+                  ),
+                ],
+              ),
+              title: Text(
+                item.name,
+                style: itemTextStyle,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+              trailing: dirTrailing,
+              onTap: () {
+                final newExpanded = !item.isOpen;
+                setState(() {
+                  item.isOpen = newExpanded;
+                });
+                _getProjectProvider(context).toggleDirectory(item, newExpanded);
+              },
+            ),
           ),
-          title: Text(
-            item.name,
-            style: itemTextStyle,
-          ),
-          dense: true,
-          onExpansionChanged: (bool expanded) {
-            setState(() {
-              item.isOpen = expanded;
-            });
-            _getProjectProvider(context).toggleDirectory(item, expanded);
-          },
-          children: item.children
-              .map((child) => FileItemWidget(fileItem: child))
-              .toList(),
         ),
       );
     } else {
+      Widget? fileTrailing;
+      if (gitColor != null && gitFileStatus != null) {
+        final letter = GitDecorationUtils.getStatusLetter(gitFileStatus.statusType);
+        if (letter != null && letter.isNotEmpty) {
+          fileTrailing = SizedBox(
+            width: 18,
+            height: 18,
+            child: Center(
+              child: Text(
+                letter,
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
+                  color: gitColor,
+                  height: 1.0,
+                ),
+              ),
+            ),
+          );
+        }
+      }
+
       return GestureDetector(
         onLongPressStart: (details) {
           _showContextMenu(item, details.globalPosition);
@@ -117,7 +205,10 @@ class _FileItemWidgetState extends State<FileItemWidget> {
               title: Text(
                 item.name,
                 style: itemTextStyle,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
               ),
+              trailing: fileTrailing,
               dense: true,
               onTap: () {
                 final scaffold = Scaffold.maybeOf(context);

@@ -3201,6 +3201,678 @@ abstract class AppLocalizations {
     int matchCount,
     String replaceText,
   );
+
+  /// No description provided for @gitNotInstalled.
+  ///
+  /// In zh, this message translates to:
+  /// **'未检测到 Git'**
+  String get gitNotInstalled;
+
+  /// No description provided for @gitNotInstalledDesc.
+  ///
+  /// In zh, this message translates to:
+  /// **'系统中未检测到 Git 命令行工具。请在系统终端或 Linux 容器中安装 git（如执行 apt update && apt install -y git）。'**
+  String get gitNotInstalledDesc;
+
+  /// No description provided for @gitNeedInstall.
+  ///
+  /// In zh, this message translates to:
+  /// **'需要安装 Git'**
+  String get gitNeedInstall;
+
+  /// No description provided for @gitInstallAction.
+  ///
+  /// In zh, this message translates to:
+  /// **'安装 Git'**
+  String get gitInstallAction;
+
+  /// No description provided for @gitInstallingProgress.
+  ///
+  /// In zh, this message translates to:
+  /// **'正在安装 Git...'**
+  String get gitInstallingProgress;
+
+  /// No description provided for @gitInstallSuccess.
+  ///
+  /// In zh, this message translates to:
+  /// **'Git 安装成功'**
+  String get gitInstallSuccess;
+
+  /// No description provided for @gitInstallFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'Git 安装失败: {error}'**
+  String gitInstallFailed(String error);
+
+  /// No description provided for @gitNoRepoFound.
+  ///
+  /// In zh, this message translates to:
+  /// **'当前工程尚未初始化为 Git 仓库'**
+  String get gitNoRepoFound;
+
+  /// No description provided for @gitNoRepoDesc.
+  ///
+  /// In zh, this message translates to:
+  /// **'初始化本地 Git 仓库后，即可使用版本控制、分支管理及变更追踪功能。'**
+  String get gitNoRepoDesc;
+
+  /// No description provided for @gitInitRepo.
+  ///
+  /// In zh, this message translates to:
+  /// **'初始化 Git 仓库'**
+  String get gitInitRepo;
+
+  /// No description provided for @gitInitializing.
+  ///
+  /// In zh, this message translates to:
+  /// **'正在初始化 Git 仓库...'**
+  String get gitInitializing;
+
+  /// No description provided for @gitInitSuccess.
+  ///
+  /// In zh, this message translates to:
+  /// **'Git 仓库初始化成功'**
+  String get gitInitSuccess;
+
+  /// No description provided for @gitInitFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'Git 仓库初始化失败: {error}'**
+  String gitInitFailed(String error);
+
+  /// No description provided for @gitRepository.
+  ///
+  /// In zh, this message translates to:
+  /// **'仓库'**
+  String get gitRepository;
+
+  /// No description provided for @gitCurrentBranch.
+  ///
+  /// In zh, this message translates to:
+  /// **'当前分支: {branch}'**
+  String gitCurrentBranch(String branch);
+
+  /// No description provided for @gitSwitchRepo.
+  ///
+  /// In zh, this message translates to:
+  /// **'切换仓库'**
+  String get gitSwitchRepo;
+
+  /// No description provided for @gitRefresh.
+  ///
+  /// In zh, this message translates to:
+  /// **'刷新 Git 状态'**
+  String get gitRefresh;
+
+  /// No description provided for @gitChanges.
+  ///
+  /// In zh, this message translates to:
+  /// **'更改'**
+  String get gitChanges;
+
+  /// No description provided for @gitStagedChanges.
+  ///
+  /// In zh, this message translates to:
+  /// **'暂存的更改'**
+  String get gitStagedChanges;
+
+  /// No description provided for @gitNoChanges.
+  ///
+  /// In zh, this message translates to:
+  /// **'暂无任何文件更改'**
+  String get gitNoChanges;
+
+  /// No description provided for @gitStatusUntracked.
+  ///
+  /// In zh, this message translates to:
+  /// **'未跟踪'**
+  String get gitStatusUntracked;
+
+  /// No description provided for @gitStatusModified.
+  ///
+  /// In zh, this message translates to:
+  /// **'已修改'**
+  String get gitStatusModified;
+
+  /// No description provided for @gitStatusAdded.
+  ///
+  /// In zh, this message translates to:
+  /// **'新增'**
+  String get gitStatusAdded;
+
+  /// No description provided for @gitStatusDeleted.
+  ///
+  /// In zh, this message translates to:
+  /// **'已删除'**
+  String get gitStatusDeleted;
+
+  /// No description provided for @gitStatusRenamed.
+  ///
+  /// In zh, this message translates to:
+  /// **'重命名'**
+  String get gitStatusRenamed;
+
+  /// No description provided for @gitStatusConflict.
+  ///
+  /// In zh, this message translates to:
+  /// **'冲突'**
+  String get gitStatusConflict;
+
+  /// No description provided for @gitMultipleReposDetected.
+  ///
+  /// In zh, this message translates to:
+  /// **'检测到多个 Git 仓库 ({count})'**
+  String gitMultipleReposDetected(int count);
+
+  /// No description provided for @gitStageChange.
+  ///
+  /// In zh, this message translates to:
+  /// **'暂存更改'**
+  String get gitStageChange;
+
+  /// No description provided for @gitUnstageChange.
+  ///
+  /// In zh, this message translates to:
+  /// **'取消暂存更改'**
+  String get gitUnstageChange;
+
+  /// No description provided for @gitStageAll.
+  ///
+  /// In zh, this message translates to:
+  /// **'全部暂存更改'**
+  String get gitStageAll;
+
+  /// No description provided for @gitUnstageAll.
+  ///
+  /// In zh, this message translates to:
+  /// **'全部取消暂存更改'**
+  String get gitUnstageAll;
+
+  /// No description provided for @gitStageSuccess.
+  ///
+  /// In zh, this message translates to:
+  /// **'已暂存'**
+  String get gitStageSuccess;
+
+  /// No description provided for @gitUnstageSuccess.
+  ///
+  /// In zh, this message translates to:
+  /// **'已取消暂存'**
+  String get gitUnstageSuccess;
+
+  /// No description provided for @gitCommit.
+  ///
+  /// In zh, this message translates to:
+  /// **'提交'**
+  String get gitCommit;
+
+  /// No description provided for @gitCommitMessageHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'提交信息'**
+  String get gitCommitMessageHint;
+
+  /// No description provided for @gitCommitSuccess.
+  ///
+  /// In zh, this message translates to:
+  /// **'提交成功'**
+  String get gitCommitSuccess;
+
+  /// No description provided for @gitCommitFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'提交失败: {error}'**
+  String gitCommitFailed(String error);
+
+  /// No description provided for @gitDiscardChange.
+  ///
+  /// In zh, this message translates to:
+  /// **'放弃更改'**
+  String get gitDiscardChange;
+
+  /// No description provided for @gitDiscardConfirm.
+  ///
+  /// In zh, this message translates to:
+  /// **'放弃更改？'**
+  String get gitDiscardConfirm;
+
+  /// No description provided for @gitDiscardConfirmDesc.
+  ///
+  /// In zh, this message translates to:
+  /// **'确定要放弃对 \"{fileName}\" 的所有未暂存更改吗？此操作无法撤销。'**
+  String gitDiscardConfirmDesc(String fileName);
+
+  /// No description provided for @gitNoCommitMessage.
+  ///
+  /// In zh, this message translates to:
+  /// **'请输入提交信息'**
+  String get gitNoCommitMessage;
+
+  /// No description provided for @gitNoStagedChangesToCommit.
+  ///
+  /// In zh, this message translates to:
+  /// **'暂存区没有已暂存的更改，是否全部暂存并直接提交？'**
+  String get gitNoStagedChangesToCommit;
+
+  /// No description provided for @gitStageAllAndCommit.
+  ///
+  /// In zh, this message translates to:
+  /// **'全部暂存并提交'**
+  String get gitStageAllAndCommit;
+
+  /// No description provided for @gitGraphTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'图表'**
+  String get gitGraphTitle;
+
+  /// No description provided for @gitNoCommits.
+  ///
+  /// In zh, this message translates to:
+  /// **'暂无提交历史'**
+  String get gitNoCommits;
+
+  /// No description provided for @gitCommitDetails.
+  ///
+  /// In zh, this message translates to:
+  /// **'提交详情'**
+  String get gitCommitDetails;
+
+  /// No description provided for @gitCommitAuthor.
+  ///
+  /// In zh, this message translates to:
+  /// **'作者'**
+  String get gitCommitAuthor;
+
+  /// No description provided for @gitCommitDate.
+  ///
+  /// In zh, this message translates to:
+  /// **'提交日期'**
+  String get gitCommitDate;
+
+  /// No description provided for @gitCommitHash.
+  ///
+  /// In zh, this message translates to:
+  /// **'提交哈希'**
+  String get gitCommitHash;
+
+  /// No description provided for @gitCopyHash.
+  ///
+  /// In zh, this message translates to:
+  /// **'复制哈希'**
+  String get gitCopyHash;
+
+  /// No description provided for @gitHashCopied.
+  ///
+  /// In zh, this message translates to:
+  /// **'已复制提交哈希到剪贴板'**
+  String get gitHashCopied;
+
+  /// No description provided for @gitCommitParent.
+  ///
+  /// In zh, this message translates to:
+  /// **'父提交'**
+  String get gitCommitParent;
+
+  /// No description provided for @gitDiscardAll.
+  ///
+  /// In zh, this message translates to:
+  /// **'全部放弃更改'**
+  String get gitDiscardAll;
+
+  /// No description provided for @gitDiscardAllChangesTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'放弃所有未暂存更改？'**
+  String get gitDiscardAllChangesTitle;
+
+  /// No description provided for @gitDiscardAllChangesConfirm.
+  ///
+  /// In zh, this message translates to:
+  /// **'确定要放弃所有未暂存更改吗？所有已修改的文件将恢复，未跟踪的新文件将被清除，此操作无法撤销。'**
+  String get gitDiscardAllChangesConfirm;
+
+  /// No description provided for @gitDiscardAllStagedTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'放弃所有已暂存更改？'**
+  String get gitDiscardAllStagedTitle;
+
+  /// No description provided for @gitDiscardAllStagedConfirm.
+  ///
+  /// In zh, this message translates to:
+  /// **'确定要放弃所有已暂存的更改吗？所选文件的修改将被彻底恢复，此操作无法撤销。'**
+  String get gitDiscardAllStagedConfirm;
+
+  /// No description provided for @gitBranches.
+  ///
+  /// In zh, this message translates to:
+  /// **'分支'**
+  String get gitBranches;
+
+  /// No description provided for @gitCreateBranch.
+  ///
+  /// In zh, this message translates to:
+  /// **'创建新分支'**
+  String get gitCreateBranch;
+
+  /// No description provided for @gitBranchNameHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'输入新分支名称'**
+  String get gitBranchNameHint;
+
+  /// No description provided for @gitSwitchBranchSuccess.
+  ///
+  /// In zh, this message translates to:
+  /// **'已切换至分支 {branch}'**
+  String gitSwitchBranchSuccess(String branch);
+
+  /// No description provided for @gitCreateBranchSuccess.
+  ///
+  /// In zh, this message translates to:
+  /// **'已创建并切换至新分支 {branch}'**
+  String gitCreateBranchSuccess(String branch);
+
+  /// No description provided for @gitDeleteBranch.
+  ///
+  /// In zh, this message translates to:
+  /// **'删除分支'**
+  String get gitDeleteBranch;
+
+  /// No description provided for @gitDeleteBranchConfirm.
+  ///
+  /// In zh, this message translates to:
+  /// **'确定要删除本地分支 {branch} 吗？'**
+  String gitDeleteBranchConfirm(String branch);
+
+  /// No description provided for @gitDeleteBranchSuccess.
+  ///
+  /// In zh, this message translates to:
+  /// **'已删除分支 {branch}'**
+  String gitDeleteBranchSuccess(String branch);
+
+  /// No description provided for @gitCannotDeleteCurrentBranch.
+  ///
+  /// In zh, this message translates to:
+  /// **'无法删除当前所在分支'**
+  String get gitCannotDeleteCurrentBranch;
+
+  /// No description provided for @gitUndoLastCommit.
+  ///
+  /// In zh, this message translates to:
+  /// **'撤销上次提交'**
+  String get gitUndoLastCommit;
+
+  /// No description provided for @gitUndoLastCommitConfirm.
+  ///
+  /// In zh, this message translates to:
+  /// **'确定要撤销上一次提交吗？代码更改将保留在暂存区。'**
+  String get gitUndoLastCommitConfirm;
+
+  /// No description provided for @gitUndoLastCommitSuccess.
+  ///
+  /// In zh, this message translates to:
+  /// **'已撤销上一次提交'**
+  String get gitUndoLastCommitSuccess;
+
+  /// No description provided for @gitStash.
+  ///
+  /// In zh, this message translates to:
+  /// **'贮藏'**
+  String get gitStash;
+
+  /// No description provided for @gitStashChanges.
+  ///
+  /// In zh, this message translates to:
+  /// **'贮藏当前更改'**
+  String get gitStashChanges;
+
+  /// No description provided for @gitStashChangesSuccess.
+  ///
+  /// In zh, this message translates to:
+  /// **'已将当前更改暂存至贮藏栈'**
+  String get gitStashChangesSuccess;
+
+  /// No description provided for @gitStashPop.
+  ///
+  /// In zh, this message translates to:
+  /// **'恢复最近贮藏 (Pop)'**
+  String get gitStashPop;
+
+  /// No description provided for @gitStashPopSuccess.
+  ///
+  /// In zh, this message translates to:
+  /// **'已恢复最近的贮藏更改'**
+  String get gitStashPopSuccess;
+
+  /// No description provided for @gitNoStashFound.
+  ///
+  /// In zh, this message translates to:
+  /// **'当前没有可恢复的贮藏记录'**
+  String get gitNoStashFound;
+
+  /// No description provided for @gitAddToGitignore.
+  ///
+  /// In zh, this message translates to:
+  /// **'添加到 .gitignore'**
+  String get gitAddToGitignore;
+
+  /// No description provided for @gitAddedToGitignore.
+  ///
+  /// In zh, this message translates to:
+  /// **'已添加至 .gitignore'**
+  String get gitAddedToGitignore;
+
+  /// No description provided for @gitMoreActions.
+  ///
+  /// In zh, this message translates to:
+  /// **'更多操作'**
+  String get gitMoreActions;
+
+  /// No description provided for @gitOpenFile.
+  ///
+  /// In zh, this message translates to:
+  /// **'打开文件'**
+  String get gitOpenFile;
+
+  /// No description provided for @gitTags.
+  ///
+  /// In zh, this message translates to:
+  /// **'标签'**
+  String get gitTags;
+
+  /// No description provided for @gitCreateTag.
+  ///
+  /// In zh, this message translates to:
+  /// **'创建新标签'**
+  String get gitCreateTag;
+
+  /// No description provided for @gitTagNameHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'输入标签名称 (例如 v1.0.0)'**
+  String get gitTagNameHint;
+
+  /// No description provided for @gitTagMessageHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'标签附注信息 (可选)'**
+  String get gitTagMessageHint;
+
+  /// No description provided for @gitDeleteTag.
+  ///
+  /// In zh, this message translates to:
+  /// **'删除标签'**
+  String get gitDeleteTag;
+
+  /// No description provided for @gitDeleteTagConfirm.
+  ///
+  /// In zh, this message translates to:
+  /// **'确定要删除本地标签 {tag} 吗？'**
+  String gitDeleteTagConfirm(String tag);
+
+  /// No description provided for @gitCreateTagSuccess.
+  ///
+  /// In zh, this message translates to:
+  /// **'已创建标签 {tag}'**
+  String gitCreateTagSuccess(String tag);
+
+  /// No description provided for @gitDeleteTagSuccess.
+  ///
+  /// In zh, this message translates to:
+  /// **'已删除标签 {tag}'**
+  String gitDeleteTagSuccess(String tag);
+
+  /// No description provided for @gitSwitchTagSuccess.
+  ///
+  /// In zh, this message translates to:
+  /// **'已检出至标签 {tag}'**
+  String gitSwitchTagSuccess(String tag);
+
+  /// No description provided for @gitNoTags.
+  ///
+  /// In zh, this message translates to:
+  /// **'暂无标签'**
+  String get gitNoTags;
+
+  /// No description provided for @gitSelectBranchToDelete.
+  ///
+  /// In zh, this message translates to:
+  /// **'选择要删除的分支'**
+  String get gitSelectBranchToDelete;
+
+  /// No description provided for @gitSelectTagToDelete.
+  ///
+  /// In zh, this message translates to:
+  /// **'选择要删除的标签'**
+  String get gitSelectTagToDelete;
+
+  /// No description provided for @gitSearchBranches.
+  ///
+  /// In zh, this message translates to:
+  /// **'搜索分支...'**
+  String get gitSearchBranches;
+
+  /// No description provided for @gitSearchTags.
+  ///
+  /// In zh, this message translates to:
+  /// **'搜索标签...'**
+  String get gitSearchTags;
+
+  /// No description provided for @gitNoBranches.
+  ///
+  /// In zh, this message translates to:
+  /// **'暂无分支'**
+  String get gitNoBranches;
+
+  /// No description provided for @gitDiff.
+  ///
+  /// In zh, this message translates to:
+  /// **'差异对比'**
+  String get gitDiff;
+
+  /// No description provided for @gitDiffOriginal.
+  ///
+  /// In zh, this message translates to:
+  /// **'原始版本'**
+  String get gitDiffOriginal;
+
+  /// No description provided for @gitDiffModified.
+  ///
+  /// In zh, this message translates to:
+  /// **'修改版本'**
+  String get gitDiffModified;
+
+  /// No description provided for @gitDiffSplitView.
+  ///
+  /// In zh, this message translates to:
+  /// **'双屏分栏'**
+  String get gitDiffSplitView;
+
+  /// No description provided for @gitDiffUnifiedView.
+  ///
+  /// In zh, this message translates to:
+  /// **'单屏内联'**
+  String get gitDiffUnifiedView;
+
+  /// No description provided for @gitDiffPrevChange.
+  ///
+  /// In zh, this message translates to:
+  /// **'上一处更改'**
+  String get gitDiffPrevChange;
+
+  /// No description provided for @gitDiffNextChange.
+  ///
+  /// In zh, this message translates to:
+  /// **'下一处更改'**
+  String get gitDiffNextChange;
+
+  /// No description provided for @gitDiffBinaryOrEmpty.
+  ///
+  /// In zh, this message translates to:
+  /// **'二进制或不支持比较的文件'**
+  String get gitDiffBinaryOrEmpty;
+
+  /// No description provided for @gitDiffNoChanges.
+  ///
+  /// In zh, this message translates to:
+  /// **'该文件与基准版本完全一致，暂无差异'**
+  String get gitDiffNoChanges;
+
+  /// No description provided for @gitDiffStageTooltip.
+  ///
+  /// In zh, this message translates to:
+  /// **'暂存此文件更改'**
+  String get gitDiffStageTooltip;
+
+  /// No description provided for @gitDiffUnstageTooltip.
+  ///
+  /// In zh, this message translates to:
+  /// **'取消暂存此文件'**
+  String get gitDiffUnstageTooltip;
+
+  /// No description provided for @gitDiffDiscardTooltip.
+  ///
+  /// In zh, this message translates to:
+  /// **'放弃此文件更改'**
+  String get gitDiffDiscardTooltip;
+
+  /// No description provided for @gitExpandAll.
+  ///
+  /// In zh, this message translates to:
+  /// **'全部展开'**
+  String get gitExpandAll;
+
+  /// No description provided for @gitLoadMoreCommits.
+  ///
+  /// In zh, this message translates to:
+  /// **'加载更多提交 ({count})'**
+  String gitLoadMoreCommits(int count);
+
+  /// No description provided for @gitLoadedCommitsCount.
+  ///
+  /// In zh, this message translates to:
+  /// **'已显示 {loaded} / {total} 个提交'**
+  String gitLoadedCommitsCount(int loaded, int total);
+
+  /// No description provided for @gitAllCommitsLoaded.
+  ///
+  /// In zh, this message translates to:
+  /// **'已显示全部 {count} 个提交'**
+  String gitAllCommitsLoaded(int count);
+
+  /// No description provided for @gitLoadingMoreCommits.
+  ///
+  /// In zh, this message translates to:
+  /// **'正在加载更多提交...'**
+  String get gitLoadingMoreCommits;
+
+  /// No description provided for @searchExpandAllMatchesInFile.
+  ///
+  /// In zh, this message translates to:
+  /// **'展开全部匹配项'**
+  String get searchExpandAllMatchesInFile;
 }
 
 class _AppLocalizationsDelegate

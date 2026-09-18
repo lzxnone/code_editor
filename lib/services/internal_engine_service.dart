@@ -11,6 +11,7 @@ import '../widgets/distro_extract_dialog.dart';
 import 'distro_installer.dart';
 import 'distro_manager.dart';
 import 'lsp/lsp_manager.dart';
+import 'toolchain_service.dart';
 
 /// 代码智能与运行时引擎服务（基于统一主系统 Ubuntu 24.04）
 class InternalEngineService extends ChangeNotifier {
@@ -197,8 +198,7 @@ class InternalEngineService extends ChangeNotifier {
     try {
       final rootfs = await getRootfsDir();
       final installCmd =
-          'export DEBIAN_FRONTEND=noninteractive DEBCONF_NONINTERACTIVE_SEEN=true; '
-          'dpkg --configure -a 2>/dev/null || true; '
+          '${ToolchainService.dpkgAutoHealPrefix} '
           'apt-get update && '
           'apt-get install -y --no-install-recommends ${packageName.trim()}';
 
@@ -212,6 +212,30 @@ class InternalEngineService extends ChangeNotifier {
       return res != null && res.exitCode == 0;
     } catch (e) {
       debugPrint('安装引擎软件包异常: $e');
+      return false;
+    }
+  }
+
+  /// 自动诊断与修复 dpkg 锁及半安装 (reinstreq/half-installed) 死锁状态
+  Future<bool> repairDpkgStatus({void Function(String chunk)? onOutput}) async {
+    if (!await isEngineInstalled()) return false;
+    try {
+      final rootfs = await getRootfsDir();
+      final repairCmd =
+          '${ToolchainService.dpkgAutoHealPrefix} '
+          'apt-get update && '
+          'apt-get -f install -y 2>/dev/null || true;';
+
+      final res = await DistroManager().runHeadlessCommand(
+        systemName: DistroRepository.defaultSystemName,
+        customRootDir: rootfs,
+        command: repairCmd,
+        timeout: const Duration(minutes: 3),
+        onStdout: onOutput,
+      );
+      return res != null && res.exitCode == 0;
+    } catch (e) {
+      debugPrint('修复 dpkg 状态异常: $e');
       return false;
     }
   }
@@ -260,9 +284,8 @@ fi
           : '';
 
       final uninstallCmd = '''
-export DEBIAN_FRONTEND=noninteractive DEBCONF_NONINTERACTIVE_SEEN=true
+${ToolchainService.dpkgAutoHealPrefix}
 $killSection
-dpkg --configure -a 2>/dev/null || true
 apt-get remove --purge -y $targetsToPurge
 apt-get autoremove --purge -y
 $cmdCleanupSection

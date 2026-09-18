@@ -1873,4 +1873,377 @@ class AppLocalizationsZh extends AppLocalizations {
   ) {
     return '确定要在 \"$fileName\" 中将全部 $matchCount 处匹配替换为 \"$replaceText\" 吗？';
   }
+
+  @override
+  String get gitNotInstalled => '未检测到 Git';
+
+  @override
+  String get gitNotInstalledDesc =>
+      '系统中未检测到 Git 命令行工具。请在系统终端或 Linux 容器中安装 git（如执行 apt update && apt install -y git）。';
+
+  @override
+  String get gitNeedInstall => '需要安装 Git';
+
+  @override
+  String get gitInstallAction => '安装 Git';
+
+  @override
+  String get gitInstallingProgress => '正在安装 Git...';
+
+  @override
+  String get gitInstallSuccess => 'Git 安装成功';
+
+  @override
+  String gitInstallFailed(String error) {
+    return 'Git 安装失败: $error';
+  }
+
+  @override
+  String get gitNoRepoFound => '当前工程尚未初始化为 Git 仓库';
+
+  @override
+  String get gitNoRepoDesc => '初始化本地 Git 仓库后，即可使用版本控制、分支管理及变更追踪功能。';
+
+  @override
+  String get gitInitRepo => '初始化 Git 仓库';
+
+  @override
+  String get gitInitializing => '正在初始化 Git 仓库...';
+
+  @override
+  String get gitInitSuccess => 'Git 仓库初始化成功';
+
+  @override
+  String gitInitFailed(String error) {
+    return 'Git 仓库初始化失败: $error';
+  }
+
+  @override
+  String get gitRepository => '仓库';
+
+  @override
+  String gitCurrentBranch(String branch) {
+    return '当前分支: $branch';
+  }
+
+  @override
+  String get gitSwitchRepo => '切换仓库';
+
+  @override
+  String get gitRefresh => '刷新 Git 状态';
+
+  @override
+  String get gitChanges => '更改';
+
+  @override
+  String get gitStagedChanges => '暂存的更改';
+
+  @override
+  String get gitNoChanges => '暂无任何文件更改';
+
+  @override
+  String get gitStatusUntracked => '未跟踪';
+
+  @override
+  String get gitStatusModified => '已修改';
+
+  @override
+  String get gitStatusAdded => '新增';
+
+  @override
+  String get gitStatusDeleted => '已删除';
+
+  @override
+  String get gitStatusRenamed => '重命名';
+
+  @override
+  String get gitStatusConflict => '冲突';
+
+  @override
+  String gitMultipleReposDetected(int count) {
+    return '检测到多个 Git 仓库 ($count)';
+  }
+
+  @override
+  String get gitStageChange => '暂存更改';
+
+  @override
+  String get gitUnstageChange => '取消暂存更改';
+
+  @override
+  String get gitStageAll => '全部暂存更改';
+
+  @override
+  String get gitUnstageAll => '全部取消暂存更改';
+
+  @override
+  String get gitStageSuccess => '已暂存';
+
+  @override
+  String get gitUnstageSuccess => '已取消暂存';
+
+  @override
+  String get gitCommit => '提交';
+
+  @override
+  String get gitCommitMessageHint => '提交信息';
+
+  @override
+  String get gitCommitSuccess => '提交成功';
+
+  @override
+  String gitCommitFailed(String error) {
+    return '提交失败: $error';
+  }
+
+  @override
+  String get gitDiscardChange => '放弃更改';
+
+  @override
+  String get gitDiscardConfirm => '放弃更改？';
+
+  @override
+  String gitDiscardConfirmDesc(String fileName) {
+    return '确定要放弃对 \"$fileName\" 的所有未暂存更改吗？此操作无法撤销。';
+  }
+
+  @override
+  String get gitNoCommitMessage => '请输入提交信息';
+
+  @override
+  String get gitNoStagedChangesToCommit => '暂存区没有已暂存的更改，是否全部暂存并直接提交？';
+
+  @override
+  String get gitStageAllAndCommit => '全部暂存并提交';
+
+  @override
+  String get gitGraphTitle => '图表';
+
+  @override
+  String get gitNoCommits => '暂无提交历史';
+
+  @override
+  String get gitCommitDetails => '提交详情';
+
+  @override
+  String get gitCommitAuthor => '作者';
+
+  @override
+  String get gitCommitDate => '提交日期';
+
+  @override
+  String get gitCommitHash => '提交哈希';
+
+  @override
+  String get gitCopyHash => '复制哈希';
+
+  @override
+  String get gitHashCopied => '已复制提交哈希到剪贴板';
+
+  @override
+  String get gitCommitParent => '父提交';
+
+  @override
+  String get gitDiscardAll => '全部放弃更改';
+
+  @override
+  String get gitDiscardAllChangesTitle => '放弃所有未暂存更改？';
+
+  @override
+  String get gitDiscardAllChangesConfirm =>
+      '确定要放弃所有未暂存更改吗？所有已修改的文件将恢复，未跟踪的新文件将被清除，此操作无法撤销。';
+
+  @override
+  String get gitDiscardAllStagedTitle => '放弃所有已暂存更改？';
+
+  @override
+  String get gitDiscardAllStagedConfirm =>
+      '确定要放弃所有已暂存的更改吗？所选文件的修改将被彻底恢复，此操作无法撤销。';
+
+  @override
+  String get gitBranches => '分支';
+
+  @override
+  String get gitCreateBranch => '创建新分支';
+
+  @override
+  String get gitBranchNameHint => '输入新分支名称';
+
+  @override
+  String gitSwitchBranchSuccess(String branch) {
+    return '已切换至分支 $branch';
+  }
+
+  @override
+  String gitCreateBranchSuccess(String branch) {
+    return '已创建并切换至新分支 $branch';
+  }
+
+  @override
+  String get gitDeleteBranch => '删除分支';
+
+  @override
+  String gitDeleteBranchConfirm(String branch) {
+    return '确定要删除本地分支 $branch 吗？';
+  }
+
+  @override
+  String gitDeleteBranchSuccess(String branch) {
+    return '已删除分支 $branch';
+  }
+
+  @override
+  String get gitCannotDeleteCurrentBranch => '无法删除当前所在分支';
+
+  @override
+  String get gitUndoLastCommit => '撤销上次提交';
+
+  @override
+  String get gitUndoLastCommitConfirm => '确定要撤销上一次提交吗？代码更改将保留在暂存区。';
+
+  @override
+  String get gitUndoLastCommitSuccess => '已撤销上一次提交';
+
+  @override
+  String get gitStash => '贮藏';
+
+  @override
+  String get gitStashChanges => '贮藏当前更改';
+
+  @override
+  String get gitStashChangesSuccess => '已将当前更改暂存至贮藏栈';
+
+  @override
+  String get gitStashPop => '恢复最近贮藏 (Pop)';
+
+  @override
+  String get gitStashPopSuccess => '已恢复最近的贮藏更改';
+
+  @override
+  String get gitNoStashFound => '当前没有可恢复的贮藏记录';
+
+  @override
+  String get gitAddToGitignore => '添加到 .gitignore';
+
+  @override
+  String get gitAddedToGitignore => '已添加至 .gitignore';
+
+  @override
+  String get gitMoreActions => '更多操作';
+
+  @override
+  String get gitOpenFile => '打开文件';
+
+  @override
+  String get gitTags => '标签';
+
+  @override
+  String get gitCreateTag => '创建新标签';
+
+  @override
+  String get gitTagNameHint => '输入标签名称 (例如 v1.0.0)';
+
+  @override
+  String get gitTagMessageHint => '标签附注信息 (可选)';
+
+  @override
+  String get gitDeleteTag => '删除标签';
+
+  @override
+  String gitDeleteTagConfirm(String tag) {
+    return '确定要删除本地标签 $tag 吗？';
+  }
+
+  @override
+  String gitCreateTagSuccess(String tag) {
+    return '已创建标签 $tag';
+  }
+
+  @override
+  String gitDeleteTagSuccess(String tag) {
+    return '已删除标签 $tag';
+  }
+
+  @override
+  String gitSwitchTagSuccess(String tag) {
+    return '已检出至标签 $tag';
+  }
+
+  @override
+  String get gitNoTags => '暂无标签';
+
+  @override
+  String get gitSelectBranchToDelete => '选择要删除的分支';
+
+  @override
+  String get gitSelectTagToDelete => '选择要删除的标签';
+
+  @override
+  String get gitSearchBranches => '搜索分支...';
+
+  @override
+  String get gitSearchTags => '搜索标签...';
+
+  @override
+  String get gitNoBranches => '暂无分支';
+
+  @override
+  String get gitDiff => '差异对比';
+
+  @override
+  String get gitDiffOriginal => '原始版本';
+
+  @override
+  String get gitDiffModified => '修改版本';
+
+  @override
+  String get gitDiffSplitView => '双屏分栏';
+
+  @override
+  String get gitDiffUnifiedView => '单屏内联';
+
+  @override
+  String get gitDiffPrevChange => '上一处更改';
+
+  @override
+  String get gitDiffNextChange => '下一处更改';
+
+  @override
+  String get gitDiffBinaryOrEmpty => '二进制或不支持比较的文件';
+
+  @override
+  String get gitDiffNoChanges => '该文件与基准版本完全一致，暂无差异';
+
+  @override
+  String get gitDiffStageTooltip => '暂存此文件更改';
+
+  @override
+  String get gitDiffUnstageTooltip => '取消暂存此文件';
+
+  @override
+  String get gitDiffDiscardTooltip => '放弃此文件更改';
+
+  @override
+  String get gitExpandAll => '全部展开';
+
+  @override
+  String gitLoadMoreCommits(int count) {
+    return '加载更多提交 ($count)';
+  }
+
+  @override
+  String gitLoadedCommitsCount(int loaded, int total) {
+    return '已显示 $loaded / $total 个提交';
+  }
+
+  @override
+  String gitAllCommitsLoaded(int count) {
+    return '已显示全部 $count 个提交';
+  }
+
+  @override
+  String get gitLoadingMoreCommits => '正在加载更多提交...';
+
+  @override
+  String get searchExpandAllMatchesInFile => '展开全部匹配项';
 }

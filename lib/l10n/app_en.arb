@@ -1156,5 +1156,176 @@
         "type": "int"
       }
     }
-  }
+  },
+  "gitStageChange": "Stage Changes",
+  "gitUnstageChange": "Unstage Changes",
+  "gitStageAll": "Stage All Changes",
+  "gitUnstageAll": "Unstage All Changes",
+  "gitStageSuccess": "Staged",
+  "gitUnstageSuccess": "Unstaged",
+  "gitCommit": "Commit",
+  "gitCommitMessageHint": "Message",
+  "gitCommitSuccess": "Commit successful",
+  "gitCommitFailed": "Commit failed: {error}",
+  "@gitCommitFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "gitDiscardChange": "Discard Changes",
+  "gitDiscardConfirm": "Discard Changes?",
+  "gitDiscardConfirmDesc": "Are you sure you want to discard all unstaged changes in \"{fileName}\"? This cannot be undone.",
+  "@gitDiscardConfirmDesc": {
+    "placeholders": {
+      "fileName": {
+        "type": "String"
+      }
+    }
+  },
+  "gitNoCommitMessage": "Please enter a commit message",
+  "gitNoStagedChangesToCommit": "There are no staged changes. Would you like to stage all changes and commit?",
+  "gitStageAllAndCommit": "Stage All and Commit",
+  "gitGraphTitle": "Graph",
+  "gitNoCommits": "No commit history",
+  "gitCommitDetails": "Commit Details",
+  "gitCommitAuthor": "Author",
+  "gitCommitDate": "Date",
+  "gitCommitHash": "Commit Hash",
+  "gitCopyHash": "Copy Hash",
+  "gitHashCopied": "Commit hash copied to clipboard",
+  "gitCommitParent": "Parent",
+  "gitDiscardAll": "Discard All Changes",
+  "gitDiscardAllChangesTitle": "Discard All Changes?",
+  "gitDiscardAllChangesConfirm": "Are you sure you want to discard all unstaged changes? Modified files will be restored and untracked files will be cleaned. This cannot be undone.",
+  "gitDiscardAllStagedTitle": "Discard All Staged Changes?",
+  "gitDiscardAllStagedConfirm": "Are you sure you want to discard all staged changes? This cannot be undone.",
+  "gitBranches": "Branches",
+  "gitCreateBranch": "Create Branch",
+  "gitBranchNameHint": "Enter branch name",
+  "gitSwitchBranchSuccess": "Switched to branch {branch}",
+  "@gitSwitchBranchSuccess": {
+    "placeholders": {
+      "branch": {
+        "type": "String"
+      }
+    }
+  },
+  "gitCreateBranchSuccess": "Created and switched to branch {branch}",
+  "@gitCreateBranchSuccess": {
+    "placeholders": {
+      "branch": {
+        "type": "String"
+      }
+    }
+  },
+  "gitDeleteBranch": "Delete Branch",
+  "gitDeleteBranchConfirm": "Are you sure you want to delete branch {branch}?",
+  "@gitDeleteBranchConfirm": {
+    "placeholders": {
+      "branch": {
+        "type": "String"
+      }
+    }
+  },
+  "gitDeleteBranchSuccess": "Deleted branch {branch}",
+  "@gitDeleteBranchSuccess": {
+    "placeholders": {
+      "branch": {
+        "type": "String"
+      }
+    }
+  },
+  "gitCannotDeleteCurrentBranch": "Cannot delete the current branch",
+  "gitUndoLastCommit": "Undo Last Commit",
+  "gitUndoLastCommitConfirm": "Are you sure you want to undo the last commit? Changes will be kept in the staging area.",
+  "gitUndoLastCommitSuccess": "Undid last commit",
+  "gitStash": "Stash",
+  "gitStashChanges": "Stash Changes",
+  "gitStashChangesSuccess": "Stashed current changes",
+  "gitStashPop": "Pop Latest Stash",
+  "gitStashPopSuccess": "Restored latest stash",
+  "gitNoStashFound": "No stashes found",
+  "gitAddToGitignore": "Add to .gitignore",
+  "gitAddedToGitignore": "Added to .gitignore",
+  "gitMoreActions": "More Actions",
+  "gitOpenFile": "Open File",
+  "gitTags": "Tags",
+  "gitCreateTag": "Create Tag",
+  "gitTagNameHint": "Enter tag name (e.g. v1.0.0)",
+  "gitTagMessageHint": "Tag message (optional)",
+  "gitDeleteTag": "Delete Tag",
+  "gitDeleteTagConfirm": "Are you sure you want to delete tag {tag}?",
+  "@gitDeleteTagConfirm": {
+    "placeholders": {
+      "tag": {
+        "type": "String"
+      }
+    }
+  },
+  "gitCreateTagSuccess": "Created tag {tag}",
+  "@gitCreateTagSuccess": {
+    "placeholders": {
+      "tag": {
+        "type": "String"
+      }
+    }
+  },
+  "gitDeleteTagSuccess": "Deleted tag {tag}",
+  "@gitDeleteTagSuccess": {
+    "placeholders": {
+      "tag": {
+        "type": "String"
+      }
+    }
+  },
+  "gitSwitchTagSuccess": "Checked out to tag {tag}",
+  "@gitSwitchTagSuccess": {
+    "placeholders": {
+      "tag": {
+        "type": "String"
+      }
+    }
+  },
+  "gitNoTags": "No tags",
+  "gitSelectBranchToDelete": "Select branch to delete",
+  "gitSelectTagToDelete": "Select tag to delete",
+  "gitSearchBranches": "Search branches...",
+  "gitSearchTags": "Search tags...",
+  "gitNoBranches": "No branches",
+  "gitDiff": "Diff",
+  "gitDiffOriginal": "Original",
+  "gitDiffModified": "Modified",
+  "gitDiffSplitView": "Split View",
+  "gitDiffUnifiedView": "Unified View",
+  "gitDiffPrevChange": "Previous Change",
+  "gitDiffNextChange": "Next Change",
+  "gitDiffBinaryOrEmpty": "Binary or unsupported file for comparison",
+  "gitDiffNoChanges": "This file is identical to the base version, no differences found",
+  "gitDiffStageTooltip": "Stage this file",
+  "gitDiffUnstageTooltip": "Unstage this file",
+  "gitDiffDiscardTooltip": "Discard changes in this file",
+  "gitExpandAll": "Expand All",
+  "gitLoadMoreCommits": "Load more commits ({count})",
+  "@gitLoadMoreCommits": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "gitLoadedCommitsCount": "Showing {loaded} of {total} commits",
+  "@gitLoadedCommitsCount": {
+    "placeholders": {
+      "loaded": { "type": "int" },
+      "total": { "type": "int" }
+    }
+  },
+  "gitAllCommitsLoaded": "All {count} commits loaded",
+  "@gitAllCommitsLoaded": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "gitLoadingMoreCommits": "Loading more commits...",
+  "searchExpandAllMatchesInFile": "Expand all matches"
 }

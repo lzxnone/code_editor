@@ -1,4 +1,5 @@
 import 'package:code_editor/l10n/app_localizations.dart';
+import 'package:code_editor/models/file_item.dart';
 import 'package:code_editor/providers/project_provider.dart';
 import 'package:code_editor/widgets/file_item_widget.dart';
 import 'package:flutter/material.dart';
@@ -53,13 +54,27 @@ class FileTreeWidget extends StatelessWidget {
       );
     }
 
+    // 3. 动态扁平化已展开的目录树，使所有深度的文件节点均能通过 ListView.builder 获得真正的行级虚拟化
+    final flatItems = <FileItem>[];
+    void flatten(List<FileItem> list) {
+      for (final it in list) {
+        flatItems.add(it);
+        if (it.isDirectory && it.isOpen && it.children.isNotEmpty) {
+          flatten(it.children);
+        }
+      }
+    }
+    flatten(items);
+
     return ListView.builder(
       key: const PageStorageKey('code_editor_file_tree_list'),
       padding: const EdgeInsets.symmetric(horizontal: 4.0),
-      itemCount: items.length,
+      itemCount: flatItems.length,
       itemBuilder: (context, index) {
+        final item = flatItems[index];
         return FileItemWidget(
-          fileItem: items[index],
+          key: ValueKey(item.path),
+          fileItem: item,
         );
       },
     );

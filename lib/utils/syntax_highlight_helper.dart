@@ -1,3 +1,4 @@
+import 'package:flutter/painting.dart';
 import 'package:path/path.dart' as p;
 import 'package:re_editor/re_editor.dart';
 import 'package:re_highlight/languages/all.dart';
@@ -183,4 +184,31 @@ class SyntaxHighlightHelper {
     if (langId == null) return null;
     return builtinAllLanguages[langId];
   }
+
+  static final Highlight _highlightInstance = Highlight()..registerLanguages(builtinAllLanguages);
+
+  /// 针对单行代码生成带语法高亮的 TextSpan（供 Diff 视图等只读代码渲染）
+  static TextSpan highlightLine({
+    required String code,
+    required String? filePath,
+    required TextStyle baseStyle,
+    required Map<String, TextStyle> highlightTheme,
+  }) {
+    if (code.isEmpty) {
+      return TextSpan(text: '', style: baseStyle);
+    }
+    final langId = getLanguageId(filePath);
+    if (langId == null) {
+      return TextSpan(text: code, style: baseStyle);
+    }
+    try {
+      final result = _highlightInstance.highlight(code: code, language: langId);
+      final renderer = TextSpanRenderer(baseStyle, highlightTheme);
+      result.render(renderer);
+      return renderer.span ?? TextSpan(text: code, style: baseStyle);
+    } catch (_) {
+      return TextSpan(text: code, style: baseStyle);
+    }
+  }
 }
+

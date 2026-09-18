@@ -1,10 +1,13 @@
 import 'dart:io';
 import 'package:code_editor/l10n/app_localizations.dart';
 import 'package:code_editor/models/project_history.dart';
+import 'package:code_editor/providers/git_provider.dart';
 import 'package:code_editor/providers/project_provider.dart';
 import 'package:code_editor/providers/run_provider.dart';
+import 'package:code_editor/providers/search_provider.dart';
 import 'package:code_editor/providers/settings_provider.dart';
 import 'package:code_editor/providers/tab_provider.dart';
+import 'package:code_editor/services/git_service.dart';
 import 'package:code_editor/services/internal_project_service.dart';
 import 'package:code_editor/widgets/code_editor_drawer.dart';
 import 'package:code_editor/widgets/file_tree_widget.dart';
@@ -24,6 +27,8 @@ void main() {
   late TabProvider tabProvider;
   late SettingsProvider settingsProvider;
   late RunProvider runProvider;
+  late SearchProvider searchProvider;
+  late GitProvider gitProvider;
 
   setUp(() async {
     SharedPreferences.setMockInitialValues({});
@@ -37,6 +42,8 @@ void main() {
     tabProvider = TabProvider()..bindProjectProvider(projectProvider);
     settingsProvider = SettingsProvider();
     runProvider = RunProvider();
+    searchProvider = SearchProvider()..bindRootPath(testProjectDir.path);
+    gitProvider = GitProvider();
 
     await projectProvider.switchProject(
       ProjectHistory(
@@ -47,6 +54,7 @@ void main() {
   });
 
   tearDown(() {
+    GitService.instance.resetForTesting();
     InternalProjectService.instance.customProjectsDir = null;
     if (tempBaseDir.existsSync()) {
       tempBaseDir.deleteSync(recursive: true);
@@ -60,6 +68,8 @@ void main() {
         ChangeNotifierProvider<TabProvider>.value(value: tabProvider),
         ChangeNotifierProvider<SettingsProvider>.value(value: settingsProvider),
         ChangeNotifierProvider<RunProvider>.value(value: runProvider),
+        ChangeNotifierProvider<SearchProvider>.value(value: searchProvider),
+        ChangeNotifierProvider<GitProvider>.value(value: gitProvider),
       ],
       child: MaterialApp(
         localizationsDelegates: const [
