@@ -2246,4 +2246,22 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get searchExpandAllMatchesInFile => '展开全部匹配项';
+
+  @override
+  String get preserveCase => '保留大小写';
+
+  @override
+  String get replaceMoreOptions => '更多替换选项';
+
+  @override
+  String get searchRefresh => '刷新';
+
+  @override
+  String get searchPreviousMatch => '上一个匹配项';
+
+  @override
+  String get searchNextMatch => '下一个匹配项';
+
+  @override
+  String get replaceCurrentMatch => '替换';
 }

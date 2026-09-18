@@ -4,6 +4,7 @@ import 'package:code_editor/models/search_model.dart';
 import 'package:code_editor/providers/tab_provider.dart';
 import 'package:code_editor/services/file_service.dart';
 import 'package:code_editor/services/project_search_service.dart';
+import 'package:code_editor/utils/case_utils.dart';
 import 'package:flutter/material.dart';
 import 'package:path/path.dart' as p;
 
@@ -25,6 +26,7 @@ class SearchProvider extends ChangeNotifier {
   bool get caseSensitive => _options.caseSensitive;
   bool get wholeWord => _options.wholeWord;
   bool get isRegex => _options.isRegex;
+  bool get preserveCase => _options.preserveCase;
 
   double scrollOffset = 0.0;
   int _displayedFilesLimit = 20;
@@ -151,6 +153,17 @@ class SearchProvider extends ChangeNotifier {
     triggerSearch();
   }
 
+  void togglePreserveCase() {
+    _options = _options.copyWith(preserveCase: !_options.preserveCase);
+    notifyListeners();
+  }
+
+  void setPreserveCase(bool value) {
+    if (_options.preserveCase == value) return;
+    _options = _options.copyWith(preserveCase: value);
+    notifyListeners();
+  }
+
   void toggleFileExpanded(FileSearchResult file) {
     file.isExpanded = !file.isExpanded;
     _fileExpandedStates[file.filePath] = file.isExpanded;
@@ -249,10 +262,18 @@ class SearchProvider extends ChangeNotifier {
         originalContent = await FileService.instance.readFileContent(cleanPath);
       }
 
+      String replacement = _options.replaceText;
+      if (_options.preserveCase) {
+        replacement = CaseUtils.applyPreserveCase(
+          original: match.matchedText,
+          replacement: replacement,
+        );
+      }
+
       final updatedContent = ProjectSearchService.instance.replaceSingleMatchInContent(
         fileContent: originalContent,
         match: match,
-        replacement: _options.replaceText,
+        replacement: replacement,
       );
 
       if (openTab != null && openTab.isLoaded) {
@@ -300,11 +321,22 @@ class SearchProvider extends ChangeNotifier {
       }
 
       final replacedCount = file.matches.length;
-      final updatedContent = ProjectSearchService.instance.replaceAllInContent(
-        fileContent: originalContent,
-        regExp: regExp,
-        replacement: _options.replaceText,
-      );
+      final String updatedContent;
+      if (_options.preserveCase) {
+        updatedContent = originalContent.replaceAllMapped(regExp, (m) {
+          final matched = m[0] ?? '';
+          return CaseUtils.applyPreserveCase(
+            original: matched,
+            replacement: _options.replaceText,
+          );
+        });
+      } else {
+        updatedContent = ProjectSearchService.instance.replaceAllInContent(
+          fileContent: originalContent,
+          regExp: regExp,
+          replacement: _options.replaceText,
+        );
+      }
 
       if (openTab != null && openTab.isLoaded) {
         openTab.content = updatedContent.replaceAll('\r\n', '\n');

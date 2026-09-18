@@ -3873,6 +3873,42 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'展开全部匹配项'**
   String get searchExpandAllMatchesInFile;
+
+  /// No description provided for @preserveCase.
+  ///
+  /// In zh, this message translates to:
+  /// **'保留大小写'**
+  String get preserveCase;
+
+  /// No description provided for @replaceMoreOptions.
+  ///
+  /// In zh, this message translates to:
+  /// **'更多替换选项'**
+  String get replaceMoreOptions;
+
+  /// No description provided for @searchRefresh.
+  ///
+  /// In zh, this message translates to:
+  /// **'刷新'**
+  String get searchRefresh;
+
+  /// No description provided for @searchPreviousMatch.
+  ///
+  /// In zh, this message translates to:
+  /// **'上一个匹配项'**
+  String get searchPreviousMatch;
+
+  /// No description provided for @searchNextMatch.
+  ///
+  /// In zh, this message translates to:
+  /// **'下一个匹配项'**
+  String get searchNextMatch;
+
+  /// No description provided for @replaceCurrentMatch.
+  ///
+  /// In zh, this message translates to:
+  /// **'替换'**
+  String get replaceCurrentMatch;
 }
 
 class _AppLocalizationsDelegate

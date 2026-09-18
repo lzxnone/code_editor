@@ -72,6 +72,114 @@ class _SearchPanelWidgetState extends State<SearchPanelWidget> {
   }
 
   final MenuController _menuController = MenuController();
+  final MenuController _replaceMenuController = MenuController();
+
+  /// 替换框右侧更多选项弹出菜单（保留大小写）
+  Widget _buildReplaceOptionsMenu(
+    SearchProvider searchProvider,
+    SearchOptions options,
+    ThemeData theme,
+    AppLocalizations l10n,
+  ) {
+    final hasActiveFilter = options.preserveCase;
+    final colorScheme = theme.colorScheme;
+
+    return MenuAnchor(
+      controller: _replaceMenuController,
+      alignmentOffset: const Offset(0, 4),
+      style: MenuStyle(
+        elevation: const WidgetStatePropertyAll(4),
+        shape: WidgetStatePropertyAll(
+          RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        ),
+        padding: const WidgetStatePropertyAll(
+          EdgeInsets.symmetric(vertical: 4),
+        ),
+      ),
+      menuChildren: [
+        StatefulBuilder(
+          builder: (context, setMenuState) {
+            final curOptions = searchProvider.options;
+            return SizedBox(
+              width: 220,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // 保留大小写
+                  InkWell(
+                    onTap: () {
+                      searchProvider.togglePreserveCase();
+                      setMenuState(() {});
+                    },
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
+                      child: Row(
+                        children: [
+                          SizedBox(
+                            width: 24,
+                            child: Text(
+                              'AB',
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 13,
+                                color: curOptions.preserveCase
+                                    ? colorScheme.primary
+                                    : colorScheme.onSurface,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              l10n.preserveCase,
+                              style: const TextStyle(fontSize: 13),
+                            ),
+                          ),
+                          Switch(
+                            value: curOptions.preserveCase,
+                            onChanged: (val) {
+                              searchProvider.togglePreserveCase();
+                              setMenuState(() {});
+                            },
+                            materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        ),
+      ],
+      builder: (context, controller, child) {
+        return Tooltip(
+          message: l10n.replaceMoreOptions,
+          child: InkWell(
+            borderRadius: BorderRadius.circular(4),
+            onTap: () {
+              if (controller.isOpen) {
+                controller.close();
+              } else {
+                controller.open();
+              }
+            },
+            child: Padding(
+              padding: const EdgeInsets.all(2.0),
+              child: Icon(
+                Icons.more_vert,
+                size: 18,
+                color: hasActiveFilter
+                    ? colorScheme.primary
+                    : colorScheme.onSurfaceVariant,
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
 
   /// 搜索框右侧更多选项弹出菜单（区分大小写、全字匹配、正则表达式）
   Widget _buildSearchOptionsMenu(
@@ -459,6 +567,13 @@ class _SearchPanelWidgetState extends State<SearchPanelWidget> {
                       maxLines: 1,
                     ),
                   ),
+                  IconButton(
+                    visualDensity: VisualDensity.compact,
+                    iconSize: 18,
+                    tooltip: l10n.searchRefresh,
+                    icon: const Icon(Icons.refresh),
+                    onPressed: () => searchProvider.triggerSearch(),
+                  ),
                   if (options.mode == SearchMode.fileName && result.fileResults.isNotEmpty) ...[
                     IconButton(
                       visualDensity: VisualDensity.compact,
@@ -721,6 +836,9 @@ class _SearchPanelWidgetState extends State<SearchPanelWidget> {
                         ),
                       ),
                     ),
+                    const SizedBox(width: 2),
+                    // 更多替换选项菜单按钮（保留大小写）
+                    _buildReplaceOptionsMenu(searchProvider, options, theme, l10n),
                   ],
                 ),
               ],

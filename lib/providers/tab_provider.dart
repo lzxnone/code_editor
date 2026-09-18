@@ -30,6 +30,9 @@ class TabProvider extends ChangeNotifier {
   String? _activeFilePath;
   bool _isModified = false;
   Future<bool> Function()? _saveHandler;
+  void Function()? _findNextHandler;
+  void Function()? _findPreviousHandler;
+  void Function()? _replaceHandler;
   EditorNavigationTarget? _navigationTarget;
 
   ProjectProvider? _projectProvider;
@@ -335,6 +338,20 @@ class TabProvider extends ChangeNotifier {
   void registerSaveHandler(Future<bool> Function()? handler) {
     _saveHandler = handler;
   }
+
+  void registerSearchHandlers({
+    void Function()? findNext,
+    void Function()? findPrevious,
+    void Function()? replace,
+  }) {
+    _findNextHandler = findNext;
+    _findPreviousHandler = findPrevious;
+    _replaceHandler = replace;
+  }
+
+  void findNext() => _findNextHandler?.call();
+  void findPrevious() => _findPreviousHandler?.call();
+  void replaceCurrent() => _replaceHandler?.call();
 
   Future<void> selectFile(FileItem item) async {
     if (item.isDirectory) return;

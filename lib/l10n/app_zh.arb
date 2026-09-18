@@ -1327,5 +1327,11 @@
     }
   },
   "gitLoadingMoreCommits": "正在加载更多提交...",
-  "searchExpandAllMatchesInFile": "展开全部匹配项"
+  "searchExpandAllMatchesInFile": "展开全部匹配项",
+  "preserveCase": "保留大小写",
+  "replaceMoreOptions": "更多替换选项",
+  "searchRefresh": "刷新",
+  "searchPreviousMatch": "上一个匹配项",
+  "searchNextMatch": "下一个匹配项",
+  "replaceCurrentMatch": "替换"
 }

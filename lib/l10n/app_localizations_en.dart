@@ -2311,4 +2311,22 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get searchExpandAllMatchesInFile => 'Expand all matches';
+
+  @override
+  String get preserveCase => 'Preserve Case';
+
+  @override
+  String get replaceMoreOptions => 'More Replace Options';
+
+  @override
+  String get searchRefresh => 'Refresh';
+
+  @override
+  String get searchPreviousMatch => 'Previous Match';
+
+  @override
+  String get searchNextMatch => 'Next Match';
+
+  @override
+  String get replaceCurrentMatch => 'Replace';
 }

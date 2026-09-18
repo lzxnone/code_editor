@@ -1,10 +1,13 @@
 import 'package:code_editor/l10n/app_localizations.dart';
+import 'package:code_editor/providers/search_provider.dart';
+import 'package:code_editor/providers/tab_provider.dart';
 import 'package:code_editor/services/permission_service.dart';
 import 'package:code_editor/views/terminal_view.dart';
 import 'package:code_editor/widgets/terminal_entry_guard.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:path/path.dart' as p;
+import 'package:provider/provider.dart';
 import 'package:re_editor/re_editor.dart';
 
 class CodeEditorAppBar extends StatelessWidget implements PreferredSizeWidget {
@@ -76,6 +79,11 @@ class CodeEditorAppBar extends StatelessWidget implements PreferredSizeWidget {
       subtitleText = null;
     }
 
+    final searchProvider = context.watch<SearchProvider?>();
+    final tabProvider = context.watch<TabProvider?>();
+    final hasSearchQuery = searchProvider != null && searchProvider.query.trim().isNotEmpty;
+    final isReplaceExpanded = searchProvider != null && searchProvider.isReplaceExpanded;
+
     final isDark = theme.brightness == Brightness.dark;
 
     return CodeEditorTapRegion(
@@ -111,6 +119,39 @@ class CodeEditorAppBar extends StatelessWidget implements PreferredSizeWidget {
           ],
         ),
         actions: [
+          if (hasSearchQuery) ...[
+            Focus(
+              canRequestFocus: false,
+              skipTraversal: true,
+              child: IconButton(
+                visualDensity: VisualDensity.compact,
+                icon: const Icon(Icons.arrow_upward),
+                tooltip: l10n.searchPreviousMatch,
+                onPressed: () => tabProvider?.findPrevious(),
+              ),
+            ),
+            Focus(
+              canRequestFocus: false,
+              skipTraversal: true,
+              child: IconButton(
+                visualDensity: VisualDensity.compact,
+                icon: const Icon(Icons.arrow_downward),
+                tooltip: l10n.searchNextMatch,
+                onPressed: () => tabProvider?.findNext(),
+              ),
+            ),
+            if (isReplaceExpanded)
+              Focus(
+                canRequestFocus: false,
+                skipTraversal: true,
+                child: IconButton(
+                  visualDensity: VisualDensity.compact,
+                  icon: const Icon(Icons.find_replace),
+                  tooltip: l10n.replaceCurrentMatch,
+                  onPressed: () => tabProvider?.replaceCurrent(),
+                ),
+              ),
+          ],
           Focus(
             canRequestFocus: false,
             skipTraversal: true,

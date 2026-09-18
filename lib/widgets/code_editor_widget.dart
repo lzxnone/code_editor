@@ -14,6 +14,7 @@ import 'package:code_editor/services/code_completion/smart_prompts_builder.dart'
 import 'package:code_editor/services/lsp/lsp_diagnostics_store.dart';
 import 'package:code_editor/services/lsp/lsp_manager.dart';
 import 'package:code_editor/services/lsp/lsp_protocol.dart';
+import 'package:code_editor/utils/case_utils.dart';
 import 'package:code_editor/utils/dialog_utils.dart';
 import 'package:code_editor/utils/syntax_highlight_helper.dart';
 import 'package:code_editor/widgets/code_autocomplete_view.dart';
@@ -488,6 +489,20 @@ class _CodeEditorWidgetState extends State<CodeEditorWidget> {
     }
   }
 
+  CodeFindValue _buildCurrentFindValue(SearchProvider? searchProvider) {
+    final isTextSearch = searchProvider?.options.mode == SearchMode.text;
+    final query = (isTextSearch ? searchProvider?.query : null) ?? '';
+    return CodeFindValue(
+      option: CodeFindOption(
+        pattern: query,
+        caseSensitive: searchProvider?.caseSensitive ?? false,
+        regex: searchProvider?.isRegex ?? false,
+      ),
+      replaceMode: false,
+      searching: query.isNotEmpty,
+    );
+  }
+
   void _syncSearchHighlight(SearchProvider? searchProvider) {
     if (searchProvider == null || _findController == null) return;
     // 仅在文本内容搜索模式（SearchMode.text）下才同步编辑区高亮；
@@ -501,13 +516,9 @@ class _CodeEditorWidgetState extends State<CodeEditorWidget> {
         curOpt.pattern != query ||
         curOpt.caseSensitive != searchProvider.caseSensitive ||
         curOpt.regex != searchProvider.isRegex) {
-      // 严禁设置 _focusNode.canRequestFocus = false！
-      // 在 Flutter 框架中，当编辑区拥有焦点时（用户正在编辑代码输入），
-      // 将 canRequestFocus 置为 false 会强制触发 unfocus()，紧接着在输入时又重获焦点，
-      // 造成软键盘反复弹起收起（一跳一跳的致命抖动）。
-      // 同时此处保持 _findController.value 非 null（pattern 为 query），
-      // re_editor 在 pattern 为空时会自动将 matches 清空，既彻底清除了高亮，
-      // 又避免了在 value == null 时触发 re_editor 内部偷夺焦点的 requestFocus()。
+      if (_findController!.findInputController.text != query) {
+        _findController!.findInputController.text = query;
+      }
       _findController!.value = CodeFindValue(
         option: CodeFindOption(
           pattern: query,
@@ -517,10 +528,130 @@ class _CodeEditorWidgetState extends State<CodeEditorWidget> {
         replaceMode: false,
         searching: query.isNotEmpty,
       );
-      if (_findController!.findInputController.text != query) {
-        _findController!.findInputController.text = query;
+      _controller?.forceRepaint();
+    }
+  }
+
+  List<CodeLineSelection> _findAllMatches(RegExp regExp) {
+    if (_controller == null) return const [];
+    final matches = <CodeLineSelection>[];
+    final lines = _controller!.codeLines;
+    for (int i = 0; i < lines.length; i++) {
+      final lineText = lines[i].text;
+      for (final m in regExp.allMatches(lineText)) {
+        matches.add(CodeLineSelection(
+          baseIndex: i,
+          baseOffset: m.start,
+          extentIndex: i,
+          extentOffset: m.end,
+        ));
       }
     }
+    return matches;
+  }
+
+  void _handleFindNext() {
+    if (!mounted || _controller == null) return;
+    SearchProvider? searchProvider;
+    try {
+      searchProvider = context.read<SearchProvider?>();
+    } catch (_) {}
+    if (searchProvider == null || searchProvider.query.trim().isEmpty) return;
+
+    final regExp = searchProvider.options.buildRegExp();
+    if (regExp == null) return;
+
+    final matches = _findAllMatches(regExp);
+    if (matches.isEmpty) return;
+
+    final curSelection = _controller!.selection;
+    final curEndLine = curSelection.endIndex;
+    final curEndOffset = curSelection.endOffset;
+
+    CodeLineSelection? target;
+    for (final match in matches) {
+      if (match.startIndex > curEndLine ||
+          (match.startIndex == curEndLine && match.startOffset >= curEndOffset)) {
+        target = match;
+        break;
+      }
+    }
+    target ??= matches.first;
+
+    _controller!.selection = target;
+    _controller!.makePositionCenterIfInvisible(target.start);
+    _syncSearchHighlight(searchProvider);
+  }
+
+  void _handleFindPrevious() {
+    if (!mounted || _controller == null) return;
+    SearchProvider? searchProvider;
+    try {
+      searchProvider = context.read<SearchProvider?>();
+    } catch (_) {}
+    if (searchProvider == null || searchProvider.query.trim().isEmpty) return;
+
+    final regExp = searchProvider.options.buildRegExp();
+    if (regExp == null) return;
+
+    final matches = _findAllMatches(regExp);
+    if (matches.isEmpty) return;
+
+    final curSelection = _controller!.selection;
+    final curStartLine = curSelection.startIndex;
+    final curStartOffset = curSelection.startOffset;
+
+    CodeLineSelection? target;
+    for (int i = matches.length - 1; i >= 0; i--) {
+      final match = matches[i];
+      if (match.endIndex < curStartLine ||
+          (match.endIndex == curStartLine && match.endOffset <= curStartOffset)) {
+        target = match;
+        break;
+      }
+    }
+    target ??= matches.last;
+
+    _controller!.selection = target;
+    _controller!.makePositionCenterIfInvisible(target.start);
+    _syncSearchHighlight(searchProvider);
+  }
+
+  void _handleReplaceCurrent() {
+    if (!mounted || _controller == null) return;
+    SearchProvider? searchProvider;
+    try {
+      searchProvider = context.read<SearchProvider?>();
+    } catch (_) {}
+    if (searchProvider == null || searchProvider.query.trim().isEmpty) return;
+
+    final selection = _controller!.selection;
+    if (selection.isCollapsed) return;
+
+    final selectedText = _controller!.selectedText;
+    final regExp = searchProvider.options.buildRegExp();
+    if (regExp == null) return;
+
+    // 先判断框选文本和搜索内容是否一致（全匹配校验）
+    final match = regExp.firstMatch(selectedText);
+    if (match == null || match.start != 0 || match.end != selectedText.length) {
+      // 不一致，静默失败
+      return;
+    }
+
+    // 计算替换文本（支持保留大小写）
+    String replacement = searchProvider.replaceText;
+    if (searchProvider.preserveCase) {
+      replacement = CaseUtils.applyPreserveCase(
+        original: selectedText,
+        replacement: replacement,
+      );
+    }
+
+    _controller!.replaceSelection(replacement);
+
+    // 替换后自动定位并框选下一个匹配
+    _handleFindNext();
   }
 
   void _onDiagnosticsChanged() {
@@ -571,7 +702,9 @@ class _CodeEditorWidgetState extends State<CodeEditorWidget> {
   @override
   void dispose() {
     try {
-      _getTabProvider(context).registerSaveHandler(null);
+      final provider = _getTabProvider(context);
+      provider.registerSaveHandler(null);
+      provider.registerSearchHandlers();
     } catch (_) {}
     LspDiagnosticsStore.instance.removeListener(_onDiagnosticsChanged);
     if (_currentLoadedPath != null) {
@@ -1110,19 +1243,19 @@ class _CodeEditorWidgetState extends State<CodeEditorWidget> {
       );
 
       _controller = newController;
+      SearchProvider? searchProvider;
+      try {
+        searchProvider = context.read<SearchProvider?>();
+      } catch (_) {}
+      final initialFindValue = _buildCurrentFindValue(searchProvider);
       _findController?.dispose();
       _findController = CodeFindController(
         newController,
-        const CodeFindValue(
-          option: CodeFindOption(
-            pattern: '',
-            caseSensitive: false,
-            regex: false,
-          ),
-          replaceMode: false,
-          searching: false,
-        ),
+        initialFindValue,
       );
+      if (initialFindValue.option.pattern.isNotEmpty) {
+        _findController!.findInputController.text = initialFindValue.option.pattern;
+      }
       _currentLoadedPath = fullFilePath;
       _currentIndentSize = activeIndentSize;
       _errorMessage = null;
@@ -1145,6 +1278,11 @@ class _CodeEditorWidgetState extends State<CodeEditorWidget> {
       try {
         provider.setModified(tab.isModified);
         provider.registerSaveHandler(() => _saveFile());
+        provider.registerSearchHandlers(
+          findNext: _handleFindNext,
+          findPrevious: _handleFindPrevious,
+          replace: _handleReplaceCurrent,
+        );
       } catch (_) {}
 
       if (mounted) {
@@ -1152,6 +1290,7 @@ class _CodeEditorWidgetState extends State<CodeEditorWidget> {
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (mounted) {
             _handleNavigationTarget(provider);
+            _syncSearchHighlight(searchProvider);
           }
         });
       }
@@ -1187,19 +1326,19 @@ class _CodeEditorWidgetState extends State<CodeEditorWidget> {
       );
 
       _controller = newController;
+      SearchProvider? searchProvider;
+      try {
+        searchProvider = context.read<SearchProvider?>();
+      } catch (_) {}
+      final initialFindValue = _buildCurrentFindValue(searchProvider);
       _findController?.dispose();
       _findController = CodeFindController(
         newController,
-        const CodeFindValue(
-          option: CodeFindOption(
-            pattern: '',
-            caseSensitive: false,
-            regex: false,
-          ),
-          replaceMode: false,
-          searching: false,
-        ),
+        initialFindValue,
       );
+      if (initialFindValue.option.pattern.isNotEmpty) {
+        _findController!.findInputController.text = initialFindValue.option.pattern;
+      }
       _currentLoadedPath = fullFilePath;
       _currentIndentSize = activeIndentSize;
       _errorMessage = null;
@@ -1229,10 +1368,16 @@ class _CodeEditorWidgetState extends State<CodeEditorWidget> {
         try {
           provider.setModified(tab?.isModified ?? false);
           provider.registerSaveHandler(() => _saveFile());
+          provider.registerSearchHandlers(
+            findNext: _handleFindNext,
+            findPrevious: _handleFindPrevious,
+            replace: _handleReplaceCurrent,
+          );
         } catch (_) {}
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (mounted) {
             _handleNavigationTarget(provider);
+            _syncSearchHighlight(searchProvider);
           }
         });
       }

@@ -14,6 +14,7 @@ class SearchOptions {
   final bool isRegex;
   final SearchMode mode;
   final bool isReplaceExpanded;
+  final bool preserveCase;
 
   const SearchOptions({
     this.query = '',
@@ -23,6 +24,7 @@ class SearchOptions {
     this.isRegex = false,
     this.mode = SearchMode.text,
     this.isReplaceExpanded = false,
+    this.preserveCase = false,
   });
 
   SearchOptions copyWith({
@@ -33,6 +35,7 @@ class SearchOptions {
     bool? isRegex,
     SearchMode? mode,
     bool? isReplaceExpanded,
+    bool? preserveCase,
   }) {
     return SearchOptions(
       query: query ?? this.query,
@@ -42,6 +45,7 @@ class SearchOptions {
       isRegex: isRegex ?? this.isRegex,
       mode: mode ?? this.mode,
       isReplaceExpanded: isReplaceExpanded ?? this.isReplaceExpanded,
+      preserveCase: preserveCase ?? this.preserveCase,
     );
   }
 
@@ -69,7 +73,8 @@ class SearchOptions {
         other.wholeWord == wholeWord &&
         other.isRegex == isRegex &&
         other.mode == mode &&
-        other.isReplaceExpanded == isReplaceExpanded;
+        other.isReplaceExpanded == isReplaceExpanded &&
+        other.preserveCase == preserveCase;
   }
 
   @override
@@ -81,6 +86,7 @@ class SearchOptions {
         isRegex,
         mode,
         isReplaceExpanded,
+        preserveCase,
       );
 }
 

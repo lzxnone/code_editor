@@ -1327,5 +1327,11 @@
     }
   },
   "gitLoadingMoreCommits": "Loading more commits...",
-  "searchExpandAllMatchesInFile": "Expand all matches"
+  "searchExpandAllMatchesInFile": "Expand all matches",
+  "preserveCase": "Preserve Case",
+  "replaceMoreOptions": "More Replace Options",
+  "searchRefresh": "Refresh",
+  "searchPreviousMatch": "Previous Match",
+  "searchNextMatch": "Next Match",
+  "replaceCurrentMatch": "Replace"
 }
