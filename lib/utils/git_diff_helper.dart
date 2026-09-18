@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:math' as math;
+import 'package:flutter/foundation.dart';
 
 /// 差异行类型
 enum DiffLineType {
@@ -63,8 +64,140 @@ class SplitDiffResult {
   });
 }
 
+/// 编辑区行号栏 Git 差异提示类型（对标 VS Code）
+enum GitGutterDiffType {
+  /// 修改行（黄色/Amber）
+  modified,
+
+  /// 新增行（绿色/Green）
+  added,
+
+  /// 删除标记（红色/Red）
+  deleted,
+}
+
 /// Git Diff 算法与行对齐计算工具类
 class GitDiffHelper {
+  /// 计算编辑区每一行的 Git 差异标记映射（0-based 行号 -> 差异类型）
+  static Map<int, GitGutterDiffType> computeLineDiff(
+    String baseContent,
+    String currentContent,
+  ) {
+    if (baseContent == currentContent) return const {};
+
+    final originalLines = splitLines(baseContent);
+    final currentLines = splitLines(currentContent);
+    if (originalLines.isEmpty && currentLines.isEmpty) return const {};
+
+    if (originalLines.isEmpty) {
+      final map = <int, GitGutterDiffType>{};
+      for (int i = 0; i < currentLines.length; i++) {
+        map[i] = GitGutterDiffType.added;
+      }
+      return map;
+    }
+
+    if (currentLines.isEmpty) {
+      return {0: GitGutterDiffType.deleted};
+    }
+
+    // 1. 公共前后缀双向 O(1) 快速收缩剪枝 (与 Myers Diff 对齐，规避大文件整屏计算与误判)
+    int prefixCount = 0;
+    while (prefixCount < originalLines.length &&
+        prefixCount < currentLines.length &&
+        originalLines[prefixCount] == currentLines[prefixCount]) {
+      prefixCount++;
+    }
+
+    int suffixCount = 0;
+    while (suffixCount < (originalLines.length - prefixCount) &&
+        suffixCount < (currentLines.length - prefixCount) &&
+        originalLines[originalLines.length - 1 - suffixCount] ==
+            currentLines[currentLines.length - 1 - suffixCount]) {
+      suffixCount++;
+    }
+
+    // 若前后缀完全覆盖，内容完全一致
+    if (prefixCount == originalLines.length && prefixCount == currentLines.length) {
+      return const {};
+    }
+
+    final middleOrig = originalLines.sublist(
+      prefixCount,
+      originalLines.length - suffixCount,
+    );
+    final middleCurr = currentLines.sublist(
+      prefixCount,
+      currentLines.length - suffixCount,
+    );
+
+    final diffOps = _computeDiffOperations(middleOrig, middleCurr);
+    final markers = <int, GitGutterDiffType>{};
+
+    int currentLineIndex = prefixCount;
+    int opIndex = 0;
+
+    while (opIndex < diffOps.length) {
+      final op = diffOps[opIndex];
+      if (op.type == _DiffOpType.equal) {
+        currentLineIndex++;
+        opIndex++;
+      } else {
+        int deleteCount = 0;
+        int insertCount = 0;
+        while (opIndex < diffOps.length && diffOps[opIndex].type != _DiffOpType.equal) {
+          if (diffOps[opIndex].type == _DiffOpType.delete) {
+            deleteCount++;
+          } else if (diffOps[opIndex].type == _DiffOpType.insert) {
+            insertCount++;
+          }
+          opIndex++;
+        }
+
+        if (deleteCount > 0 && insertCount > 0) {
+          final modifiedLinesCount = math.min(deleteCount, insertCount);
+          for (int i = 0; i < modifiedLinesCount; i++) {
+            markers[currentLineIndex + i] = GitGutterDiffType.modified;
+          }
+          for (int i = modifiedLinesCount; i < insertCount; i++) {
+            markers[currentLineIndex + i] = GitGutterDiffType.added;
+          }
+          currentLineIndex += insertCount;
+        } else if (insertCount > 0) {
+          for (int i = 0; i < insertCount; i++) {
+            markers[currentLineIndex + i] = GitGutterDiffType.added;
+          }
+          currentLineIndex += insertCount;
+        } else if (deleteCount > 0) {
+          final targetLine = currentLineIndex < currentLines.length
+              ? currentLineIndex
+              : math.max(0, currentLines.length - 1);
+          markers.putIfAbsent(targetLine, () => GitGutterDiffType.deleted);
+        }
+      }
+    }
+
+    return markers;
+  }
+
+  /// 异步计算编辑区 Git 差异（在大文件或复杂改动时将计算丢入后台 Isolate，保障主线程 60fps）
+  static Future<Map<int, GitGutterDiffType>> computeLineDiffAsync(
+    String baseContent,
+    String currentContent,
+  ) async {
+    if (baseContent == currentContent) return const {};
+    if (baseContent.length < 32768 && currentContent.length < 32768) {
+      return computeLineDiff(baseContent, currentContent);
+    }
+    return compute<_DiffInputPayload, Map<int, GitGutterDiffType>>(
+      _computeLineDiffEntry,
+      _DiffInputPayload(baseContent, currentContent),
+    );
+  }
+
+  /// 公开的按行分割函数
+  static List<String> splitLines(String text) => _splitLines(text);
+
   /// 计算双屏并排对齐结果
   static SplitDiffResult computeSplitDiff(String originalText, String modifiedText) {
     final originalLines = _splitLines(originalText);
@@ -222,12 +355,49 @@ class GitDiffHelper {
     final originalLines = _splitLines(originalText);
     final modifiedLines = _splitLines(modifiedText);
 
-    final diffOps = _computeDiffOperations(originalLines, modifiedLines);
+    // 公共前缀快速收缩剪枝
+    int prefixCount = 0;
+    while (prefixCount < originalLines.length &&
+        prefixCount < modifiedLines.length &&
+        originalLines[prefixCount] == modifiedLines[prefixCount]) {
+      prefixCount++;
+    }
+
+    // 公共后缀快速收缩剪枝
+    int suffixCount = 0;
+    while (suffixCount < (originalLines.length - prefixCount) &&
+        suffixCount < (modifiedLines.length - prefixCount) &&
+        originalLines[originalLines.length - 1 - suffixCount] ==
+            modifiedLines[modifiedLines.length - 1 - suffixCount]) {
+      suffixCount++;
+    }
+
     final result = <UnifiedDiffLine>[];
 
     int origLineNo = 1;
     int modLineNo = 1;
 
+    // 1. 前缀相同部分
+    for (int i = 0; i < prefixCount; i++) {
+      result.add(UnifiedDiffLine(
+        type: DiffLineType.unchanged,
+        text: originalLines[i],
+        oldLineNumber: origLineNo++,
+        newLineNumber: modLineNo++,
+      ));
+    }
+
+    // 2. 中间差异部分
+    final middleOrig = originalLines.sublist(
+      prefixCount,
+      originalLines.length - suffixCount,
+    );
+    final middleMod = modifiedLines.sublist(
+      prefixCount,
+      modifiedLines.length - suffixCount,
+    );
+
+    final diffOps = _computeDiffOperations(middleOrig, middleMod);
     for (final op in diffOps) {
       switch (op.type) {
         case _DiffOpType.equal:
@@ -255,6 +425,17 @@ class GitDiffHelper {
           ));
           break;
       }
+    }
+
+    // 3. 后缀相同部分
+    final origSuffixStart = originalLines.length - suffixCount;
+    for (int i = 0; i < suffixCount; i++) {
+      result.add(UnifiedDiffLine(
+        type: DiffLineType.unchanged,
+        text: originalLines[origSuffixStart + i],
+        oldLineNumber: origLineNo++,
+        newLineNumber: modLineNo++,
+      ));
     }
 
     return result;
@@ -328,4 +509,15 @@ class _DiffOp {
   final String text;
 
   _DiffOp(this.type, this.text);
+}
+
+class _DiffInputPayload {
+  final String baseContent;
+  final String currentContent;
+
+  const _DiffInputPayload(this.baseContent, this.currentContent);
+}
+
+Map<int, GitGutterDiffType> _computeLineDiffEntry(_DiffInputPayload payload) {
+  return GitDiffHelper.computeLineDiff(payload.baseContent, payload.currentContent);
 }

@@ -1,4 +1,5 @@
 import 'dart:math' as math;
+import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -253,15 +254,21 @@ class _GitDiffPageState extends State<GitDiffPage> {
       final baseContent = await widget.gitProvider.gitService.getFileBaseContent(repoPath, _currentFile);
       final modifiedContent = await widget.gitProvider.gitService.getFileModifiedContent(repoPath, _currentFile);
 
-      final split = GitDiffHelper.computeSplitDiff(baseContent ?? '', modifiedContent);
-      final unified = GitDiffHelper.toUnifiedDiff(baseContent ?? '', modifiedContent);
+      // 大文件采用后台 Isolate 计算双屏与单屏差异，彻底杜绝主 UI 线程卡顿
+      final isLarge = (baseContent != null && baseContent.length > 32768) || modifiedContent.length > 32768;
+      final diffData = isLarge
+          ? await compute<_DiffDataInput, _DiffDataOutput>(
+              _computeDiffPageData,
+              _DiffDataInput(baseContent ?? '', modifiedContent),
+            )
+          : _computeDiffPageData(_DiffDataInput(baseContent ?? '', modifiedContent));
 
       if (mounted) {
         setState(() {
-          _splitResult = split;
-          _unifiedLines = unified;
+          _splitResult = diffData.split;
+          _unifiedLines = diffData.unified;
           _isLoading = false;
-          _currentChangeIndex = split.changeRowIndices.isNotEmpty ? 0 : -1;
+          _currentChangeIndex = diffData.split.changeRowIndices.isNotEmpty ? 0 : -1;
         });
       }
     } catch (e) {
@@ -368,7 +375,9 @@ class _GitDiffPageState extends State<GitDiffPage> {
       final curH = _leftHController.hasClients ? _leftHController.offset : 0.0;
 
       _splitFocalLineContinuous = (curV + localFocal.dy) / math.max(1.0, rowH);
-      _splitFocalCharContinuous = (curH + localFocal.dx) / math.max(1.0, charW);
+      // 水平锚定：若当前未横向滚动（偏移 <= 4px），缩放时严格锁定在 0，
+      // 避免全局屏幕触摸坐标算入 targetScrollH 导致代码首部字符（如 -I、#、关键字等）被意外向右推入视口外
+      _splitFocalCharContinuous = curH <= 4.0 ? 0.0 : curH / math.max(1.0, charW);
 
       _splitLastPanPos = null;
       setState(() {
@@ -417,7 +426,9 @@ class _GitDiffPageState extends State<GitDiffPage> {
         _splitCurrentLocalFocal = currentLocalFocal;
 
         final targetScrollV = _splitFocalLineContinuous * newRowH - currentLocalFocal.dy;
-        final targetScrollH = _splitFocalCharContinuous * newCharW - currentLocalFocal.dx;
+        final targetScrollH = _splitFocalCharContinuous <= 0.0
+            ? 0.0
+            : _splitFocalCharContinuous * newCharW;
 
         _jumpSplitScroll(targetScrollV, targetScrollH);
 
@@ -451,7 +462,9 @@ class _GitDiffPageState extends State<GitDiffPage> {
       final currentLocalFocal = _splitCurrentLocalFocal ?? _splitInitialLocalFocal;
       if (currentLocalFocal != null) {
         final targetScrollV = _splitFocalLineContinuous * finalH - currentLocalFocal.dy;
-        final targetScrollH = _splitFocalCharContinuous * finalW - currentLocalFocal.dx;
+        final targetScrollH = _splitFocalCharContinuous <= 0.0
+            ? 0.0
+            : _splitFocalCharContinuous * finalW;
         _jumpSplitScroll(targetScrollV, targetScrollH);
       }
     }
@@ -622,7 +635,9 @@ class _GitDiffPageState extends State<GitDiffPage> {
       final curH = _unifiedHController.hasClients ? _unifiedHController.offset : 0.0;
 
       _unifiedFocalLineContinuous = (curV + localFocal.dy) / math.max(1.0, rowH);
-      _unifiedFocalCharContinuous = (curH + localFocal.dx) / math.max(1.0, charW);
+      // 水平锚定：若当前未横向滚动（偏移 <= 4px），缩放时严格锁定在 0，
+      // 避免全局屏幕触摸坐标算入 targetScrollH 导致代码首部字符被推入视口外
+      _unifiedFocalCharContinuous = curH <= 4.0 ? 0.0 : curH / math.max(1.0, charW);
 
       _unifiedLastPanPos = null;
       setState(() {
@@ -671,7 +686,9 @@ class _GitDiffPageState extends State<GitDiffPage> {
         _unifiedCurrentLocalFocal = currentLocalFocal;
 
         final targetScrollV = _unifiedFocalLineContinuous * newRowH - currentLocalFocal.dy;
-        final targetScrollH = _unifiedFocalCharContinuous * newCharW - currentLocalFocal.dx;
+        final targetScrollH = _unifiedFocalCharContinuous <= 0.0
+            ? 0.0
+            : _unifiedFocalCharContinuous * newCharW;
 
         _syncingUnified = true;
         if (_unifiedVController.hasClients) {
@@ -729,7 +746,9 @@ class _GitDiffPageState extends State<GitDiffPage> {
       final currentLocalFocal = _unifiedCurrentLocalFocal ?? _unifiedInitialLocalFocal;
       if (currentLocalFocal != null) {
         final targetScrollV = _unifiedFocalLineContinuous * finalH - currentLocalFocal.dy;
-        final targetScrollH = _unifiedFocalCharContinuous * finalW - currentLocalFocal.dx;
+        final targetScrollH = _unifiedFocalCharContinuous <= 0.0
+            ? 0.0
+            : _unifiedFocalCharContinuous * finalW;
         _syncingUnified = true;
         if (_unifiedVController.hasClients) {
           final maxV = _unifiedVController.position.maxScrollExtent;
@@ -1426,7 +1445,8 @@ class _GitDiffPageState extends State<GitDiffPage> {
     final totalLines = lines.length;
     final digits = totalLines > 0 ? '$totalLines'.length : 1;
     final charW = fontSize * 0.60;
-    final gutterWidth = math.max(44.0, digits * charW + 24.0);
+    final signW = (charW + 4.0).clamp(14.0, 36.0);
+    final gutterWidth = math.max(44.0, digits * charW + signW + 12.0);
 
     // 视口极限狭窄自适应判定（彻底根治 RenderFlex 水平溢出）
     final bool hasCodeArea = viewportWidth > (gutterWidth + 1.0);
@@ -1532,12 +1552,14 @@ class _GitDiffPageState extends State<GitDiffPage> {
                                     ),
                                   ),
                                   const SizedBox(width: 4),
-                                  // 加号/减号符号严格显示在行号区内！
+                                  // 加号/减号符号严格显示在行号区内，随字号动态伸缩且防溢出裁切
                                   SizedBox(
-                                    width: 12,
+                                    width: signW,
                                     child: Center(
                                       child: Text(
                                         isDeleted ? '-' : (isAdded ? '+' : ''),
+                                        overflow: TextOverflow.visible,
+                                        softWrap: false,
                                         style: TextStyle(
                                           fontSize: (fontSize - 1).clamp(SettingsProvider.minFontSize - 1.0, SettingsProvider.maxFontSize + 8.0),
                                           fontWeight: FontWeight.bold,
@@ -1655,7 +1677,8 @@ class _GitDiffPageState extends State<GitDiffPage> {
 
     final totalLines = lines.length;
     final digits = totalLines > 0 ? '$totalLines'.length : 1;
-    final gutterWidth = math.max(44.0, digits * displayCharWidth + 24.0);
+    final signW = (displayCharWidth + 4.0).clamp(14.0, 36.0);
+    final gutterWidth = math.max(44.0, digits * displayCharWidth + signW + 12.0);
 
     int maxChars = 0;
     for (final l in lines) {
@@ -1760,12 +1783,14 @@ class _GitDiffPageState extends State<GitDiffPage> {
                                       ),
                                     ),
                                     const SizedBox(width: 4),
-                                    // 符号指示器（+ / -）同样在行号区内！
+                                    // 符号指示器（+ / -）同样在行号区内，随字号动态伸缩且防溢出裁切
                                     SizedBox(
-                                      width: 12,
+                                      width: signW,
                                       child: Center(
                                         child: Text(
                                           isDeleted ? '-' : (isAdded ? '+' : ''),
+                                          overflow: TextOverflow.visible,
+                                          softWrap: false,
                                           style: TextStyle(
                                             fontSize: (displayFontSize - 1).clamp(SettingsProvider.minFontSize - 1.0, SettingsProvider.maxFontSize + 8.0),
                                             fontWeight: FontWeight.bold,
@@ -1862,4 +1887,22 @@ class _GitDiffPageState extends State<GitDiffPage> {
       ),
     );
   }
+}
+
+class _DiffDataInput {
+  final String baseContent;
+  final String modifiedContent;
+  const _DiffDataInput(this.baseContent, this.modifiedContent);
+}
+
+class _DiffDataOutput {
+  final SplitDiffResult split;
+  final List<UnifiedDiffLine> unified;
+  const _DiffDataOutput(this.split, this.unified);
+}
+
+_DiffDataOutput _computeDiffPageData(_DiffDataInput input) {
+  final split = GitDiffHelper.computeSplitDiff(input.baseContent, input.modifiedContent);
+  final unified = GitDiffHelper.toUnifiedDiff(input.baseContent, input.modifiedContent);
+  return _DiffDataOutput(split, unified);
 }

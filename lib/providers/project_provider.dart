@@ -301,16 +301,24 @@ class ProjectProvider extends ChangeNotifier {
   }
 
   Future<void> paste(FileItem targetDir) async {
-    if(!targetDir.isDirectory) return;
+    if (!targetDir.isDirectory) return;
+    await pasteToDirectory(targetDir.path);
+  }
 
-    if(_cutItem != null) {
+  Future<void> pasteToRoot() async {
+    if (rootPath == null || !canPaste) return;
+    await pasteToDirectory(rootPath!);
+  }
+
+  Future<void> pasteToDirectory(String dirPath) async {
+    if (_cutItem != null) {
       final source = _cutItem!;
-      await FileService.instance.moveEntity(source.path, targetDir.path);
+      await FileService.instance.moveEntity(source.path, dirPath);
       _cutItem = null;
       await refreshTree();
-    }else if (_copiedItem != null) {
+    } else if (_copiedItem != null) {
       final source = _copiedItem!;
-      await FileService.instance.copyEntity(source.path, targetDir.path);
+      await FileService.instance.copyEntity(source.path, dirPath);
       await refreshTree();
     }
   }

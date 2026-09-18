@@ -157,10 +157,14 @@ class GitService {
     }
   }
 
-  /// 自动确保 Git 基础配置就绪（safe.directory 豁免 + 默认提交者占位符）
+  /// 自动确保 Git 基础配置就绪（safe.directory 豁免 + 默认提交者占位符 + 避免 link2symlink 逃逸）
   Future<void> ensureGitUserConfigured() async {
     try {
       await _runProcess('git', ['config', '--global', '--add', 'safe.directory', '*']);
+      // 核心修复：强制 Git 使用 rename 而非 link() 创建对象，
+      // 根除 PRoot --link2symlink 将对象伪装软链接放入容器内部 rootfs/.l2s，
+      // 保证容器重建时项目目录内的 Git loose objects 绝不会丢失！
+      await _runProcess('git', ['config', '--global', 'core.createObject', 'rename']);
       final nameCheck = await _runProcess('git', ['config', '--global', 'user.name']);
       if (nameCheck.stdout.toString().trim().isEmpty) {
         await _runProcess('git', ['config', '--global', 'user.name', 'CodeEditor User']);
@@ -495,16 +499,39 @@ class GitService {
     }
   }
 
-  /// 删除本地分支 (`git branch -d` / `-D`)
+  /// 删除本地分支 (`git branch -d` / `-D`)，支持强力清理坏损无对象分支
   Future<GitCommandResult> deleteBranch(
     String repoPath,
     String branchName, {
     bool force = false,
   }) async {
-    return runGitCommand(
+    final res = await runGitCommand(
       ['branch', force ? '-D' : '-d', branchName],
       workingDir: repoPath,
     );
+    if (res.success) return res;
+
+    // 针对树对象损坏或缺失的分支（如 fatal: reference is not a tree），
+    // 允许通过物理删除 .git/refs/heads/<branchName> 解除阻断
+    if (force ||
+        res.stderr.contains('reference is not a tree') ||
+        res.stderr.contains('not a valid object name') ||
+        res.stderr.contains('unable to resolve reference')) {
+      try {
+        final refFile = File(p.join(repoPath, '.git', 'refs', 'heads', branchName));
+        if (refFile.existsSync()) {
+          refFile.deleteSync();
+          return const GitCommandResult(
+            success: true,
+            exitCode: 0,
+            stdout: 'Deleted damaged branch reference',
+            stderr: '',
+          );
+        }
+      } catch (_) {}
+    }
+
+    return res;
   }
 
   /// 获取本地标签列表 (`git tag -l`)

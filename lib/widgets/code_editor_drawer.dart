@@ -139,6 +139,29 @@ class _CodeEditorDrawerState extends State<CodeEditorDrawer> {
     }
   }
 
+  Future<void> _handlePasteToRoot(
+    BuildContext context,
+    ProjectProvider provider,
+  ) async {
+    final l10n = AppLocalizations.of(context);
+    try {
+      await provider.pasteToRoot();
+      if (context.mounted) {
+        DialogUtils.showSuccessToast(
+          context,
+          l10n?.operationSuccess ?? '操作成功',
+        );
+      }
+    } catch (e) {
+      if (context.mounted) {
+        DialogUtils.showErrorToast(
+          context,
+          l10n?.operationFailed(e.toString()) ?? '操作失败: $e',
+        );
+      }
+    }
+  }
+
   Widget _buildActivityBarItem({
     required BuildContext context,
     required int index,
@@ -287,6 +310,7 @@ class _CodeEditorDrawerState extends State<CodeEditorDrawer> {
     String? rootPath,
     bool hasProject,
   ) {
+    final projectProvider = _getProjectProvider(context, listen: true);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -470,6 +494,25 @@ class _CodeEditorDrawerState extends State<CodeEditorDrawer> {
                           tooltip: l10n.importFromExternal,
                           onPressed: () =>
                               _handleImportFiles(context, rootPath!),
+                        ),
+                        const SizedBox(width: 2),
+                        IconButton(
+                          visualDensity: VisualDensity.compact,
+                          style: IconButton.styleFrom(
+                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                            minimumSize: Size.zero,
+                            padding: const EdgeInsets.all(3),
+                          ),
+                          constraints: const BoxConstraints(
+                            minWidth: 24,
+                            minHeight: 24,
+                          ),
+                          iconSize: 18,
+                          icon: const Icon(Icons.paste_outlined),
+                          tooltip: l10n.paste,
+                          onPressed: projectProvider.canPaste
+                              ? () => _handlePasteToRoot(context, projectProvider)
+                              : null,
                         ),
                       ],
                     ],

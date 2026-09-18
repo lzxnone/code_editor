@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:path/path.dart' as p;
+import 'package:path_provider/path_provider.dart';
 import 'package:provider/provider.dart';
 
 import '../l10n/app_localizations.dart';
@@ -106,7 +107,28 @@ class InternalEngineService extends ChangeNotifier {
       // 2. 清理终端中属于 ubuntu 的活跃会话
       terminalProvider?.removeSessionsForDistro(DistroRepository.defaultSystemName);
 
-      // 3. 彻底删除 ubuntu 容器目录
+      // 3. 保护 .l2s 目录，避免外部工程中已建立的 PRoot 硬链接替身文件随容器重装被误删
+      Directory? preservedL2s;
+      try {
+        final currentRootfs = await DistroManager().getSystemRootDir(DistroRepository.defaultSystemName);
+        final oldL2s = Directory(p.join(currentRootfs.path, '.l2s'));
+        if (oldL2s.existsSync()) {
+          final tempDir = await getTemporaryDirectory();
+          final backupDir = Directory(p.join(tempDir.path, 'preserved_l2s_${DateTime.now().millisecondsSinceEpoch}'));
+          backupDir.createSync(recursive: true);
+          final entries = oldL2s.listSync();
+          for (final entry in entries) {
+            if (entry is File) {
+              entry.copySync(p.join(backupDir.path, p.basename(entry.path)));
+            }
+          }
+          preservedL2s = backupDir;
+        }
+      } catch (e) {
+        debugPrint('备份 .l2s 异常 (非阻塞): $e');
+      }
+
+      // 彻底删除 ubuntu 容器目录
       if (customEngineDir != null) {
         if (customEngineDir!.existsSync()) {
           customEngineDir!.deleteSync(recursive: true);
@@ -134,6 +156,29 @@ class InternalEngineService extends ChangeNotifier {
           );
         },
       );
+
+      // 5. 还原被保护的 .l2s 替身目录到新解压的容器中
+      if (success && preservedL2s != null && preservedL2s.existsSync()) {
+        try {
+          final newRootfs = await DistroManager().getSystemRootDir(DistroRepository.defaultSystemName);
+          final newL2s = Directory(p.join(newRootfs.path, '.l2s'));
+          if (!newL2s.existsSync()) {
+            newL2s.createSync(recursive: true);
+          }
+          for (final entity in preservedL2s.listSync()) {
+            if (entity is File) {
+              final target = p.join(newL2s.path, p.basename(entity.path));
+              if (!File(target).existsSync()) {
+                entity.copySync(target);
+              }
+            }
+          }
+          preservedL2s.deleteSync(recursive: true);
+          debugPrint('成功恢复 .l2s 替身目录到新容器');
+        } catch (e) {
+          debugPrint('恢复 .l2s 目录异常: $e');
+        }
+      }
 
       _isChecking = false;
       notifyListeners();

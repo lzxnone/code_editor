@@ -1,10 +1,13 @@
+import 'dart:async';
 import 'dart:math';
 import 'package:code_editor/l10n/app_localizations.dart';
 import 'package:code_editor/models/app_font.dart';
 import 'package:code_editor/models/editor_tab_item.dart';
 import 'package:code_editor/models/editor_theme.dart';
 import 'package:code_editor/models/virtual_keyboard_config.dart';
+import 'package:code_editor/models/git_model.dart';
 import 'package:code_editor/models/search_model.dart';
+import 'package:code_editor/providers/git_provider.dart';
 import 'package:code_editor/providers/search_provider.dart';
 import 'package:code_editor/providers/settings_provider.dart';
 import 'package:code_editor/providers/tab_provider.dart';
@@ -16,7 +19,9 @@ import 'package:code_editor/services/lsp/lsp_manager.dart';
 import 'package:code_editor/services/lsp/lsp_protocol.dart';
 import 'package:code_editor/utils/case_utils.dart';
 import 'package:code_editor/utils/dialog_utils.dart';
+import 'package:code_editor/utils/git_diff_helper.dart';
 import 'package:code_editor/utils/syntax_highlight_helper.dart';
+import 'package:flutter/foundation.dart';
 import 'package:code_editor/widgets/code_autocomplete_view.dart';
 import 'package:code_editor/widgets/code_editor_menu.dart';
 import 'package:code_editor/widgets/editor/editor_diagnostic_controller.dart';
@@ -24,6 +29,7 @@ import 'package:code_editor/widgets/editor/editor_lsp_coordinator.dart';
 import 'package:code_editor/widgets/editor/editor_overlay_scope.dart';
 import 'package:code_editor/widgets/virtual_keyboard_widget.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:path/path.dart' as p;
 import 'package:provider/provider.dart';
@@ -57,6 +63,159 @@ class _DiagnosticGutterDotPainter extends BoxPainter {
       ..style = PaintingStyle.fill;
     final center = Offset(offset.dx + 4.0, offset.dy + size.height / 2);
     canvas.drawCircle(center, decoration.radius, paint);
+  }
+}
+
+/// 编辑区行号栏与代码折叠箭头之间的 Git 差异条指示器（对标 VS Code）
+class GitDiffGutterIndicator extends LeafRenderObjectWidget {
+  final double width;
+  final CodeIndicatorValueNotifier notifier;
+  final ValueListenable<Map<int, GitGutterDiffType>> diffMarkers;
+
+  const GitDiffGutterIndicator({
+    super.key,
+    required this.width,
+    required this.notifier,
+    required this.diffMarkers,
+  });
+
+  @override
+  RenderObject createRenderObject(BuildContext context) => GitDiffGutterIndicatorRenderObject(
+    width: width,
+    notifier: notifier,
+    diffMarkers: diffMarkers,
+  );
+
+  @override
+  void updateRenderObject(BuildContext context, covariant GitDiffGutterIndicatorRenderObject renderObject) {
+    renderObject
+      ..width = width
+      ..notifier = notifier
+      ..diffMarkers = diffMarkers;
+    super.updateRenderObject(context, renderObject);
+  }
+}
+
+class GitDiffGutterIndicatorRenderObject extends RenderBox {
+  double _width;
+  CodeIndicatorValueNotifier _notifier;
+  ValueListenable<Map<int, GitGutterDiffType>> _diffMarkers;
+
+  GitDiffGutterIndicatorRenderObject({
+    required double width,
+    required CodeIndicatorValueNotifier notifier,
+    required ValueListenable<Map<int, GitGutterDiffType>> diffMarkers,
+  }) : _width = width,
+       _notifier = notifier,
+       _diffMarkers = diffMarkers;
+
+  set width(double val) {
+    if (_width == val) return;
+    _width = val;
+    markNeedsLayout();
+  }
+
+  set notifier(CodeIndicatorValueNotifier val) {
+    if (_notifier == val) return;
+    if (attached) _notifier.removeListener(markNeedsPaint);
+    _notifier = val;
+    if (attached) _notifier.addListener(markNeedsPaint);
+    markNeedsPaint();
+  }
+
+  set diffMarkers(ValueListenable<Map<int, GitGutterDiffType>> val) {
+    if (_diffMarkers == val) return;
+    if (attached) _diffMarkers.removeListener(markNeedsPaint);
+    _diffMarkers = val;
+    if (attached) _diffMarkers.addListener(markNeedsPaint);
+    markNeedsPaint();
+  }
+
+  @override
+  void attach(covariant PipelineOwner owner) {
+    _notifier.addListener(markNeedsPaint);
+    _diffMarkers.addListener(markNeedsPaint);
+    super.attach(owner);
+  }
+
+  @override
+  void detach() {
+    _notifier.removeListener(markNeedsPaint);
+    _diffMarkers.removeListener(markNeedsPaint);
+    super.detach();
+  }
+
+  @override
+  double computeMinIntrinsicWidth(double height) => _width;
+
+  @override
+  double computeMaxIntrinsicWidth(double height) => _width;
+
+  @override
+  double computeMinIntrinsicHeight(double width) => 0.0;
+
+  @override
+  double computeMaxIntrinsicHeight(double width) => 0.0;
+
+  @override
+  Size computeDryLayout(BoxConstraints constraints) {
+    return constraints.constrain(Size(_width, constraints.maxHeight));
+  }
+
+  @override
+  void performLayout() {
+    size = constraints.constrain(Size(_width, constraints.maxHeight));
+  }
+
+  @override
+  void paint(PaintingContext context, Offset offset) {
+    final Canvas canvas = context.canvas;
+    final CodeIndicatorValue? value = _notifier.value;
+    if (value == null || value.paragraphs.isEmpty) return;
+
+    final markers = _diffMarkers.value;
+    if (markers.isEmpty) return;
+
+    final paint = Paint()..style = PaintingStyle.fill;
+
+    canvas.save();
+    canvas.clipRect(Rect.fromLTWH(offset.dx, offset.dy, size.width, size.height));
+
+    for (final CodeLineRenderParagraph paragraph in value.paragraphs) {
+      final markerType = markers[paragraph.index];
+      if (markerType == null) continue;
+
+      final top = offset.dy + paragraph.offset.dy;
+      final height = paragraph.preferredLineHeight;
+
+      switch (markerType) {
+        case GitGutterDiffType.modified:
+          paint.color = const Color(0xFFE2B340); // 黄色/琥珀色
+          canvas.drawRect(
+            Rect.fromLTWH(offset.dx + 1.0, top, 3.0, height),
+            paint,
+          );
+          break;
+        case GitGutterDiffType.added:
+          paint.color = const Color(0xFF2EA043); // 绿色
+          canvas.drawRect(
+            Rect.fromLTWH(offset.dx + 1.0, top, 3.0, height),
+            paint,
+          );
+          break;
+        case GitGutterDiffType.deleted:
+          paint.color = const Color(0xFFF85149); // 红色删除三角形
+          final path = Path()
+            ..moveTo(offset.dx + 1.0, top)
+            ..lineTo(offset.dx + 4.5, top + 3.0)
+            ..lineTo(offset.dx + 1.0, top + 6.0)
+            ..close();
+          canvas.drawPath(path, paint);
+          break;
+      }
+    }
+
+    canvas.restore();
   }
 }
 
@@ -97,6 +256,12 @@ class _CodeEditorWidgetState extends State<CodeEditorWidget> {
   int? _currentIndentSize;
   bool _isShowingConflictDialog = false;
   int _currentCursorLine = -1;
+
+  // Git 行差异状态管理（对标 VS Code 实时黄绿高亮）
+  String? _gitBaseContent;
+  final ValueNotifier<Map<int, GitGutterDiffType>> _gitLineMarkers = ValueNotifier(const {});
+  Timer? _gitDiffDebounceTimer;
+  String? _lastGitStateKey;
 
   // 双指捏合实时缩放字号及中心锚定状态
   final GlobalKey _editorContainerKey = GlobalKey();
@@ -654,6 +819,66 @@ class _CodeEditorWidgetState extends State<CodeEditorWidget> {
     _handleFindNext();
   }
 
+  Future<void> _updateGitBaseContent() async {
+    final path = _currentLoadedPath;
+    if (path == null) {
+      _gitBaseContent = null;
+      if (_gitLineMarkers.value.isNotEmpty) _gitLineMarkers.value = const {};
+      return;
+    }
+    GitProvider? gitProvider;
+    try {
+      gitProvider = context.read<GitProvider?>();
+    } catch (_) {}
+    final repoPath = gitProvider?.currentRepoPath;
+    if (repoPath == null || !p.isWithin(repoPath, path)) {
+      _gitBaseContent = null;
+      if (_gitLineMarkers.value.isNotEmpty) _gitLineMarkers.value = const {};
+      return;
+    }
+    final relPath = p.relative(path, from: repoPath).replaceAll(r'\', '/');
+    try {
+      final content = await gitProvider!.gitService.getFileContentAtRef(repoPath, ':0', relPath)
+          ?? await gitProvider.gitService.getFileContentAtRef(repoPath, 'HEAD', relPath);
+      if (!mounted || _currentLoadedPath != path) return;
+      _gitBaseContent = content?.replaceAll('\r\n', '\n');
+      _recomputeGitDiff();
+    } catch (_) {
+      _gitBaseContent = null;
+      _recomputeGitDiff();
+    }
+  }
+
+  Future<void> _recomputeGitDiff() async {
+    if (!mounted || _controller == null) return;
+    if (_gitBaseContent == null) {
+      GitProvider? gitProvider;
+      try {
+        gitProvider = context.read<GitProvider?>();
+      } catch (_) {}
+      final path = _currentLoadedPath;
+      if (path != null && gitProvider != null) {
+        final status = gitProvider.getFileStatus(path);
+        if (status?.statusType == GitFileStatusType.untracked) {
+          final linesCount = _controller!.codeLines.length;
+          final markers = <int, GitGutterDiffType>{};
+          for (int i = 0; i < linesCount; i++) {
+            markers[i] = GitGutterDiffType.added;
+          }
+          if (mounted) _gitLineMarkers.value = markers;
+          return;
+        }
+      }
+      if (_gitLineMarkers.value.isNotEmpty) _gitLineMarkers.value = const {};
+      return;
+    }
+    final currentText = _controller!.text.replaceAll('\r\n', '\n');
+    final markers = await GitDiffHelper.computeLineDiffAsync(_gitBaseContent!, currentText);
+    if (mounted) {
+      _gitLineMarkers.value = markers;
+    }
+  }
+
   void _onDiagnosticsChanged() {
     if (!mounted || _controller == null) return;
     _controller?.forceRepaint();
@@ -718,6 +943,8 @@ class _CodeEditorWidgetState extends State<CodeEditorWidget> {
     _scrollController?.dispose();
     _findController?.dispose();
     _findController = null;
+    _gitDiffDebounceTimer?.cancel();
+    _gitLineMarkers.dispose();
     _controller?.removeListener(_onTextChanged);
     _controller?.dispose();
     _focusNode.dispose();
@@ -778,6 +1005,11 @@ class _CodeEditorWidgetState extends State<CodeEditorWidget> {
     } else {
       notifyProvider();
     }
+
+    _gitDiffDebounceTimer?.cancel();
+    _gitDiffDebounceTimer = Timer(const Duration(milliseconds: 150), () {
+      if (mounted) _recomputeGitDiff();
+    });
   }
 
   /// 依据 LSP 实时诊断结果，为当前行的代码文本施加波浪下划线（保留已有代码高亮色彩）
@@ -913,6 +1145,20 @@ class _CodeEditorWidgetState extends State<CodeEditorWidget> {
         _syncSearchHighlight(searchProvider);
       }
     });
+
+    try {
+      final gitProvider = context.watch<GitProvider?>();
+      final currentStatus = (_currentLoadedPath != null && gitProvider != null)
+          ? gitProvider.getFileStatus(_currentLoadedPath!)
+          : null;
+      final gitStateKey = '${gitProvider?.currentRepoPath}_${gitProvider?.currentBranch}_${currentStatus?.statusType}_${currentStatus?.isStaged}_${currentStatus?.originalPath}_${gitProvider?.totalChangedCount}';
+      if (_lastGitStateKey != gitStateKey) {
+        _lastGitStateKey = gitStateKey;
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) _updateGitBaseContent();
+        });
+      }
+    } catch (_) {}
 
     final l10n = AppLocalizations.of(context);
     final hasNoProject = widget.rootPath == null || widget.rootPath!.trim().isEmpty;
@@ -1097,6 +1343,11 @@ class _CodeEditorWidgetState extends State<CodeEditorWidget> {
                                               height: 1.4,
                                             ),
                                           ),
+                                          GitDiffGutterIndicator(
+                                            width: 5.0,
+                                            notifier: notifier,
+                                            diffMarkers: _gitLineMarkers,
+                                          ),
                                           DefaultCodeChunkIndicator(
                                             width: 20,
                                             controller: chunkController,
@@ -1186,6 +1437,8 @@ class _CodeEditorWidgetState extends State<CodeEditorWidget> {
 
     if (hasNoFile) {
       _currentLoadedPath = null;
+      _gitBaseContent = null;
+      if (_gitLineMarkers.value.isNotEmpty) _gitLineMarkers.value = const {};
       _controller?.removeListener(_onTextChanged);
       _controller?.dispose();
       _controller = null;
@@ -1291,6 +1544,7 @@ class _CodeEditorWidgetState extends State<CodeEditorWidget> {
           if (mounted) {
             _handleNavigationTarget(provider);
             _syncSearchHighlight(searchProvider);
+            _updateGitBaseContent();
           }
         });
       }
@@ -1316,13 +1570,22 @@ class _CodeEditorWidgetState extends State<CodeEditorWidget> {
         return;
       }
 
+      // 大文本异步分行：对于超过 64KB 的文本在后台 Isolate 完成解析，彻底杜绝主 UI 线程掉帧
+      final CodeLines codeLines = diskContent.length > 65536
+          ? await diskContent.codeLinesAsync
+          : diskContent.codeLines;
+
+      if (!mounted || requestVersion != _currentLoadVersion) {
+        return;
+      }
+
       final oldController = _controller;
       oldController?.removeListener(_onTextChanged);
 
-      final newController = CodeLineEditingController.fromText(
-        diskContent,
-        CodeLineOptions(indentSize: activeIndentSize),
-        _buildDiagnosticSpans,
+      final newController = CodeLineEditingController(
+        codeLines: codeLines,
+        options: CodeLineOptions(indentSize: activeIndentSize),
+        spanBuilder: _buildDiagnosticSpans,
       );
 
       _controller = newController;
@@ -1343,12 +1606,15 @@ class _CodeEditorWidgetState extends State<CodeEditorWidget> {
       _currentIndentSize = activeIndentSize;
       _errorMessage = null;
 
-      _lspCoordinator.onFileOpened(
-        fullFilePath,
-        diskContent,
-        newController.codeLines,
-        workspaceRoot: widget.rootPath,
-      );
+      Future.microtask(() {
+        if (!mounted || _currentLoadedPath != fullFilePath) return;
+        _lspCoordinator.onFileOpened(
+          fullFilePath,
+          diskContent,
+          newController.codeLines,
+          workspaceRoot: widget.rootPath,
+        );
+      });
 
       if (tab != null) {
         tab.content = diskContent;
@@ -1378,6 +1644,7 @@ class _CodeEditorWidgetState extends State<CodeEditorWidget> {
           if (mounted) {
             _handleNavigationTarget(provider);
             _syncSearchHighlight(searchProvider);
+            _updateGitBaseContent();
           }
         });
       }

@@ -157,7 +157,14 @@ class SyntaxHighlightHelper {
     }
     final definition = builtinAllLanguages[langId];
     if (definition != null) {
-      final mode = CodeHighlightThemeMode(mode: definition);
+      // 对标 VS Code 性能保护策略：
+      // 1. 文件文本超过 2MB 时，安全降级为纯文本，防止巨型语法树引发主线程垃圾回收暂停；
+      // 2. 单行超过 4096 字符（如压缩混淆 JSON/JS）时，安全截断单行复杂正则回溯与跨 Isolate 数组序列化。
+      final mode = CodeHighlightThemeMode(
+        mode: definition,
+        maxSize: 2 * 1024 * 1024,
+        maxLineLength: 4096,
+      );
       _modeCache[langId] = mode;
       return mode;
     }
@@ -196,6 +203,10 @@ class SyntaxHighlightHelper {
   }) {
     if (code.isEmpty) {
       return TextSpan(text: '', style: baseStyle);
+    }
+    // 性能防御：单行超出 2048 字符（如压缩 JSON/数据行）在 Diff 视图中降级为纯文本，防止每帧重绘卡顿
+    if (code.length > 2048) {
+      return TextSpan(text: code, style: baseStyle);
     }
     final langId = getLanguageId(filePath);
     if (langId == null) {
