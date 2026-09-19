@@ -28,5 +28,10 @@ ThemeData buildAppTheme({
     ),
     fontFamily: fontFamily,
     fontFamilyFallback: fontFamilyFallback,
+    // 窄屏（320~360dp）下给对话框留出边距，避免内容顶满屏幕两侧造成溢出。
+    // 这里刻意用固定值而非按屏宽判断：ThemeData 是纯函数，便于单测且无副作用。
+    dialogTheme: const DialogThemeData(
+      insetPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 24),
+    ),
   );
 }

@@ -1294,6 +1294,325 @@
   "gitSearchBranches": "Search branches...",
   "gitSearchTags": "Search tags...",
   "gitNoBranches": "No branches",
+
+  "gitRemoteBranches": "Remote Branches",
+  "gitLocalBranches": "Local Branches",
+  "gitNoRemoteBranches": "No remote branches yet — fetch first",
+  "gitCheckoutRemoteBranch": "Check out as local branch",
+  "gitRemoteBranchCheckedOut": "Already checked out locally",
+  "gitCheckoutRemoteBranchSuccess": "Created and switched to local branch {branch} from {remote}",
+  "@gitCheckoutRemoteBranchSuccess": {
+    "placeholders": {
+      "remote": {
+        "type": "String"
+      },
+      "branch": {
+        "type": "String"
+      }
+    }
+  },
+  "gitSearchRemoteBranches": "Search remote branches...",
+
+  "gitRepairCheck": "Repository Check",
+  "gitRepairCheckRunning": "Checking...",
+  "gitRepairCheckHealthy": "Repository is intact, no missing objects",
+  "gitRepairCheckHealthyHint": "Object database verified. Committing and syncing should work normally.",
+  "gitRepairCheckObjectLoss": "Missing objects detected ({count} problems)",
+  "@gitRepairCheckObjectLoss": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "gitRepairCheckObjectLossHint": "This kind of damage causes \"Error building trees\" on commit. It usually happens when the container is rebuilt and .git/objects is lost. Back up the project directory first, then follow the advice below.",
+  "gitRepairCheckDangling": "{count} dangling objects (normal, no action needed)",
+  "@gitRepairCheckDangling": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "gitRepairCheckFailed": "The check could not complete",
+  "gitRepairCheckFailedHint": "The repository may be large or the command timed out. Try again later.",
+  "gitRepairCheckRerun": "Run Again",
+  "gitRepairAdviceTitle": "How to handle this",
+  "gitRepairAdviceRemoveStale": "Uncommitted broken entries: run git reset to realign the index with the last commit, then stage the files again.",
+  "gitRepairAdviceRestore": "Damaged committed history: re-clone from the remote, or restore from another copy.",
+
+  "gitClone": "Clone Repository",
+  "gitCloneUrl": "Repository URL",
+  "gitCloneUrlHint": "https://github.com/user/repo.git",
+  "gitCloneDirName": "Local directory name",
+  "gitCloneDirNameHint": "Leave empty to derive from the URL",
+  "gitCloneBranch": "Branch (optional)",
+  "gitCloneBranchHint": "Leave empty to use the remote default branch",
+  "gitCloneDepth": "Shallow clone depth (optional)",
+  "gitCloneDepthHint": "e.g. 1 clones only the latest commit",
+  "gitCloneUrlRequired": "Please enter a repository URL",
+  "gitCloneDirRequired": "Please enter a local directory name",
+  "gitCloneDirExists": "Directory already exists, choose another name",
+  "gitCloneRunning": "Cloning...",
+  "gitCloneSuccess": "Clone complete: {name}",
+  "@gitCloneSuccess": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "gitCloneFailed": "Clone failed",
+  "gitCloneCancel": "Cancel clone",
+
+  "gitPushTargetTooltip": "Push target: {name}\n{reason}",
+  "@gitPushTargetTooltip": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      },
+      "reason": {
+        "type": "String"
+      }
+    }
+  },
+  "gitPushReasonPushRemote": "Set by branch config branch.*.pushRemote",
+  "gitPushReasonPushDefault": "Set by repo config remote.pushDefault",
+  "gitPushReasonUpstream": "The upstream remote of this branch",
+  "gitPushReasonBranchRemote": "Set by branch config branch.*.remote",
+  "gitPushReasonFallback": "Default remote (origin preferred)",
+  "gitPushReasonOverridden": "You switched it manually in this session",
+  "gitFetchTargetTooltip": "Fetch target: {name}",
+  "@gitFetchTargetTooltip": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "gitTogglePushTarget": "Choose push target",
+  "gitSyncCloudTooltip": "Sync: fetch / pull / push",
+  "gitPushTargetChanged": "Push target switched to {name}",
+  "@gitPushTargetChanged": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "gitPushTargetDiffers": "Push target differs from upstream",
+  "gitPushTargetDiffersNotice": "Pull from {upstream}, push to {push}",
+  "@gitPushTargetDiffersNotice": {
+    "placeholders": {
+      "upstream": {
+        "type": "String"
+      },
+      "push": {
+        "type": "String"
+      }
+    }
+  },
+  "gitRemoteRoleUpstream": "Upstream (fetch)",
+
+  "gitErrAuthFailed": "Authentication failed: invalid or expired token, or username mismatch",
+  "gitErrAuthFailedHint": "Check the token in Git Accounts, and make sure the username matches your login name on that platform.",
+  "gitErrWritePermissionDenied": "This account has no write access to this repository",
+  "gitErrWritePermissionDeniedHint": "If this is someone else's repository (upstream), fork it to your own account first, then point the remote at your fork (e.g. https://github.com/your-name/repo.git).",
+  "gitErrRepositoryNotFound": "Repository not found, or this account has no access to it",
+  "gitErrRepositoryNotFoundHint": "GitHub returns 404 for both \"no permission\" and \"does not exist\". Verify the remote URL and that the token can access this repository.",
+  "gitErrProxyAuthRequired": "The network proxy requires authentication",
+  "gitErrProxyAuthRequiredHint": "This network goes through an authenticated proxy (HTTP 407). Check the proxy configuration and credentials inside the container.",
+  "gitErrRequestRejected": "The server rejected this request",
+  "gitErrRequestRejectedHint": "Usually means the pushed content or branch reference is invalid (HTTP 422), e.g. a branch name that violates platform rules or a blocked commit.",
+  "gitErrRateLimited": "Too many requests, rate limited by the platform",
+  "gitErrRateLimitedHint": "Wait a few minutes and retry (HTTP 429). Retrying repeatedly will extend the limit.",
+  "gitErrHttpError": "The server returned an error status code",
+  "gitErrHttpErrorHint": "Check the status code below: 401 invalid token, 403 no permission, 404 not found or no access, 407 proxy auth required, 429 rate limited.",
+  "gitErrPasswordAuthDisabled": "This platform has disabled password authentication",
+  "gitErrPasswordAuthDisabledHint": "Add the account again using a personal access token (PAT) in Git Accounts.",
+  "gitErrNetworkUnreachable": "Cannot reach the remote server over the network",
+  "gitErrNetworkUnreachableHint": "Check your network connection and the container DNS configuration (/etc/resolv.conf).",
+  "gitErrSshPublicKeyDenied": "SSH public key authentication was rejected",
+  "gitErrSshPublicKeyDeniedHint": "Make sure the container's public key is added to the platform's SSH keys, or switch to HTTPS with an access token.",
+  "gitErrSshKeyUnusable": "The SSH private key is unusable (bad permissions or format)",
+  "gitErrSshKeyUnusableHint": "The private key must have mode 600. You can regenerate the key pair in Git Accounts.",
+  "gitErrHostKeyUnverified": "The server host fingerprint is not confirmed yet, connection aborted",
+  "gitErrHostKeyUnverifiedHint": "The first connection requires confirming the host fingerprint. If the server key changed, clear ~/.ssh/known_hosts in the container and retry.",
+  "gitErrNonFastForward": "Push rejected: the remote has commits you do not have locally",
+  "gitErrNonFastForwardHint": "Pull first (rebase mode) to merge the remote changes, then push again.",
+  "gitErrStaleForcePush": "Force push rejected: someone else updated the remote branch",
+  "gitErrStaleForcePushHint": "Fetch the latest remote state first, review the differences, then force push again.",
+  "gitErrConflictDetected": "Merge/rebase conflicts must be resolved manually",
+  "gitErrConflictDetectedHint": "Resolve the conflicting files one by one, or abort this operation (git rebase --abort).",
+  "gitErrLocalChanges": "Local uncommitted changes would be overwritten, operation aborted",
+  "gitErrLocalChangesHint": "Commit your changes first, or stash them, then retry.",
+  "gitErrNoUpstream": "This branch is not tracking a remote branch yet",
+  "gitErrNoUpstreamHint": "Use Publish Branch to push it to the remote and set up tracking.",
+  "gitErrRefLockFailed": "A Git reference file is locked (stale lock)",
+  "gitErrRefLockFailedHint": "Another Git process may be running. Retry shortly, or remove the .lock files under .git.",
+  "gitErrOutOfSpace": "Not enough storage space on the device",
+  "gitErrOutOfSpaceHint": "Free up space in the container or on the device, then retry.",
+  "gitErrTimeout": "Operation timed out",
+  "gitErrTimeoutHint": "Large repositories or slow networks can time out. Watch the progress in the terminal instead, or retry on a better connection.",
+  "gitErrIncomplete": "The operation did not finish, and no specific error was returned",
+  "gitErrIncompleteHint": "It was most likely interrupted by a timeout or a dropped connection. For large repositories, run fetch in the terminal to watch progress, or retry on a better connection.",
+  "gitErrUnknown": "Git operation failed",
+  "gitErrUnknownHint": "Expand the raw output below for details.",
+  "gitRawOutput": "Raw output",
+
+  "gitElapsed": "Elapsed {time}",
+  "@gitElapsed": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "gitElapsedMinutesSeconds": "{minutes}:{seconds}",
+  "@gitElapsedMinutesSeconds": {
+    "placeholders": {
+      "minutes": {
+        "type": "int"
+      },
+      "seconds": {
+        "type": "String"
+      }
+    }
+  },
+
+  "gitFetch": "Fetch",
+  "gitFetchTooltip": "Fetch the latest commits from the remote without merging",
+  "gitPull": "Pull",
+  "gitPullTooltip": "Pull remote commits and rebase the current branch onto them",
+  "gitPush": "Push",
+  "gitPushTooltip": "Push local commits to the remote",
+  "gitPublishBranch": "Publish Branch",
+  "gitPublishBranchTooltip": "Push this local branch to the remote and set up tracking",
+  "gitSync": "Sync",
+  "gitSyncTooltip": "Pull remote changes, then push local commits",
+  "gitCancelOperation": "Cancel",
+  "gitRemoteOperationRunning": "Remote operation in progress...",
+  "gitRemoteOperationCancelled": "Operation cancelled",
+  "gitRemoteOperationBusy": "Another remote operation is already running",
+  "gitFetchSuccess": "Fetch completed",
+  "gitFetchNoChanges": "Already up to date",
+  "gitPullSuccess": "Pull completed",
+  "gitPullAlreadyUpToDate": "Already up to date, nothing to pull",
+  "gitPushSuccess": "Push completed",
+  "gitPushUpToDate": "Remote is already up to date, nothing to push",
+  "gitNoRemoteConfigured": "No Remote Configured",
+  "gitNoRemoteDesc": "Add a remote repository URL to fetch, pull, and push your code.",
+  "gitAddRemote": "Add Remote",
+  "gitRemoteManagement": "Remote Repositories",
+  "gitRemoteName": "Remote Name",
+  "gitRemoteNameHint": "e.g. origin",
+  "gitRemoteUrl": "Remote URL",
+  "gitRemoteUrlHint": "https://github.com/user/repo.git or git@github.com:user/repo.git",
+  "gitRemotePushUrl": "Push URL (optional)",
+  "gitRemotePushUrlHint": "Leave empty to use the fetch URL",
+  "gitRemoteNameRequired": "Please enter a remote name",
+  "gitRemoteUrlRequired": "Please enter a remote URL",
+  "gitRemoteAdded": "Added remote {name}",
+  "@gitRemoteAdded": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "gitRemoteRemoved": "Removed remote {name}",
+  "@gitRemoteRemoved": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "gitRemoteRenamed": "Renamed {old} to {newName}",
+  "@gitRemoteRenamed": {
+    "placeholders": {
+      "old": {
+        "type": "String"
+      },
+      "newName": {
+        "type": "String"
+      }
+    }
+  },
+  "gitRemoteUrlUpdated": "Remote URL updated",
+  "gitRemotePruned": "Pruned stale remote branches",
+  "gitRemoteRemoveConfirm": "Remove remote {name}? Your local code will not be deleted.",
+  "@gitRemoteRemoveConfirm": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "gitRemoteEdit": "Edit Remote",
+  "gitRemoteFetchUrl": "Fetch URL",
+  "gitRemoteSetPushUrl": "Set Push URL",
+  "gitRemotePrune": "Prune Stale Branches",
+  "gitCheckConnection": "Test Connection",
+  "gitCheckConnectionSuccess": "Connection OK, authentication works",
+  "gitNoRemotes": "No remotes",
+  "gitFetchFailed": "Fetch failed",
+  "gitPullFailed": "Pull failed",
+  "gitPushFailed": "Push failed",
+  "gitForcePush": "Force Push",
+  "gitForcePushTooltip": "Overwrite the remote branch (uses --force-with-lease for safety)",
+  "gitForcePushWarning": "Force pushing overwrites the remote branch with your local commits and may discard other people's work.",
+  "gitForcePushConfirm": "Confirm Force Push",
+  "gitForcePushConfirmDesc": "This rewrites the history of remote branch {branch}. Only use it when you are certain nobody else pushed new commits.",
+  "@gitForcePushConfirmDesc": {
+    "placeholders": {
+      "branch": {
+        "type": "String"
+      }
+    }
+  },
+  "gitForcePushUseLease": "Use safe force push (--force-with-lease)",
+  "gitPullThenPush": "Pull Then Push",
+  "gitPullThenPushDesc": "The remote has commits you do not have. Pull and merge them before pushing.",
+  "gitConflictAbort": "Abort Rebase",
+  "gitConflictAbortConfirm": "Abort this rebase and return to the state before it started?",
+  "gitUncommittedChangesTitle": "Uncommitted Changes",
+  "gitUncommittedChangesDesc": "Local uncommitted changes must be handled before pulling, or they may be overwritten.",
+  "gitUncommittedStashAndPull": "Stash and Pull",
+  "gitUncommittedCommitFirst": "Commit First",
+  "gitUncommittedCancel": "Cancel",
+  "gitStashAndPullSuccess": "Stashed local changes and pulled successfully",
+  "gitViewOperationLog": "View Details",
+  "gitHideOperationLog": "Hide Details",
+  "gitAheadBehind": "{ahead} ahead / {behind} behind",
+  "@gitAheadBehind": {
+    "placeholders": {
+      "ahead": {
+        "type": "int"
+      },
+      "behind": {
+        "type": "int"
+      }
+    }
+  },
+  "gitUpstreamGone": "Upstream branch no longer exists",
+  "gitBehindTooltip": "{behind} commits behind the remote",
+  "@gitBehindTooltip": {
+    "placeholders": {
+      "behind": {
+        "type": "int"
+      }
+    }
+  },
+  "gitAheadTooltip": "{ahead} commits ahead of the remote",
+  "@gitAheadTooltip": {
+    "placeholders": {
+      "ahead": {
+        "type": "int"
+      }
+    }
+  },
+
   "gitDiff": "Diff",
   "gitDiffOriginal": "Original",
   "gitDiffModified": "Modified",

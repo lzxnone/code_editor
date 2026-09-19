@@ -3766,6 +3766,1008 @@ abstract class AppLocalizations {
   /// **'暂无分支'**
   String get gitNoBranches;
 
+  /// No description provided for @gitRemoteBranches.
+  ///
+  /// In zh, this message translates to:
+  /// **'远端分支'**
+  String get gitRemoteBranches;
+
+  /// No description provided for @gitLocalBranches.
+  ///
+  /// In zh, this message translates to:
+  /// **'本地分支'**
+  String get gitLocalBranches;
+
+  /// No description provided for @gitNoRemoteBranches.
+  ///
+  /// In zh, this message translates to:
+  /// **'暂无远端分支，请先执行抓取'**
+  String get gitNoRemoteBranches;
+
+  /// No description provided for @gitCheckoutRemoteBranch.
+  ///
+  /// In zh, this message translates to:
+  /// **'检出为本地分支'**
+  String get gitCheckoutRemoteBranch;
+
+  /// No description provided for @gitRemoteBranchCheckedOut.
+  ///
+  /// In zh, this message translates to:
+  /// **'该远端分支已在本地检出'**
+  String get gitRemoteBranchCheckedOut;
+
+  /// No description provided for @gitCheckoutRemoteBranchSuccess.
+  ///
+  /// In zh, this message translates to:
+  /// **'已基于 {remote} 创建并切换到本地分支 {branch}'**
+  String gitCheckoutRemoteBranchSuccess(String remote, String branch);
+
+  /// No description provided for @gitSearchRemoteBranches.
+  ///
+  /// In zh, this message translates to:
+  /// **'搜索远端分支...'**
+  String get gitSearchRemoteBranches;
+
+  /// No description provided for @gitRepairCheck.
+  ///
+  /// In zh, this message translates to:
+  /// **'仓库自检'**
+  String get gitRepairCheck;
+
+  /// No description provided for @gitRepairCheckRunning.
+  ///
+  /// In zh, this message translates to:
+  /// **'正在自检...'**
+  String get gitRepairCheckRunning;
+
+  /// No description provided for @gitRepairCheckHealthy.
+  ///
+  /// In zh, this message translates to:
+  /// **'仓库完整，未发现对象丢失'**
+  String get gitRepairCheckHealthy;
+
+  /// No description provided for @gitRepairCheckHealthyHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'对象库校验通过，可以正常提交与同步。'**
+  String get gitRepairCheckHealthyHint;
+
+  /// No description provided for @gitRepairCheckObjectLoss.
+  ///
+  /// In zh, this message translates to:
+  /// **'检测到对象丢失（{count} 处问题）'**
+  String gitRepairCheckObjectLoss(int count);
+
+  /// No description provided for @gitRepairCheckObjectLossHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'这类损坏会导致提交时报错 Error building trees。常见原因是容器被重建导致 .git/objects 丢失。建议先备份项目目录，再按下方提示处理。'**
+  String get gitRepairCheckObjectLossHint;
+
+  /// No description provided for @gitRepairCheckDangling.
+  ///
+  /// In zh, this message translates to:
+  /// **'另有 {count} 个悬空对象（正常现象，无需处理）'**
+  String gitRepairCheckDangling(int count);
+
+  /// No description provided for @gitRepairCheckFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'自检未能完成'**
+  String get gitRepairCheckFailed;
+
+  /// No description provided for @gitRepairCheckFailedHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'可能因为仓库过大或执行超时，可稍后重试。'**
+  String get gitRepairCheckFailedHint;
+
+  /// No description provided for @gitRepairCheckRerun.
+  ///
+  /// In zh, this message translates to:
+  /// **'重新自检'**
+  String get gitRepairCheckRerun;
+
+  /// No description provided for @gitRepairAdviceTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'如何处理'**
+  String get gitRepairAdviceTitle;
+
+  /// No description provided for @gitRepairAdviceRemoveStale.
+  ///
+  /// In zh, this message translates to:
+  /// **'未提交的损坏条目：执行 git reset 让索引与最后一次提交对齐，然后重新暂存需要的文件。'**
+  String get gitRepairAdviceRemoveStale;
+
+  /// No description provided for @gitRepairAdviceRestore.
+  ///
+  /// In zh, this message translates to:
+  /// **'已提交的历史损坏：需要从远端重新克隆，或从其他副本恢复。'**
+  String get gitRepairAdviceRestore;
+
+  /// No description provided for @gitClone.
+  ///
+  /// In zh, this message translates to:
+  /// **'克隆远程仓库'**
+  String get gitClone;
+
+  /// No description provided for @gitCloneUrl.
+  ///
+  /// In zh, this message translates to:
+  /// **'仓库地址'**
+  String get gitCloneUrl;
+
+  /// No description provided for @gitCloneUrlHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'https://github.com/user/repo.git'**
+  String get gitCloneUrlHint;
+
+  /// No description provided for @gitCloneDirName.
+  ///
+  /// In zh, this message translates to:
+  /// **'本地目录名'**
+  String get gitCloneDirName;
+
+  /// No description provided for @gitCloneDirNameHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'留空则从地址自动推导'**
+  String get gitCloneDirNameHint;
+
+  /// No description provided for @gitCloneBranch.
+  ///
+  /// In zh, this message translates to:
+  /// **'指定分支（可选）'**
+  String get gitCloneBranch;
+
+  /// No description provided for @gitCloneBranchHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'留空则使用远端默认分支'**
+  String get gitCloneBranchHint;
+
+  /// No description provided for @gitCloneDepth.
+  ///
+  /// In zh, this message translates to:
+  /// **'浅克隆深度（可选）'**
+  String get gitCloneDepth;
+
+  /// No description provided for @gitCloneDepthHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'如 1 表示只克隆最近 1 个提交'**
+  String get gitCloneDepthHint;
+
+  /// No description provided for @gitCloneUrlRequired.
+  ///
+  /// In zh, this message translates to:
+  /// **'请输入仓库地址'**
+  String get gitCloneUrlRequired;
+
+  /// No description provided for @gitCloneDirRequired.
+  ///
+  /// In zh, this message translates to:
+  /// **'请输入本地目录名'**
+  String get gitCloneDirRequired;
+
+  /// No description provided for @gitCloneDirExists.
+  ///
+  /// In zh, this message translates to:
+  /// **'目录已存在，请换一个名字'**
+  String get gitCloneDirExists;
+
+  /// No description provided for @gitCloneRunning.
+  ///
+  /// In zh, this message translates to:
+  /// **'正在克隆...'**
+  String get gitCloneRunning;
+
+  /// No description provided for @gitCloneSuccess.
+  ///
+  /// In zh, this message translates to:
+  /// **'克隆完成：{name}'**
+  String gitCloneSuccess(String name);
+
+  /// No description provided for @gitCloneFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'克隆失败'**
+  String get gitCloneFailed;
+
+  /// No description provided for @gitCloneCancel.
+  ///
+  /// In zh, this message translates to:
+  /// **'取消克隆'**
+  String get gitCloneCancel;
+
+  /// No description provided for @gitPushTargetTooltip.
+  ///
+  /// In zh, this message translates to:
+  /// **'推送目标：{name}\n{reason}'**
+  String gitPushTargetTooltip(String name, String reason);
+
+  /// No description provided for @gitPushReasonPushRemote.
+  ///
+  /// In zh, this message translates to:
+  /// **'由分支配置 branch.*.pushRemote 决定'**
+  String get gitPushReasonPushRemote;
+
+  /// No description provided for @gitPushReasonPushDefault.
+  ///
+  /// In zh, this message translates to:
+  /// **'由仓库配置 remote.pushDefault 决定'**
+  String get gitPushReasonPushDefault;
+
+  /// No description provided for @gitPushReasonUpstream.
+  ///
+  /// In zh, this message translates to:
+  /// **'当前分支的上游远程'**
+  String get gitPushReasonUpstream;
+
+  /// No description provided for @gitPushReasonBranchRemote.
+  ///
+  /// In zh, this message translates to:
+  /// **'由分支配置 branch.*.remote 决定'**
+  String get gitPushReasonBranchRemote;
+
+  /// No description provided for @gitPushReasonFallback.
+  ///
+  /// In zh, this message translates to:
+  /// **'默认远程（origin 优先）'**
+  String get gitPushReasonFallback;
+
+  /// No description provided for @gitPushReasonOverridden.
+  ///
+  /// In zh, this message translates to:
+  /// **'你已在本次会话中手动切换'**
+  String get gitPushReasonOverridden;
+
+  /// No description provided for @gitFetchTargetTooltip.
+  ///
+  /// In zh, this message translates to:
+  /// **'抓取目标：{name}'**
+  String gitFetchTargetTooltip(String name);
+
+  /// No description provided for @gitTogglePushTarget.
+  ///
+  /// In zh, this message translates to:
+  /// **'选择推送目标'**
+  String get gitTogglePushTarget;
+
+  /// No description provided for @gitSyncCloudTooltip.
+  ///
+  /// In zh, this message translates to:
+  /// **'同步：抓取 / 拉取 / 推送'**
+  String get gitSyncCloudTooltip;
+
+  /// No description provided for @gitPushTargetChanged.
+  ///
+  /// In zh, this message translates to:
+  /// **'推送目标已切换为 {name}'**
+  String gitPushTargetChanged(String name);
+
+  /// No description provided for @gitPushTargetDiffers.
+  ///
+  /// In zh, this message translates to:
+  /// **'推送目标与上游不同'**
+  String get gitPushTargetDiffers;
+
+  /// No description provided for @gitPushTargetDiffersNotice.
+  ///
+  /// In zh, this message translates to:
+  /// **'拉取走 {upstream}，推送走 {push}'**
+  String gitPushTargetDiffersNotice(String upstream, String push);
+
+  /// No description provided for @gitRemoteRoleUpstream.
+  ///
+  /// In zh, this message translates to:
+  /// **'上游（拉取）'**
+  String get gitRemoteRoleUpstream;
+
+  /// No description provided for @gitErrAuthFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'认证失败：令牌无效、已过期或用户名不匹配'**
+  String get gitErrAuthFailed;
+
+  /// No description provided for @gitErrAuthFailedHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'请到「Git 账号管理」检查令牌是否有效，并确认账号用户名与平台登录名一致。'**
+  String get gitErrAuthFailedHint;
+
+  /// No description provided for @gitErrWritePermissionDenied.
+  ///
+  /// In zh, this message translates to:
+  /// **'当前账号对该仓库没有写权限'**
+  String get gitErrWritePermissionDenied;
+
+  /// No description provided for @gitErrWritePermissionDeniedHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'若这是别人的仓库（上游），请先 Fork 到你自己的账号，再把远端地址改为你的 Fork（如 https://github.com/你的用户名/仓库.git）。'**
+  String get gitErrWritePermissionDeniedHint;
+
+  /// No description provided for @gitErrRepositoryNotFound.
+  ///
+  /// In zh, this message translates to:
+  /// **'仓库不存在，或当前账号无权访问'**
+  String get gitErrRepositoryNotFound;
+
+  /// No description provided for @gitErrRepositoryNotFoundHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'GitHub 对「无权限」和「不存在」都返回 404。请确认远端地址拼写正确，且该令牌有权访问该仓库。'**
+  String get gitErrRepositoryNotFoundHint;
+
+  /// No description provided for @gitErrProxyAuthRequired.
+  ///
+  /// In zh, this message translates to:
+  /// **'网络代理需要认证'**
+  String get gitErrProxyAuthRequired;
+
+  /// No description provided for @gitErrProxyAuthRequiredHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'当前网络经过需要认证的代理（HTTP 407）。请检查容器内代理配置与凭据。'**
+  String get gitErrProxyAuthRequiredHint;
+
+  /// No description provided for @gitErrRequestRejected.
+  ///
+  /// In zh, this message translates to:
+  /// **'服务器拒绝了本次请求'**
+  String get gitErrRequestRejected;
+
+  /// No description provided for @gitErrRequestRejectedHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'通常表示推送内容或分支引用不合法（HTTP 422），例如分支名不符合平台规则或提交信息被策略拦截。'**
+  String get gitErrRequestRejectedHint;
+
+  /// No description provided for @gitErrRateLimited.
+  ///
+  /// In zh, this message translates to:
+  /// **'请求过于频繁，已被平台限流'**
+  String get gitErrRateLimited;
+
+  /// No description provided for @gitErrRateLimitedHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'请稍等几分钟后重试（HTTP 429）。短时间内反复重试会延长限制时间。'**
+  String get gitErrRateLimitedHint;
+
+  /// No description provided for @gitErrHttpError.
+  ///
+  /// In zh, this message translates to:
+  /// **'服务器返回了错误状态码'**
+  String get gitErrHttpError;
+
+  /// No description provided for @gitErrHttpErrorHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'请根据下方状态码排查：401 令牌无效、403 无权限、404 仓库不存在或无权访问、407 需要代理认证、429 被限流。'**
+  String get gitErrHttpErrorHint;
+
+  /// No description provided for @gitErrPasswordAuthDisabled.
+  ///
+  /// In zh, this message translates to:
+  /// **'该平台已禁用账号密码认证'**
+  String get gitErrPasswordAuthDisabled;
+
+  /// No description provided for @gitErrPasswordAuthDisabledHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'请在「Git 账号管理」中使用个人访问令牌 (PAT) 重新添加账号。'**
+  String get gitErrPasswordAuthDisabledHint;
+
+  /// No description provided for @gitErrNetworkUnreachable.
+  ///
+  /// In zh, this message translates to:
+  /// **'网络无法连接到远端服务器'**
+  String get gitErrNetworkUnreachable;
+
+  /// No description provided for @gitErrNetworkUnreachableHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'请检查网络连接，以及容器内 DNS 配置（/etc/resolv.conf）是否正常。'**
+  String get gitErrNetworkUnreachableHint;
+
+  /// No description provided for @gitErrSshPublicKeyDenied.
+  ///
+  /// In zh, this message translates to:
+  /// **'SSH 公钥认证被拒绝'**
+  String get gitErrSshPublicKeyDenied;
+
+  /// No description provided for @gitErrSshPublicKeyDeniedHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'请确认容器内的公钥已添加到平台的 SSH Keys 中，或改用 HTTPS + 访问令牌。'**
+  String get gitErrSshPublicKeyDeniedHint;
+
+  /// No description provided for @gitErrSshKeyUnusable.
+  ///
+  /// In zh, this message translates to:
+  /// **'SSH 私钥无法使用（权限或格式异常）'**
+  String get gitErrSshKeyUnusable;
+
+  /// No description provided for @gitErrSshKeyUnusableHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'私钥权限需为 600。可在「Git 账号管理」中重新生成密钥对。'**
+  String get gitErrSshKeyUnusableHint;
+
+  /// No description provided for @gitErrHostKeyUnverified.
+  ///
+  /// In zh, this message translates to:
+  /// **'目标服务器的主机指纹尚未确认，连接被中断'**
+  String get gitErrHostKeyUnverified;
+
+  /// No description provided for @gitErrHostKeyUnverifiedHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'首次连接需要确认主机指纹。若刚更换过服务器密钥，请清理容器内 ~/.ssh/known_hosts 后重试。'**
+  String get gitErrHostKeyUnverifiedHint;
+
+  /// No description provided for @gitErrNonFastForward.
+  ///
+  /// In zh, this message translates to:
+  /// **'推送被拒绝：远端存在本地尚无的提交'**
+  String get gitErrNonFastForward;
+
+  /// No description provided for @gitErrNonFastForwardHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'请先执行 Pull（rebase 方式）合并远端改动，再重新推送。'**
+  String get gitErrNonFastForwardHint;
+
+  /// No description provided for @gitErrStaleForcePush.
+  ///
+  /// In zh, this message translates to:
+  /// **'强推被拒绝：远端分支已被他人更新'**
+  String get gitErrStaleForcePush;
+
+  /// No description provided for @gitErrStaleForcePushHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'请先执行 Fetch 获取最新远端状态，确认差异后再强制推送。'**
+  String get gitErrStaleForcePushHint;
+
+  /// No description provided for @gitErrConflictDetected.
+  ///
+  /// In zh, this message translates to:
+  /// **'合并/rebase 出现冲突，需要手动解决'**
+  String get gitErrConflictDetected;
+
+  /// No description provided for @gitErrConflictDetectedHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'请逐个解决冲突文件，或放弃本次操作（git rebase --abort）。'**
+  String get gitErrConflictDetectedHint;
+
+  /// No description provided for @gitErrLocalChanges.
+  ///
+  /// In zh, this message translates to:
+  /// **'本地未提交的改动会被覆盖，操作已中止'**
+  String get gitErrLocalChanges;
+
+  /// No description provided for @gitErrLocalChangesHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'请先提交改动，或将其贮藏（stash）后再执行。'**
+  String get gitErrLocalChangesHint;
+
+  /// No description provided for @gitErrNoUpstream.
+  ///
+  /// In zh, this message translates to:
+  /// **'当前分支尚未关联远端分支'**
+  String get gitErrNoUpstream;
+
+  /// No description provided for @gitErrNoUpstreamHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'请使用「发布分支」将本地分支推送到远端并建立追踪关系。'**
+  String get gitErrNoUpstreamHint;
+
+  /// No description provided for @gitErrRefLockFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'Git 引用文件被占用（存在残留锁）'**
+  String get gitErrRefLockFailed;
+
+  /// No description provided for @gitErrRefLockFailedHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'可能有另一个 Git 进程正在运行。稍后重试，或清理 .git 目录下的 .lock 文件。'**
+  String get gitErrRefLockFailedHint;
+
+  /// No description provided for @gitErrOutOfSpace.
+  ///
+  /// In zh, this message translates to:
+  /// **'设备存储空间不足'**
+  String get gitErrOutOfSpace;
+
+  /// No description provided for @gitErrOutOfSpaceHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'请清理容器或设备空间后重试。'**
+  String get gitErrOutOfSpaceHint;
+
+  /// No description provided for @gitErrTimeout.
+  ///
+  /// In zh, this message translates to:
+  /// **'操作超时'**
+  String get gitErrTimeout;
+
+  /// No description provided for @gitErrTimeoutHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'仓库较大或网络较慢时可能超时。可改用终端观察进度，或在网络较好时重试。'**
+  String get gitErrTimeoutHint;
+
+  /// No description provided for @gitErrIncomplete.
+  ///
+  /// In zh, this message translates to:
+  /// **'操作未完成，但没有返回具体错误信息'**
+  String get gitErrIncomplete;
+
+  /// No description provided for @gitErrIncompleteHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'通常是被超时或网络中断打断。仓库较大时建议改用终端执行 fetch 观察进度，或稍后在网络较好时重试。'**
+  String get gitErrIncompleteHint;
+
+  /// No description provided for @gitErrUnknown.
+  ///
+  /// In zh, this message translates to:
+  /// **'Git 操作失败'**
+  String get gitErrUnknown;
+
+  /// No description provided for @gitErrUnknownHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'请展开下方原始输出查看详细信息。'**
+  String get gitErrUnknownHint;
+
+  /// No description provided for @gitRawOutput.
+  ///
+  /// In zh, this message translates to:
+  /// **'原始输出'**
+  String get gitRawOutput;
+
+  /// No description provided for @gitElapsed.
+  ///
+  /// In zh, this message translates to:
+  /// **'已用 {time}'**
+  String gitElapsed(String time);
+
+  /// No description provided for @gitElapsedMinutesSeconds.
+  ///
+  /// In zh, this message translates to:
+  /// **'{minutes}:{seconds}'**
+  String gitElapsedMinutesSeconds(int minutes, String seconds);
+
+  /// No description provided for @gitFetch.
+  ///
+  /// In zh, this message translates to:
+  /// **'抓取'**
+  String get gitFetch;
+
+  /// No description provided for @gitFetchTooltip.
+  ///
+  /// In zh, this message translates to:
+  /// **'从远端抓取最新提交（不合并到本地）'**
+  String get gitFetchTooltip;
+
+  /// No description provided for @gitPull.
+  ///
+  /// In zh, this message translates to:
+  /// **'拉取'**
+  String get gitPull;
+
+  /// No description provided for @gitPullTooltip.
+  ///
+  /// In zh, this message translates to:
+  /// **'拉取远端提交并以 rebase 方式合并到当前分支'**
+  String get gitPullTooltip;
+
+  /// No description provided for @gitPush.
+  ///
+  /// In zh, this message translates to:
+  /// **'推送'**
+  String get gitPush;
+
+  /// No description provided for @gitPushTooltip.
+  ///
+  /// In zh, this message translates to:
+  /// **'将本地提交推送到远端'**
+  String get gitPushTooltip;
+
+  /// No description provided for @gitPublishBranch.
+  ///
+  /// In zh, this message translates to:
+  /// **'发布分支'**
+  String get gitPublishBranch;
+
+  /// No description provided for @gitPublishBranchTooltip.
+  ///
+  /// In zh, this message translates to:
+  /// **'将本地分支推送到远端并建立追踪关系'**
+  String get gitPublishBranchTooltip;
+
+  /// No description provided for @gitSync.
+  ///
+  /// In zh, this message translates to:
+  /// **'同步'**
+  String get gitSync;
+
+  /// No description provided for @gitSyncTooltip.
+  ///
+  /// In zh, this message translates to:
+  /// **'先拉取远端改动，再推送本地提交'**
+  String get gitSyncTooltip;
+
+  /// No description provided for @gitCancelOperation.
+  ///
+  /// In zh, this message translates to:
+  /// **'取消'**
+  String get gitCancelOperation;
+
+  /// No description provided for @gitRemoteOperationRunning.
+  ///
+  /// In zh, this message translates to:
+  /// **'云端操作进行中...'**
+  String get gitRemoteOperationRunning;
+
+  /// No description provided for @gitRemoteOperationCancelled.
+  ///
+  /// In zh, this message translates to:
+  /// **'操作已取消'**
+  String get gitRemoteOperationCancelled;
+
+  /// No description provided for @gitRemoteOperationBusy.
+  ///
+  /// In zh, this message translates to:
+  /// **'已有云端操作正在进行，请稍候'**
+  String get gitRemoteOperationBusy;
+
+  /// No description provided for @gitFetchSuccess.
+  ///
+  /// In zh, this message translates to:
+  /// **'抓取完成'**
+  String get gitFetchSuccess;
+
+  /// No description provided for @gitFetchNoChanges.
+  ///
+  /// In zh, this message translates to:
+  /// **'已是最新状态'**
+  String get gitFetchNoChanges;
+
+  /// No description provided for @gitPullSuccess.
+  ///
+  /// In zh, this message translates to:
+  /// **'拉取完成'**
+  String get gitPullSuccess;
+
+  /// No description provided for @gitPullAlreadyUpToDate.
+  ///
+  /// In zh, this message translates to:
+  /// **'已是最新，无需拉取'**
+  String get gitPullAlreadyUpToDate;
+
+  /// No description provided for @gitPushSuccess.
+  ///
+  /// In zh, this message translates to:
+  /// **'推送完成'**
+  String get gitPushSuccess;
+
+  /// No description provided for @gitPushUpToDate.
+  ///
+  /// In zh, this message translates to:
+  /// **'远端已是最新，无需推送'**
+  String get gitPushUpToDate;
+
+  /// No description provided for @gitNoRemoteConfigured.
+  ///
+  /// In zh, this message translates to:
+  /// **'尚未配置远程仓库'**
+  String get gitNoRemoteConfigured;
+
+  /// No description provided for @gitNoRemoteDesc.
+  ///
+  /// In zh, this message translates to:
+  /// **'添加远程仓库地址后，即可抓取、拉取与推送代码。'**
+  String get gitNoRemoteDesc;
+
+  /// No description provided for @gitAddRemote.
+  ///
+  /// In zh, this message translates to:
+  /// **'添加远程仓库'**
+  String get gitAddRemote;
+
+  /// No description provided for @gitRemoteManagement.
+  ///
+  /// In zh, this message translates to:
+  /// **'远程仓库管理'**
+  String get gitRemoteManagement;
+
+  /// No description provided for @gitRemoteName.
+  ///
+  /// In zh, this message translates to:
+  /// **'远程名称'**
+  String get gitRemoteName;
+
+  /// No description provided for @gitRemoteNameHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'例如 origin'**
+  String get gitRemoteNameHint;
+
+  /// No description provided for @gitRemoteUrl.
+  ///
+  /// In zh, this message translates to:
+  /// **'远程地址'**
+  String get gitRemoteUrl;
+
+  /// No description provided for @gitRemoteUrlHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'https://github.com/user/repo.git 或 git@github.com:user/repo.git'**
+  String get gitRemoteUrlHint;
+
+  /// No description provided for @gitRemotePushUrl.
+  ///
+  /// In zh, this message translates to:
+  /// **'推送地址（可选）'**
+  String get gitRemotePushUrl;
+
+  /// No description provided for @gitRemotePushUrlHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'留空则与抓取地址相同'**
+  String get gitRemotePushUrlHint;
+
+  /// No description provided for @gitRemoteNameRequired.
+  ///
+  /// In zh, this message translates to:
+  /// **'请输入远程名称'**
+  String get gitRemoteNameRequired;
+
+  /// No description provided for @gitRemoteUrlRequired.
+  ///
+  /// In zh, this message translates to:
+  /// **'请输入远程地址'**
+  String get gitRemoteUrlRequired;
+
+  /// No description provided for @gitRemoteAdded.
+  ///
+  /// In zh, this message translates to:
+  /// **'已添加远程仓库 {name}'**
+  String gitRemoteAdded(String name);
+
+  /// No description provided for @gitRemoteRemoved.
+  ///
+  /// In zh, this message translates to:
+  /// **'已移除远程仓库 {name}'**
+  String gitRemoteRemoved(String name);
+
+  /// No description provided for @gitRemoteRenamed.
+  ///
+  /// In zh, this message translates to:
+  /// **'已将 {old} 重命名为 {newName}'**
+  String gitRemoteRenamed(String old, String newName);
+
+  /// No description provided for @gitRemoteUrlUpdated.
+  ///
+  /// In zh, this message translates to:
+  /// **'已更新远程地址'**
+  String get gitRemoteUrlUpdated;
+
+  /// No description provided for @gitRemotePruned.
+  ///
+  /// In zh, this message translates to:
+  /// **'已清理远端已删除的分支'**
+  String get gitRemotePruned;
+
+  /// No description provided for @gitRemoteRemoveConfirm.
+  ///
+  /// In zh, this message translates to:
+  /// **'确定要移除远程仓库 {name} 吗？本地代码不会被删除。'**
+  String gitRemoteRemoveConfirm(String name);
+
+  /// No description provided for @gitRemoteEdit.
+  ///
+  /// In zh, this message translates to:
+  /// **'编辑远程仓库'**
+  String get gitRemoteEdit;
+
+  /// No description provided for @gitRemoteFetchUrl.
+  ///
+  /// In zh, this message translates to:
+  /// **'抓取地址'**
+  String get gitRemoteFetchUrl;
+
+  /// No description provided for @gitRemoteSetPushUrl.
+  ///
+  /// In zh, this message translates to:
+  /// **'设置推送地址'**
+  String get gitRemoteSetPushUrl;
+
+  /// No description provided for @gitRemotePrune.
+  ///
+  /// In zh, this message translates to:
+  /// **'清理失效分支'**
+  String get gitRemotePrune;
+
+  /// No description provided for @gitCheckConnection.
+  ///
+  /// In zh, this message translates to:
+  /// **'检测连接'**
+  String get gitCheckConnection;
+
+  /// No description provided for @gitCheckConnectionSuccess.
+  ///
+  /// In zh, this message translates to:
+  /// **'连接正常，认证可用'**
+  String get gitCheckConnectionSuccess;
+
+  /// No description provided for @gitNoRemotes.
+  ///
+  /// In zh, this message translates to:
+  /// **'暂无远程仓库'**
+  String get gitNoRemotes;
+
+  /// No description provided for @gitFetchFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'抓取失败'**
+  String get gitFetchFailed;
+
+  /// No description provided for @gitPullFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'拉取失败'**
+  String get gitPullFailed;
+
+  /// No description provided for @gitPushFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'推送失败'**
+  String get gitPushFailed;
+
+  /// No description provided for @gitForcePush.
+  ///
+  /// In zh, this message translates to:
+  /// **'强制推送'**
+  String get gitForcePush;
+
+  /// No description provided for @gitForcePushTooltip.
+  ///
+  /// In zh, this message translates to:
+  /// **'覆盖远端分支（使用 --force-with-lease 安全校验）'**
+  String get gitForcePushTooltip;
+
+  /// No description provided for @gitForcePushWarning.
+  ///
+  /// In zh, this message translates to:
+  /// **'强制推送会用本地提交覆盖远端分支，可能导致他人提交丢失。'**
+  String get gitForcePushWarning;
+
+  /// No description provided for @gitForcePushConfirm.
+  ///
+  /// In zh, this message translates to:
+  /// **'确认强制推送'**
+  String get gitForcePushConfirm;
+
+  /// No description provided for @gitForcePushConfirmDesc.
+  ///
+  /// In zh, this message translates to:
+  /// **'该操作将改写远端 {branch} 分支的历史。仅在确认远端没有他人新提交时使用。'**
+  String gitForcePushConfirmDesc(String branch);
+
+  /// No description provided for @gitForcePushUseLease.
+  ///
+  /// In zh, this message translates to:
+  /// **'使用安全强推（--force-with-lease）'**
+  String get gitForcePushUseLease;
+
+  /// No description provided for @gitPullThenPush.
+  ///
+  /// In zh, this message translates to:
+  /// **'先拉取再推送'**
+  String get gitPullThenPush;
+
+  /// No description provided for @gitPullThenPushDesc.
+  ///
+  /// In zh, this message translates to:
+  /// **'远端存在本地没有的提交，先拉取合并后再推送。'**
+  String get gitPullThenPushDesc;
+
+  /// No description provided for @gitConflictAbort.
+  ///
+  /// In zh, this message translates to:
+  /// **'放弃本次变基'**
+  String get gitConflictAbort;
+
+  /// No description provided for @gitConflictAbortConfirm.
+  ///
+  /// In zh, this message translates to:
+  /// **'确定要放弃本次变基操作并回到操作前的状态吗？'**
+  String get gitConflictAbortConfirm;
+
+  /// No description provided for @gitUncommittedChangesTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'存在未提交的改动'**
+  String get gitUncommittedChangesTitle;
+
+  /// No description provided for @gitUncommittedChangesDesc.
+  ///
+  /// In zh, this message translates to:
+  /// **'拉取前需要先处理本地未提交的改动，否则可能被覆盖。'**
+  String get gitUncommittedChangesDesc;
+
+  /// No description provided for @gitUncommittedStashAndPull.
+  ///
+  /// In zh, this message translates to:
+  /// **'贮藏并拉取'**
+  String get gitUncommittedStashAndPull;
+
+  /// No description provided for @gitUncommittedCommitFirst.
+  ///
+  /// In zh, this message translates to:
+  /// **'先去提交'**
+  String get gitUncommittedCommitFirst;
+
+  /// No description provided for @gitUncommittedCancel.
+  ///
+  /// In zh, this message translates to:
+  /// **'取消'**
+  String get gitUncommittedCancel;
+
+  /// No description provided for @gitStashAndPullSuccess.
+  ///
+  /// In zh, this message translates to:
+  /// **'已贮藏本地改动并完成拉取'**
+  String get gitStashAndPullSuccess;
+
+  /// No description provided for @gitViewOperationLog.
+  ///
+  /// In zh, this message translates to:
+  /// **'查看详情'**
+  String get gitViewOperationLog;
+
+  /// No description provided for @gitHideOperationLog.
+  ///
+  /// In zh, this message translates to:
+  /// **'收起详情'**
+  String get gitHideOperationLog;
+
+  /// No description provided for @gitAheadBehind.
+  ///
+  /// In zh, this message translates to:
+  /// **'领先 {ahead} / 落后 {behind}'**
+  String gitAheadBehind(int ahead, int behind);
+
+  /// No description provided for @gitUpstreamGone.
+  ///
+  /// In zh, this message translates to:
+  /// **'上游分支已不存在'**
+  String get gitUpstreamGone;
+
+  /// No description provided for @gitBehindTooltip.
+  ///
+  /// In zh, this message translates to:
+  /// **'本地落后远端 {behind} 个提交'**
+  String gitBehindTooltip(int behind);
+
+  /// No description provided for @gitAheadTooltip.
+  ///
+  /// In zh, this message translates to:
+  /// **'本地领先远端 {ahead} 个提交'**
+  String gitAheadTooltip(int ahead);
+
   /// No description provided for @gitDiff.
   ///
   /// In zh, this message translates to:

@@ -2251,6 +2251,605 @@ class AppLocalizationsEn extends AppLocalizations {
   String get gitNoBranches => 'No branches';
 
   @override
+  String get gitRemoteBranches => 'Remote Branches';
+
+  @override
+  String get gitLocalBranches => 'Local Branches';
+
+  @override
+  String get gitNoRemoteBranches => 'No remote branches yet — fetch first';
+
+  @override
+  String get gitCheckoutRemoteBranch => 'Check out as local branch';
+
+  @override
+  String get gitRemoteBranchCheckedOut => 'Already checked out locally';
+
+  @override
+  String gitCheckoutRemoteBranchSuccess(String remote, String branch) {
+    return 'Created and switched to local branch $branch from $remote';
+  }
+
+  @override
+  String get gitSearchRemoteBranches => 'Search remote branches...';
+
+  @override
+  String get gitRepairCheck => 'Repository Check';
+
+  @override
+  String get gitRepairCheckRunning => 'Checking...';
+
+  @override
+  String get gitRepairCheckHealthy =>
+      'Repository is intact, no missing objects';
+
+  @override
+  String get gitRepairCheckHealthyHint =>
+      'Object database verified. Committing and syncing should work normally.';
+
+  @override
+  String gitRepairCheckObjectLoss(int count) {
+    return 'Missing objects detected ($count problems)';
+  }
+
+  @override
+  String get gitRepairCheckObjectLossHint =>
+      'This kind of damage causes \"Error building trees\" on commit. It usually happens when the container is rebuilt and .git/objects is lost. Back up the project directory first, then follow the advice below.';
+
+  @override
+  String gitRepairCheckDangling(int count) {
+    return '$count dangling objects (normal, no action needed)';
+  }
+
+  @override
+  String get gitRepairCheckFailed => 'The check could not complete';
+
+  @override
+  String get gitRepairCheckFailedHint =>
+      'The repository may be large or the command timed out. Try again later.';
+
+  @override
+  String get gitRepairCheckRerun => 'Run Again';
+
+  @override
+  String get gitRepairAdviceTitle => 'How to handle this';
+
+  @override
+  String get gitRepairAdviceRemoveStale =>
+      'Uncommitted broken entries: run git reset to realign the index with the last commit, then stage the files again.';
+
+  @override
+  String get gitRepairAdviceRestore =>
+      'Damaged committed history: re-clone from the remote, or restore from another copy.';
+
+  @override
+  String get gitClone => 'Clone Repository';
+
+  @override
+  String get gitCloneUrl => 'Repository URL';
+
+  @override
+  String get gitCloneUrlHint => 'https://github.com/user/repo.git';
+
+  @override
+  String get gitCloneDirName => 'Local directory name';
+
+  @override
+  String get gitCloneDirNameHint => 'Leave empty to derive from the URL';
+
+  @override
+  String get gitCloneBranch => 'Branch (optional)';
+
+  @override
+  String get gitCloneBranchHint =>
+      'Leave empty to use the remote default branch';
+
+  @override
+  String get gitCloneDepth => 'Shallow clone depth (optional)';
+
+  @override
+  String get gitCloneDepthHint => 'e.g. 1 clones only the latest commit';
+
+  @override
+  String get gitCloneUrlRequired => 'Please enter a repository URL';
+
+  @override
+  String get gitCloneDirRequired => 'Please enter a local directory name';
+
+  @override
+  String get gitCloneDirExists =>
+      'Directory already exists, choose another name';
+
+  @override
+  String get gitCloneRunning => 'Cloning...';
+
+  @override
+  String gitCloneSuccess(String name) {
+    return 'Clone complete: $name';
+  }
+
+  @override
+  String get gitCloneFailed => 'Clone failed';
+
+  @override
+  String get gitCloneCancel => 'Cancel clone';
+
+  @override
+  String gitPushTargetTooltip(String name, String reason) {
+    return 'Push target: $name\n$reason';
+  }
+
+  @override
+  String get gitPushReasonPushRemote =>
+      'Set by branch config branch.*.pushRemote';
+
+  @override
+  String get gitPushReasonPushDefault =>
+      'Set by repo config remote.pushDefault';
+
+  @override
+  String get gitPushReasonUpstream => 'The upstream remote of this branch';
+
+  @override
+  String get gitPushReasonBranchRemote =>
+      'Set by branch config branch.*.remote';
+
+  @override
+  String get gitPushReasonFallback => 'Default remote (origin preferred)';
+
+  @override
+  String get gitPushReasonOverridden =>
+      'You switched it manually in this session';
+
+  @override
+  String gitFetchTargetTooltip(String name) {
+    return 'Fetch target: $name';
+  }
+
+  @override
+  String get gitTogglePushTarget => 'Choose push target';
+
+  @override
+  String get gitSyncCloudTooltip => 'Sync: fetch / pull / push';
+
+  @override
+  String gitPushTargetChanged(String name) {
+    return 'Push target switched to $name';
+  }
+
+  @override
+  String get gitPushTargetDiffers => 'Push target differs from upstream';
+
+  @override
+  String gitPushTargetDiffersNotice(String upstream, String push) {
+    return 'Pull from $upstream, push to $push';
+  }
+
+  @override
+  String get gitRemoteRoleUpstream => 'Upstream (fetch)';
+
+  @override
+  String get gitErrAuthFailed =>
+      'Authentication failed: invalid or expired token, or username mismatch';
+
+  @override
+  String get gitErrAuthFailedHint =>
+      'Check the token in Git Accounts, and make sure the username matches your login name on that platform.';
+
+  @override
+  String get gitErrWritePermissionDenied =>
+      'This account has no write access to this repository';
+
+  @override
+  String get gitErrWritePermissionDeniedHint =>
+      'If this is someone else\'s repository (upstream), fork it to your own account first, then point the remote at your fork (e.g. https://github.com/your-name/repo.git).';
+
+  @override
+  String get gitErrRepositoryNotFound =>
+      'Repository not found, or this account has no access to it';
+
+  @override
+  String get gitErrRepositoryNotFoundHint =>
+      'GitHub returns 404 for both \"no permission\" and \"does not exist\". Verify the remote URL and that the token can access this repository.';
+
+  @override
+  String get gitErrProxyAuthRequired =>
+      'The network proxy requires authentication';
+
+  @override
+  String get gitErrProxyAuthRequiredHint =>
+      'This network goes through an authenticated proxy (HTTP 407). Check the proxy configuration and credentials inside the container.';
+
+  @override
+  String get gitErrRequestRejected => 'The server rejected this request';
+
+  @override
+  String get gitErrRequestRejectedHint =>
+      'Usually means the pushed content or branch reference is invalid (HTTP 422), e.g. a branch name that violates platform rules or a blocked commit.';
+
+  @override
+  String get gitErrRateLimited =>
+      'Too many requests, rate limited by the platform';
+
+  @override
+  String get gitErrRateLimitedHint =>
+      'Wait a few minutes and retry (HTTP 429). Retrying repeatedly will extend the limit.';
+
+  @override
+  String get gitErrHttpError => 'The server returned an error status code';
+
+  @override
+  String get gitErrHttpErrorHint =>
+      'Check the status code below: 401 invalid token, 403 no permission, 404 not found or no access, 407 proxy auth required, 429 rate limited.';
+
+  @override
+  String get gitErrPasswordAuthDisabled =>
+      'This platform has disabled password authentication';
+
+  @override
+  String get gitErrPasswordAuthDisabledHint =>
+      'Add the account again using a personal access token (PAT) in Git Accounts.';
+
+  @override
+  String get gitErrNetworkUnreachable =>
+      'Cannot reach the remote server over the network';
+
+  @override
+  String get gitErrNetworkUnreachableHint =>
+      'Check your network connection and the container DNS configuration (/etc/resolv.conf).';
+
+  @override
+  String get gitErrSshPublicKeyDenied =>
+      'SSH public key authentication was rejected';
+
+  @override
+  String get gitErrSshPublicKeyDeniedHint =>
+      'Make sure the container\'s public key is added to the platform\'s SSH keys, or switch to HTTPS with an access token.';
+
+  @override
+  String get gitErrSshKeyUnusable =>
+      'The SSH private key is unusable (bad permissions or format)';
+
+  @override
+  String get gitErrSshKeyUnusableHint =>
+      'The private key must have mode 600. You can regenerate the key pair in Git Accounts.';
+
+  @override
+  String get gitErrHostKeyUnverified =>
+      'The server host fingerprint is not confirmed yet, connection aborted';
+
+  @override
+  String get gitErrHostKeyUnverifiedHint =>
+      'The first connection requires confirming the host fingerprint. If the server key changed, clear ~/.ssh/known_hosts in the container and retry.';
+
+  @override
+  String get gitErrNonFastForward =>
+      'Push rejected: the remote has commits you do not have locally';
+
+  @override
+  String get gitErrNonFastForwardHint =>
+      'Pull first (rebase mode) to merge the remote changes, then push again.';
+
+  @override
+  String get gitErrStaleForcePush =>
+      'Force push rejected: someone else updated the remote branch';
+
+  @override
+  String get gitErrStaleForcePushHint =>
+      'Fetch the latest remote state first, review the differences, then force push again.';
+
+  @override
+  String get gitErrConflictDetected =>
+      'Merge/rebase conflicts must be resolved manually';
+
+  @override
+  String get gitErrConflictDetectedHint =>
+      'Resolve the conflicting files one by one, or abort this operation (git rebase --abort).';
+
+  @override
+  String get gitErrLocalChanges =>
+      'Local uncommitted changes would be overwritten, operation aborted';
+
+  @override
+  String get gitErrLocalChangesHint =>
+      'Commit your changes first, or stash them, then retry.';
+
+  @override
+  String get gitErrNoUpstream =>
+      'This branch is not tracking a remote branch yet';
+
+  @override
+  String get gitErrNoUpstreamHint =>
+      'Use Publish Branch to push it to the remote and set up tracking.';
+
+  @override
+  String get gitErrRefLockFailed =>
+      'A Git reference file is locked (stale lock)';
+
+  @override
+  String get gitErrRefLockFailedHint =>
+      'Another Git process may be running. Retry shortly, or remove the .lock files under .git.';
+
+  @override
+  String get gitErrOutOfSpace => 'Not enough storage space on the device';
+
+  @override
+  String get gitErrOutOfSpaceHint =>
+      'Free up space in the container or on the device, then retry.';
+
+  @override
+  String get gitErrTimeout => 'Operation timed out';
+
+  @override
+  String get gitErrTimeoutHint =>
+      'Large repositories or slow networks can time out. Watch the progress in the terminal instead, or retry on a better connection.';
+
+  @override
+  String get gitErrIncomplete =>
+      'The operation did not finish, and no specific error was returned';
+
+  @override
+  String get gitErrIncompleteHint =>
+      'It was most likely interrupted by a timeout or a dropped connection. For large repositories, run fetch in the terminal to watch progress, or retry on a better connection.';
+
+  @override
+  String get gitErrUnknown => 'Git operation failed';
+
+  @override
+  String get gitErrUnknownHint => 'Expand the raw output below for details.';
+
+  @override
+  String get gitRawOutput => 'Raw output';
+
+  @override
+  String gitElapsed(String time) {
+    return 'Elapsed $time';
+  }
+
+  @override
+  String gitElapsedMinutesSeconds(int minutes, String seconds) {
+    return '$minutes:$seconds';
+  }
+
+  @override
+  String get gitFetch => 'Fetch';
+
+  @override
+  String get gitFetchTooltip =>
+      'Fetch the latest commits from the remote without merging';
+
+  @override
+  String get gitPull => 'Pull';
+
+  @override
+  String get gitPullTooltip =>
+      'Pull remote commits and rebase the current branch onto them';
+
+  @override
+  String get gitPush => 'Push';
+
+  @override
+  String get gitPushTooltip => 'Push local commits to the remote';
+
+  @override
+  String get gitPublishBranch => 'Publish Branch';
+
+  @override
+  String get gitPublishBranchTooltip =>
+      'Push this local branch to the remote and set up tracking';
+
+  @override
+  String get gitSync => 'Sync';
+
+  @override
+  String get gitSyncTooltip => 'Pull remote changes, then push local commits';
+
+  @override
+  String get gitCancelOperation => 'Cancel';
+
+  @override
+  String get gitRemoteOperationRunning => 'Remote operation in progress...';
+
+  @override
+  String get gitRemoteOperationCancelled => 'Operation cancelled';
+
+  @override
+  String get gitRemoteOperationBusy =>
+      'Another remote operation is already running';
+
+  @override
+  String get gitFetchSuccess => 'Fetch completed';
+
+  @override
+  String get gitFetchNoChanges => 'Already up to date';
+
+  @override
+  String get gitPullSuccess => 'Pull completed';
+
+  @override
+  String get gitPullAlreadyUpToDate => 'Already up to date, nothing to pull';
+
+  @override
+  String get gitPushSuccess => 'Push completed';
+
+  @override
+  String get gitPushUpToDate => 'Remote is already up to date, nothing to push';
+
+  @override
+  String get gitNoRemoteConfigured => 'No Remote Configured';
+
+  @override
+  String get gitNoRemoteDesc =>
+      'Add a remote repository URL to fetch, pull, and push your code.';
+
+  @override
+  String get gitAddRemote => 'Add Remote';
+
+  @override
+  String get gitRemoteManagement => 'Remote Repositories';
+
+  @override
+  String get gitRemoteName => 'Remote Name';
+
+  @override
+  String get gitRemoteNameHint => 'e.g. origin';
+
+  @override
+  String get gitRemoteUrl => 'Remote URL';
+
+  @override
+  String get gitRemoteUrlHint =>
+      'https://github.com/user/repo.git or git@github.com:user/repo.git';
+
+  @override
+  String get gitRemotePushUrl => 'Push URL (optional)';
+
+  @override
+  String get gitRemotePushUrlHint => 'Leave empty to use the fetch URL';
+
+  @override
+  String get gitRemoteNameRequired => 'Please enter a remote name';
+
+  @override
+  String get gitRemoteUrlRequired => 'Please enter a remote URL';
+
+  @override
+  String gitRemoteAdded(String name) {
+    return 'Added remote $name';
+  }
+
+  @override
+  String gitRemoteRemoved(String name) {
+    return 'Removed remote $name';
+  }
+
+  @override
+  String gitRemoteRenamed(String old, String newName) {
+    return 'Renamed $old to $newName';
+  }
+
+  @override
+  String get gitRemoteUrlUpdated => 'Remote URL updated';
+
+  @override
+  String get gitRemotePruned => 'Pruned stale remote branches';
+
+  @override
+  String gitRemoteRemoveConfirm(String name) {
+    return 'Remove remote $name? Your local code will not be deleted.';
+  }
+
+  @override
+  String get gitRemoteEdit => 'Edit Remote';
+
+  @override
+  String get gitRemoteFetchUrl => 'Fetch URL';
+
+  @override
+  String get gitRemoteSetPushUrl => 'Set Push URL';
+
+  @override
+  String get gitRemotePrune => 'Prune Stale Branches';
+
+  @override
+  String get gitCheckConnection => 'Test Connection';
+
+  @override
+  String get gitCheckConnectionSuccess => 'Connection OK, authentication works';
+
+  @override
+  String get gitNoRemotes => 'No remotes';
+
+  @override
+  String get gitFetchFailed => 'Fetch failed';
+
+  @override
+  String get gitPullFailed => 'Pull failed';
+
+  @override
+  String get gitPushFailed => 'Push failed';
+
+  @override
+  String get gitForcePush => 'Force Push';
+
+  @override
+  String get gitForcePushTooltip =>
+      'Overwrite the remote branch (uses --force-with-lease for safety)';
+
+  @override
+  String get gitForcePushWarning =>
+      'Force pushing overwrites the remote branch with your local commits and may discard other people\'s work.';
+
+  @override
+  String get gitForcePushConfirm => 'Confirm Force Push';
+
+  @override
+  String gitForcePushConfirmDesc(String branch) {
+    return 'This rewrites the history of remote branch $branch. Only use it when you are certain nobody else pushed new commits.';
+  }
+
+  @override
+  String get gitForcePushUseLease => 'Use safe force push (--force-with-lease)';
+
+  @override
+  String get gitPullThenPush => 'Pull Then Push';
+
+  @override
+  String get gitPullThenPushDesc =>
+      'The remote has commits you do not have. Pull and merge them before pushing.';
+
+  @override
+  String get gitConflictAbort => 'Abort Rebase';
+
+  @override
+  String get gitConflictAbortConfirm =>
+      'Abort this rebase and return to the state before it started?';
+
+  @override
+  String get gitUncommittedChangesTitle => 'Uncommitted Changes';
+
+  @override
+  String get gitUncommittedChangesDesc =>
+      'Local uncommitted changes must be handled before pulling, or they may be overwritten.';
+
+  @override
+  String get gitUncommittedStashAndPull => 'Stash and Pull';
+
+  @override
+  String get gitUncommittedCommitFirst => 'Commit First';
+
+  @override
+  String get gitUncommittedCancel => 'Cancel';
+
+  @override
+  String get gitStashAndPullSuccess =>
+      'Stashed local changes and pulled successfully';
+
+  @override
+  String get gitViewOperationLog => 'View Details';
+
+  @override
+  String get gitHideOperationLog => 'Hide Details';
+
+  @override
+  String gitAheadBehind(int ahead, int behind) {
+    return '$ahead ahead / $behind behind';
+  }
+
+  @override
+  String get gitUpstreamGone => 'Upstream branch no longer exists';
+
+  @override
+  String gitBehindTooltip(int behind) {
+    return '$behind commits behind the remote';
+  }
+
+  @override
+  String gitAheadTooltip(int ahead) {
+    return '$ahead commits ahead of the remote';
+  }
+
+  @override
   String get gitDiff => 'Diff';
 
   @override

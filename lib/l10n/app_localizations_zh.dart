@@ -2188,6 +2188,558 @@ class AppLocalizationsZh extends AppLocalizations {
   String get gitNoBranches => '暂无分支';
 
   @override
+  String get gitRemoteBranches => '远端分支';
+
+  @override
+  String get gitLocalBranches => '本地分支';
+
+  @override
+  String get gitNoRemoteBranches => '暂无远端分支，请先执行抓取';
+
+  @override
+  String get gitCheckoutRemoteBranch => '检出为本地分支';
+
+  @override
+  String get gitRemoteBranchCheckedOut => '该远端分支已在本地检出';
+
+  @override
+  String gitCheckoutRemoteBranchSuccess(String remote, String branch) {
+    return '已基于 $remote 创建并切换到本地分支 $branch';
+  }
+
+  @override
+  String get gitSearchRemoteBranches => '搜索远端分支...';
+
+  @override
+  String get gitRepairCheck => '仓库自检';
+
+  @override
+  String get gitRepairCheckRunning => '正在自检...';
+
+  @override
+  String get gitRepairCheckHealthy => '仓库完整，未发现对象丢失';
+
+  @override
+  String get gitRepairCheckHealthyHint => '对象库校验通过，可以正常提交与同步。';
+
+  @override
+  String gitRepairCheckObjectLoss(int count) {
+    return '检测到对象丢失（$count 处问题）';
+  }
+
+  @override
+  String get gitRepairCheckObjectLossHint =>
+      '这类损坏会导致提交时报错 Error building trees。常见原因是容器被重建导致 .git/objects 丢失。建议先备份项目目录，再按下方提示处理。';
+
+  @override
+  String gitRepairCheckDangling(int count) {
+    return '另有 $count 个悬空对象（正常现象，无需处理）';
+  }
+
+  @override
+  String get gitRepairCheckFailed => '自检未能完成';
+
+  @override
+  String get gitRepairCheckFailedHint => '可能因为仓库过大或执行超时，可稍后重试。';
+
+  @override
+  String get gitRepairCheckRerun => '重新自检';
+
+  @override
+  String get gitRepairAdviceTitle => '如何处理';
+
+  @override
+  String get gitRepairAdviceRemoveStale =>
+      '未提交的损坏条目：执行 git reset 让索引与最后一次提交对齐，然后重新暂存需要的文件。';
+
+  @override
+  String get gitRepairAdviceRestore => '已提交的历史损坏：需要从远端重新克隆，或从其他副本恢复。';
+
+  @override
+  String get gitClone => '克隆远程仓库';
+
+  @override
+  String get gitCloneUrl => '仓库地址';
+
+  @override
+  String get gitCloneUrlHint => 'https://github.com/user/repo.git';
+
+  @override
+  String get gitCloneDirName => '本地目录名';
+
+  @override
+  String get gitCloneDirNameHint => '留空则从地址自动推导';
+
+  @override
+  String get gitCloneBranch => '指定分支（可选）';
+
+  @override
+  String get gitCloneBranchHint => '留空则使用远端默认分支';
+
+  @override
+  String get gitCloneDepth => '浅克隆深度（可选）';
+
+  @override
+  String get gitCloneDepthHint => '如 1 表示只克隆最近 1 个提交';
+
+  @override
+  String get gitCloneUrlRequired => '请输入仓库地址';
+
+  @override
+  String get gitCloneDirRequired => '请输入本地目录名';
+
+  @override
+  String get gitCloneDirExists => '目录已存在，请换一个名字';
+
+  @override
+  String get gitCloneRunning => '正在克隆...';
+
+  @override
+  String gitCloneSuccess(String name) {
+    return '克隆完成：$name';
+  }
+
+  @override
+  String get gitCloneFailed => '克隆失败';
+
+  @override
+  String get gitCloneCancel => '取消克隆';
+
+  @override
+  String gitPushTargetTooltip(String name, String reason) {
+    return '推送目标：$name\n$reason';
+  }
+
+  @override
+  String get gitPushReasonPushRemote => '由分支配置 branch.*.pushRemote 决定';
+
+  @override
+  String get gitPushReasonPushDefault => '由仓库配置 remote.pushDefault 决定';
+
+  @override
+  String get gitPushReasonUpstream => '当前分支的上游远程';
+
+  @override
+  String get gitPushReasonBranchRemote => '由分支配置 branch.*.remote 决定';
+
+  @override
+  String get gitPushReasonFallback => '默认远程（origin 优先）';
+
+  @override
+  String get gitPushReasonOverridden => '你已在本次会话中手动切换';
+
+  @override
+  String gitFetchTargetTooltip(String name) {
+    return '抓取目标：$name';
+  }
+
+  @override
+  String get gitTogglePushTarget => '选择推送目标';
+
+  @override
+  String get gitSyncCloudTooltip => '同步：抓取 / 拉取 / 推送';
+
+  @override
+  String gitPushTargetChanged(String name) {
+    return '推送目标已切换为 $name';
+  }
+
+  @override
+  String get gitPushTargetDiffers => '推送目标与上游不同';
+
+  @override
+  String gitPushTargetDiffersNotice(String upstream, String push) {
+    return '拉取走 $upstream，推送走 $push';
+  }
+
+  @override
+  String get gitRemoteRoleUpstream => '上游（拉取）';
+
+  @override
+  String get gitErrAuthFailed => '认证失败：令牌无效、已过期或用户名不匹配';
+
+  @override
+  String get gitErrAuthFailedHint => '请到「Git 账号管理」检查令牌是否有效，并确认账号用户名与平台登录名一致。';
+
+  @override
+  String get gitErrWritePermissionDenied => '当前账号对该仓库没有写权限';
+
+  @override
+  String get gitErrWritePermissionDeniedHint =>
+      '若这是别人的仓库（上游），请先 Fork 到你自己的账号，再把远端地址改为你的 Fork（如 https://github.com/你的用户名/仓库.git）。';
+
+  @override
+  String get gitErrRepositoryNotFound => '仓库不存在，或当前账号无权访问';
+
+  @override
+  String get gitErrRepositoryNotFoundHint =>
+      'GitHub 对「无权限」和「不存在」都返回 404。请确认远端地址拼写正确，且该令牌有权访问该仓库。';
+
+  @override
+  String get gitErrProxyAuthRequired => '网络代理需要认证';
+
+  @override
+  String get gitErrProxyAuthRequiredHint =>
+      '当前网络经过需要认证的代理（HTTP 407）。请检查容器内代理配置与凭据。';
+
+  @override
+  String get gitErrRequestRejected => '服务器拒绝了本次请求';
+
+  @override
+  String get gitErrRequestRejectedHint =>
+      '通常表示推送内容或分支引用不合法（HTTP 422），例如分支名不符合平台规则或提交信息被策略拦截。';
+
+  @override
+  String get gitErrRateLimited => '请求过于频繁，已被平台限流';
+
+  @override
+  String get gitErrRateLimitedHint => '请稍等几分钟后重试（HTTP 429）。短时间内反复重试会延长限制时间。';
+
+  @override
+  String get gitErrHttpError => '服务器返回了错误状态码';
+
+  @override
+  String get gitErrHttpErrorHint =>
+      '请根据下方状态码排查：401 令牌无效、403 无权限、404 仓库不存在或无权访问、407 需要代理认证、429 被限流。';
+
+  @override
+  String get gitErrPasswordAuthDisabled => '该平台已禁用账号密码认证';
+
+  @override
+  String get gitErrPasswordAuthDisabledHint =>
+      '请在「Git 账号管理」中使用个人访问令牌 (PAT) 重新添加账号。';
+
+  @override
+  String get gitErrNetworkUnreachable => '网络无法连接到远端服务器';
+
+  @override
+  String get gitErrNetworkUnreachableHint =>
+      '请检查网络连接，以及容器内 DNS 配置（/etc/resolv.conf）是否正常。';
+
+  @override
+  String get gitErrSshPublicKeyDenied => 'SSH 公钥认证被拒绝';
+
+  @override
+  String get gitErrSshPublicKeyDeniedHint =>
+      '请确认容器内的公钥已添加到平台的 SSH Keys 中，或改用 HTTPS + 访问令牌。';
+
+  @override
+  String get gitErrSshKeyUnusable => 'SSH 私钥无法使用（权限或格式异常）';
+
+  @override
+  String get gitErrSshKeyUnusableHint => '私钥权限需为 600。可在「Git 账号管理」中重新生成密钥对。';
+
+  @override
+  String get gitErrHostKeyUnverified => '目标服务器的主机指纹尚未确认，连接被中断';
+
+  @override
+  String get gitErrHostKeyUnverifiedHint =>
+      '首次连接需要确认主机指纹。若刚更换过服务器密钥，请清理容器内 ~/.ssh/known_hosts 后重试。';
+
+  @override
+  String get gitErrNonFastForward => '推送被拒绝：远端存在本地尚无的提交';
+
+  @override
+  String get gitErrNonFastForwardHint => '请先执行 Pull（rebase 方式）合并远端改动，再重新推送。';
+
+  @override
+  String get gitErrStaleForcePush => '强推被拒绝：远端分支已被他人更新';
+
+  @override
+  String get gitErrStaleForcePushHint => '请先执行 Fetch 获取最新远端状态，确认差异后再强制推送。';
+
+  @override
+  String get gitErrConflictDetected => '合并/rebase 出现冲突，需要手动解决';
+
+  @override
+  String get gitErrConflictDetectedHint =>
+      '请逐个解决冲突文件，或放弃本次操作（git rebase --abort）。';
+
+  @override
+  String get gitErrLocalChanges => '本地未提交的改动会被覆盖，操作已中止';
+
+  @override
+  String get gitErrLocalChangesHint => '请先提交改动，或将其贮藏（stash）后再执行。';
+
+  @override
+  String get gitErrNoUpstream => '当前分支尚未关联远端分支';
+
+  @override
+  String get gitErrNoUpstreamHint => '请使用「发布分支」将本地分支推送到远端并建立追踪关系。';
+
+  @override
+  String get gitErrRefLockFailed => 'Git 引用文件被占用（存在残留锁）';
+
+  @override
+  String get gitErrRefLockFailedHint =>
+      '可能有另一个 Git 进程正在运行。稍后重试，或清理 .git 目录下的 .lock 文件。';
+
+  @override
+  String get gitErrOutOfSpace => '设备存储空间不足';
+
+  @override
+  String get gitErrOutOfSpaceHint => '请清理容器或设备空间后重试。';
+
+  @override
+  String get gitErrTimeout => '操作超时';
+
+  @override
+  String get gitErrTimeoutHint => '仓库较大或网络较慢时可能超时。可改用终端观察进度，或在网络较好时重试。';
+
+  @override
+  String get gitErrIncomplete => '操作未完成，但没有返回具体错误信息';
+
+  @override
+  String get gitErrIncompleteHint =>
+      '通常是被超时或网络中断打断。仓库较大时建议改用终端执行 fetch 观察进度，或稍后在网络较好时重试。';
+
+  @override
+  String get gitErrUnknown => 'Git 操作失败';
+
+  @override
+  String get gitErrUnknownHint => '请展开下方原始输出查看详细信息。';
+
+  @override
+  String get gitRawOutput => '原始输出';
+
+  @override
+  String gitElapsed(String time) {
+    return '已用 $time';
+  }
+
+  @override
+  String gitElapsedMinutesSeconds(int minutes, String seconds) {
+    return '$minutes:$seconds';
+  }
+
+  @override
+  String get gitFetch => '抓取';
+
+  @override
+  String get gitFetchTooltip => '从远端抓取最新提交（不合并到本地）';
+
+  @override
+  String get gitPull => '拉取';
+
+  @override
+  String get gitPullTooltip => '拉取远端提交并以 rebase 方式合并到当前分支';
+
+  @override
+  String get gitPush => '推送';
+
+  @override
+  String get gitPushTooltip => '将本地提交推送到远端';
+
+  @override
+  String get gitPublishBranch => '发布分支';
+
+  @override
+  String get gitPublishBranchTooltip => '将本地分支推送到远端并建立追踪关系';
+
+  @override
+  String get gitSync => '同步';
+
+  @override
+  String get gitSyncTooltip => '先拉取远端改动，再推送本地提交';
+
+  @override
+  String get gitCancelOperation => '取消';
+
+  @override
+  String get gitRemoteOperationRunning => '云端操作进行中...';
+
+  @override
+  String get gitRemoteOperationCancelled => '操作已取消';
+
+  @override
+  String get gitRemoteOperationBusy => '已有云端操作正在进行，请稍候';
+
+  @override
+  String get gitFetchSuccess => '抓取完成';
+
+  @override
+  String get gitFetchNoChanges => '已是最新状态';
+
+  @override
+  String get gitPullSuccess => '拉取完成';
+
+  @override
+  String get gitPullAlreadyUpToDate => '已是最新，无需拉取';
+
+  @override
+  String get gitPushSuccess => '推送完成';
+
+  @override
+  String get gitPushUpToDate => '远端已是最新，无需推送';
+
+  @override
+  String get gitNoRemoteConfigured => '尚未配置远程仓库';
+
+  @override
+  String get gitNoRemoteDesc => '添加远程仓库地址后，即可抓取、拉取与推送代码。';
+
+  @override
+  String get gitAddRemote => '添加远程仓库';
+
+  @override
+  String get gitRemoteManagement => '远程仓库管理';
+
+  @override
+  String get gitRemoteName => '远程名称';
+
+  @override
+  String get gitRemoteNameHint => '例如 origin';
+
+  @override
+  String get gitRemoteUrl => '远程地址';
+
+  @override
+  String get gitRemoteUrlHint =>
+      'https://github.com/user/repo.git 或 git@github.com:user/repo.git';
+
+  @override
+  String get gitRemotePushUrl => '推送地址（可选）';
+
+  @override
+  String get gitRemotePushUrlHint => '留空则与抓取地址相同';
+
+  @override
+  String get gitRemoteNameRequired => '请输入远程名称';
+
+  @override
+  String get gitRemoteUrlRequired => '请输入远程地址';
+
+  @override
+  String gitRemoteAdded(String name) {
+    return '已添加远程仓库 $name';
+  }
+
+  @override
+  String gitRemoteRemoved(String name) {
+    return '已移除远程仓库 $name';
+  }
+
+  @override
+  String gitRemoteRenamed(String old, String newName) {
+    return '已将 $old 重命名为 $newName';
+  }
+
+  @override
+  String get gitRemoteUrlUpdated => '已更新远程地址';
+
+  @override
+  String get gitRemotePruned => '已清理远端已删除的分支';
+
+  @override
+  String gitRemoteRemoveConfirm(String name) {
+    return '确定要移除远程仓库 $name 吗？本地代码不会被删除。';
+  }
+
+  @override
+  String get gitRemoteEdit => '编辑远程仓库';
+
+  @override
+  String get gitRemoteFetchUrl => '抓取地址';
+
+  @override
+  String get gitRemoteSetPushUrl => '设置推送地址';
+
+  @override
+  String get gitRemotePrune => '清理失效分支';
+
+  @override
+  String get gitCheckConnection => '检测连接';
+
+  @override
+  String get gitCheckConnectionSuccess => '连接正常，认证可用';
+
+  @override
+  String get gitNoRemotes => '暂无远程仓库';
+
+  @override
+  String get gitFetchFailed => '抓取失败';
+
+  @override
+  String get gitPullFailed => '拉取失败';
+
+  @override
+  String get gitPushFailed => '推送失败';
+
+  @override
+  String get gitForcePush => '强制推送';
+
+  @override
+  String get gitForcePushTooltip => '覆盖远端分支（使用 --force-with-lease 安全校验）';
+
+  @override
+  String get gitForcePushWarning => '强制推送会用本地提交覆盖远端分支，可能导致他人提交丢失。';
+
+  @override
+  String get gitForcePushConfirm => '确认强制推送';
+
+  @override
+  String gitForcePushConfirmDesc(String branch) {
+    return '该操作将改写远端 $branch 分支的历史。仅在确认远端没有他人新提交时使用。';
+  }
+
+  @override
+  String get gitForcePushUseLease => '使用安全强推（--force-with-lease）';
+
+  @override
+  String get gitPullThenPush => '先拉取再推送';
+
+  @override
+  String get gitPullThenPushDesc => '远端存在本地没有的提交，先拉取合并后再推送。';
+
+  @override
+  String get gitConflictAbort => '放弃本次变基';
+
+  @override
+  String get gitConflictAbortConfirm => '确定要放弃本次变基操作并回到操作前的状态吗？';
+
+  @override
+  String get gitUncommittedChangesTitle => '存在未提交的改动';
+
+  @override
+  String get gitUncommittedChangesDesc => '拉取前需要先处理本地未提交的改动，否则可能被覆盖。';
+
+  @override
+  String get gitUncommittedStashAndPull => '贮藏并拉取';
+
+  @override
+  String get gitUncommittedCommitFirst => '先去提交';
+
+  @override
+  String get gitUncommittedCancel => '取消';
+
+  @override
+  String get gitStashAndPullSuccess => '已贮藏本地改动并完成拉取';
+
+  @override
+  String get gitViewOperationLog => '查看详情';
+
+  @override
+  String get gitHideOperationLog => '收起详情';
+
+  @override
+  String gitAheadBehind(int ahead, int behind) {
+    return '领先 $ahead / 落后 $behind';
+  }
+
+  @override
+  String get gitUpstreamGone => '上游分支已不存在';
+
+  @override
+  String gitBehindTooltip(int behind) {
+    return '本地落后远端 $behind 个提交';
+  }
+
+  @override
+  String gitAheadTooltip(int ahead) {
+    return '本地领先远端 $ahead 个提交';
+  }
+
+  @override
   String get gitDiff => '差异对比';
 
   @override

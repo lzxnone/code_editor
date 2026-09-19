@@ -1,16 +1,22 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:path/path.dart' as p;
 import 'package:provider/provider.dart';
 
 import '../../l10n/app_localizations.dart';
 import '../../models/git_model.dart';
+import '../../models/project_history.dart';
 import '../../providers/git_provider.dart';
+import '../../providers/project_provider.dart';
 import '../../providers/tab_provider.dart';
 import '../../utils/dialog_utils.dart';
 import '../../utils/file_icon_utils.dart';
 import 'git_diff_page.dart';
 import 'git_graph_painter.dart';
+import 'git_remote_management_sheet.dart';
+import 'git_repair_panel.dart';
+import 'git_sync_bar.dart';
 import '../../views/git_account_management_view.dart';
 
 /// Git 版本控制侧边栏面板组件
@@ -239,51 +245,11 @@ class _GitPanelWidgetState extends State<GitPanelWidget> {
 
                   const SizedBox(width: 4),
 
-                  // 顶部操作按钮组
-                  Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      // Git 账号管理入口
-                      SizedBox(
-                        width: 24,
-                        height: 24,
-                        child: IconButton(
-                          icon: const Icon(Icons.manage_accounts_outlined, size: 18),
-                          tooltip: l10n.gitAccountManagement,
-                          padding: EdgeInsets.zero,
-                          constraints: const BoxConstraints(),
-                          onPressed: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(builder: (_) => const GitAccountManagementView()),
-                            );
-                          },
-                        ),
-                      ),
-
-                      // 刷新按钮
-                      if (gitProvider.hasProject && gitProvider.gitInstalled) ...[
-                        const SizedBox(width: 4),
-                        SizedBox(
-                          width: 24,
-                          height: 24,
-                          child: IconButton(
-                            icon: const Icon(Icons.refresh, size: 18),
-                            tooltip: l10n.gitRefresh,
-                            padding: EdgeInsets.zero,
-                            constraints: const BoxConstraints(),
-                            onPressed: gitProvider.isLoading ? null : () => gitProvider.refresh(),
-                          ),
-                        ),
-                      ],
-
-                      // 更多操作 (撤销上次提交、Stash 贮藏等)
-                      if (gitProvider.hasProject && gitProvider.gitInstalled && gitProvider.hasRepository) ...[
-                        const SizedBox(width: 4),
-                        _buildMoreActionsMenu(context, theme, l10n, gitProvider),
-                      ],
-                    ],
-                  ),
+                  // 顶部操作更多菜单（撤销/Stash/远程管理/自检/克隆/账号等）。
+                  // 不要求已打开仓库：克隆正是用来把第一个项目拉下来的入口，
+                  // 各菜单项自身会按 hasRepository 决定是否可用。
+                  if (gitProvider.gitInstalled)
+                    _buildMoreActionsMenu(context, theme, l10n, gitProvider),
                 ],
               ),
 
@@ -299,6 +265,12 @@ class _GitPanelWidgetState extends State<GitPanelWidget> {
                     _buildBranchRowMoreButton(context, theme, l10n, gitProvider, branch),
                   ],
                 ),
+              ],
+
+              // 第三行：云端同步工具条（抓取 / 拉取 / 推送 / 远程管理）
+              if (gitProvider.hasRepository && gitProvider.gitInstalled) ...[
+                const SizedBox(height: 6),
+                const GitSyncBar(),
               ],
             ],
           ),
@@ -433,6 +405,23 @@ class _GitPanelWidgetState extends State<GitPanelWidget> {
               }
             }
           },
+          onCheckoutRemoteBranch: (remoteBranch) async {
+            final res = await gitProvider.checkoutRemoteBranch(remoteBranch);
+            if (context.mounted) {
+              if (res.success) {
+                DialogUtils.showToast(
+                  context,
+                  l10n.gitCheckoutRemoteBranchSuccess(
+                    remoteBranch.remoteName,
+                    remoteBranch.localBranchName,
+                  ),
+                  type: ToastType.success,
+                );
+              } else if (res.stderr.isNotEmpty) {
+                DialogUtils.showToast(context, res.stderr, type: ToastType.error);
+              }
+            }
+          },
         );
       },
     );
@@ -559,58 +548,210 @@ class _GitPanelWidgetState extends State<GitPanelWidget> {
         tooltip: l10n.gitMoreActions,
         padding: EdgeInsets.zero,
         onSelected: (action) async {
-        switch (action) {
-          case 'undo_commit':
-            _handleUndoLastCommit(context, l10n, gitProvider);
-            break;
-          case 'stash':
-            _handleStash(context, l10n, gitProvider);
-            break;
-          case 'stash_pop':
-            _handleStashPop(context, l10n, gitProvider);
-            break;
-        }
-      },
-      itemBuilder: (ctx) => [
-        PopupMenuItem(
-          value: 'undo_commit',
-          enabled: gitProvider.commits.isNotEmpty,
-          child: Row(
-            children: [
-              const Icon(Icons.undo, size: 16),
-              const SizedBox(width: 8),
-              Text(l10n.gitUndoLastCommit, style: const TextStyle(fontSize: 13)),
-            ],
-          ),
-        ),
-        PopupMenuItem(
-          value: 'stash',
-          enabled: gitProvider.changedFiles.isNotEmpty,
-          child: Row(
-            children: [
-              const Icon(Icons.archive_outlined, size: 16),
-              const SizedBox(width: 8),
-              Text(l10n.gitStashChanges, style: const TextStyle(fontSize: 13)),
-            ],
-          ),
-        ),
-        PopupMenuItem(
-          value: 'stash_pop',
-          enabled: gitProvider.stashCount > 0,
-          child: Row(
-            children: [
-              const Icon(Icons.unarchive_outlined, size: 16),
-              const SizedBox(width: 8),
-              Text(
-                '${l10n.gitStashPop}${gitProvider.stashCount > 0 ? ' (${gitProvider.stashCount})' : ''}',
-                style: const TextStyle(fontSize: 13),
+          switch (action) {
+            case 'undo_commit':
+              _handleUndoLastCommit(context, l10n, gitProvider);
+              break;
+            case 'stash':
+              _handleStash(context, l10n, gitProvider);
+              break;
+            case 'stash_pop':
+              _handleStashPop(context, l10n, gitProvider);
+              break;
+            case 'refresh':
+              gitProvider.refresh();
+              break;
+            case 'account_management':
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const GitAccountManagementView()),
+              );
+              break;
+            case 'remote_management':
+              GitRemoteManagementSheet.show(context);
+              break;
+            case 'repair_check':
+              GitRepairPanel.show(context);
+              break;
+            case 'clone':
+              _handleClone(context, l10n);
+              break;
+            case 'force_push':
+              _handleForcePush(context, l10n, gitProvider);
+              break;
+          }
+        },
+        itemBuilder: (ctx) => [
+          if (gitProvider.hasRepository) ...[
+            PopupMenuItem(
+              value: 'undo_commit',
+              enabled: gitProvider.commits.isNotEmpty,
+              child: Row(
+                children: [
+                  const Icon(Icons.undo, size: 16),
+                  const SizedBox(width: 8),
+                  Text(l10n.gitUndoLastCommit, style: const TextStyle(fontSize: 13)),
+                ],
               ),
-            ],
+            ),
+            PopupMenuItem(
+              value: 'stash',
+              enabled: gitProvider.changedFiles.isNotEmpty,
+              child: Row(
+                children: [
+                  const Icon(Icons.archive_outlined, size: 16),
+                  const SizedBox(width: 8),
+                  Text(l10n.gitStashChanges, style: const TextStyle(fontSize: 13)),
+                ],
+              ),
+            ),
+            PopupMenuItem(
+              value: 'stash_pop',
+              enabled: gitProvider.stashCount > 0,
+              child: Row(
+                children: [
+                  const Icon(Icons.unarchive_outlined, size: 16),
+                  const SizedBox(width: 8),
+                  Text(
+                    '${l10n.gitStashPop}${gitProvider.stashCount > 0 ? ' (${gitProvider.stashCount})' : ''}',
+                    style: const TextStyle(fontSize: 13),
+                  ),
+                ],
+              ),
+            ),
+            const PopupMenuDivider(),
+          ],
+          PopupMenuItem(
+            value: 'remote_management',
+            enabled: gitProvider.hasRepository && !gitProvider.isRemoteBusy,
+            child: Row(
+              children: [
+                const Icon(Icons.dns_outlined, size: 16),
+                const SizedBox(width: 8),
+                Text(l10n.gitRemoteManagement, style: const TextStyle(fontSize: 13)),
+              ],
+            ),
           ),
-        ),
-      ],
-    ),
+          PopupMenuItem(
+            value: 'repair_check',
+            enabled: gitProvider.hasRepository && !gitProvider.isFsckRunning,
+            child: Row(
+              children: [
+                const Icon(Icons.health_and_safety_outlined, size: 16),
+                const SizedBox(width: 8),
+                Text(l10n.gitRepairCheck, style: const TextStyle(fontSize: 13)),
+              ],
+            ),
+          ),
+          // 克隆不依赖当前仓库：没有打开仓库时也能用来拉一个新项目下来
+          PopupMenuItem(
+            value: 'clone',
+            enabled: !gitProvider.isCloning,
+            child: Row(
+              children: [
+                const Icon(Icons.download_outlined, size: 16),
+                const SizedBox(width: 8),
+                Text(l10n.gitClone, style: const TextStyle(fontSize: 13)),
+              ],
+            ),
+          ),
+          if (gitProvider.hasRepository) ...[
+            const PopupMenuDivider(),
+            PopupMenuItem(
+              value: 'force_push',
+              enabled: gitProvider.currentBranch != null && !gitProvider.isRemoteBusy,
+              child: Row(
+                children: [
+                  Icon(Icons.warning_amber_rounded, size: 16, color: theme.colorScheme.error),
+                  const SizedBox(width: 8),
+                  Text(
+                    l10n.gitForcePush,
+                    style: TextStyle(fontSize: 13, color: theme.colorScheme.error),
+                  ),
+                ],
+              ),
+            ),
+          ],
+          const PopupMenuDivider(),
+          PopupMenuItem(
+            value: 'refresh',
+            enabled: !gitProvider.isLoading,
+            child: Row(
+              children: [
+                const Icon(Icons.refresh, size: 16),
+                const SizedBox(width: 8),
+                Text(l10n.gitRefresh, style: const TextStyle(fontSize: 13)),
+              ],
+            ),
+          ),
+          PopupMenuItem(
+            value: 'account_management',
+            child: Row(
+              children: [
+                const Icon(Icons.manage_accounts_outlined, size: 16),
+                const SizedBox(width: 8),
+                Text(l10n.gitAccountManagement, style: const TextStyle(fontSize: 13)),
+              ],
+            ),
+          ),
+        ],
+      ),
   );
+  }
+
+  /// 强制推送：必须经过显式二次确认，且底层一律使用 --force-with-lease
+  ///
+  /// 之所以不复用普通确认弹窗，是因为强推会改写远端历史；这里把远端分支名
+  /// 直接写进弹窗正文，让用户明确知道自己在覆盖哪一条分支。
+  Future<void> _handleForcePush(
+    BuildContext context,
+    AppLocalizations l10n,
+    GitProvider gitProvider,
+  ) async {
+    final branch = gitProvider.currentBranch;
+    if (branch == null || branch.isEmpty) return;
+
+    if (!gitProvider.hasRemote) {
+      DialogUtils.showToast(context, l10n.gitNoRemoteConfigured, type: ToastType.warning);
+      return;
+    }
+
+    final confirmed = await DialogUtils.showDestructiveConfirmDialog(
+      context,
+      title: l10n.gitForcePushConfirm,
+      message: '${l10n.gitForcePushWarning}\n\n${l10n.gitForcePushConfirmDesc(branch)}',
+      confirmText: l10n.gitForcePush,
+      icon: Icons.warning_amber_rounded,
+    );
+    if (!confirmed || !context.mounted) return;
+
+    final res = await gitProvider.push(forceWithLease: true);
+    if (!context.mounted) return;
+    if (res.cancelled) {
+      DialogUtils.showToast(context, l10n.gitRemoteOperationCancelled, type: ToastType.info);
+      return;
+    }
+    if (res.success) {
+      DialogUtils.showToast(context, l10n.gitPushSuccess, type: ToastType.success);
+    }
+    // 失败时错误面板已给出结构化原因与修复入口，此处不再重复弹 toast
+  }
+
+  /// 克隆远端仓库到项目目录，成功后直接切过去打开
+  Future<void> _handleClone(BuildContext context, AppLocalizations l10n) async {
+    final projectProvider = context.read<ProjectProvider>();
+    final targetPath = await GitCloneDialog.show(context);
+    if (targetPath == null) return;
+
+    await projectProvider.switchProject(
+      ProjectHistory(rootPath: targetPath, lastOpenedFilePath: null),
+    );
+    if (!context.mounted) return;
+    DialogUtils.showToast(
+      context,
+      l10n.gitCloneSuccess(p.basename(targetPath)),
+      type: ToastType.success,
+    );
   }
 
   /// 创建新分支对话框
@@ -2626,6 +2767,9 @@ class _BranchOrTagSelectorMenuDialog extends StatefulWidget {
   final ValueChanged<String> onSwitchBranch;
   final ValueChanged<String> onSwitchTag;
 
+  /// 基于远端分支检出本地分支
+  final ValueChanged<GitRemoteBranch> onCheckoutRemoteBranch;
+
   const _BranchOrTagSelectorMenuDialog({
     required this.offset,
     required this.size,
@@ -2637,6 +2781,7 @@ class _BranchOrTagSelectorMenuDialog extends StatefulWidget {
     required this.onModeChanged,
     required this.onSwitchBranch,
     required this.onSwitchTag,
+    required this.onCheckoutRemoteBranch,
   });
 
   @override
@@ -2676,6 +2821,13 @@ class _BranchOrTagSelectorMenuDialogState extends State<_BranchOrTagSelectorMenu
     final filteredTags = query.isEmpty
         ? tags
         : tags.where((t) => t.toLowerCase().contains(query)).toList();
+    // 远端分支：fetch 之后必须可见，否则用户会以为"抓取没生效"
+    final remoteBranches = widget.gitProvider.remoteBranches;
+    final filteredRemote = query.isEmpty
+        ? remoteBranches
+        : remoteBranches
+            .where((b) => b.name.toLowerCase().contains(query))
+            .toList();
 
     return Stack(
       children: [
@@ -2834,7 +2986,7 @@ class _BranchOrTagSelectorMenuDialogState extends State<_BranchOrTagSelectorMenu
                     // 下方列表（按需虚拟化构建）
                     _showTags
                         ? _buildTagList(context, colorScheme, filteredTags)
-                        : _buildBranchList(context, colorScheme, filteredBranches),
+                        : _buildBranchSection(context, colorScheme, filteredBranches, filteredRemote),
                   ],
                 ),
               ),
@@ -2845,7 +2997,158 @@ class _BranchOrTagSelectorMenuDialogState extends State<_BranchOrTagSelectorMenu
     );
   }
 
-  Widget _buildBranchList(BuildContext dialogCtx, ColorScheme colorScheme, List<String> branches) {
+  /// 分支列表 = 本地分支 + 远端分支两个分区
+  ///
+  /// 分区标题只在对应分区非空时出现，避免只有一个分区时多一行噪音。
+  Widget _buildBranchSection(
+    BuildContext dialogCtx,
+    ColorScheme colorScheme,
+    List<String> localBranches,
+    List<GitRemoteBranch> remoteBranches,
+  ) {
+    final showLocalHeader = localBranches.isNotEmpty && remoteBranches.isNotEmpty;
+    final rows = <Widget>[];
+
+    if (showLocalHeader) {
+      rows.add(_buildGroupHeader(colorScheme, widget.l10n.gitLocalBranches));
+    }
+    if (localBranches.isNotEmpty) {
+      rows.add(_buildBranchList(dialogCtx, colorScheme, localBranches, shrinkWrap: true));
+    } else if (remoteBranches.isEmpty) {
+      rows.add(_buildEmptyHint(colorScheme, widget.l10n.gitNoBranches));
+    }
+
+    if (remoteBranches.isNotEmpty) {
+      rows.add(_buildGroupHeader(colorScheme, widget.l10n.gitRemoteBranches));
+      rows.add(_buildRemoteBranchList(dialogCtx, colorScheme, remoteBranches));
+    }
+
+    return Flexible(child: SingleChildScrollView(child: Column(children: rows)));
+  }
+
+  Widget _buildGroupHeader(ColorScheme colorScheme, String title) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(12, 8, 12, 4),
+      child: Row(
+        children: [
+          Text(
+            title,
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.bold,
+              color: colorScheme.onSurfaceVariant,
+            ),
+          ),
+          const SizedBox(width: 6),
+          Expanded(
+            child: Divider(
+              height: 1,
+              thickness: 0.8,
+              color: colorScheme.outlineVariant.withValues(alpha: 0.5),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildEmptyHint(ColorScheme colorScheme, String text) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      child: Center(
+        child: Text(
+          text,
+          style: TextStyle(
+            fontSize: 12,
+            fontStyle: FontStyle.italic,
+            color: colorScheme.onSurfaceVariant.withValues(alpha: 0.6),
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// 远端分支列表：点击即基于它检出本地分支
+  Widget _buildRemoteBranchList(
+    BuildContext dialogCtx,
+    ColorScheme colorScheme,
+    List<GitRemoteBranch> branches,
+  ) {
+    const double itemHeight = 40.0;
+    final double listHeight = (branches.length * itemHeight).clamp(40.0, 240.0);
+
+    return SizedBox(
+      height: listHeight,
+      child: ListView.builder(
+        itemExtent: itemHeight,
+        itemCount: branches.length,
+        padding: const EdgeInsets.symmetric(vertical: 2),
+        itemBuilder: (ctx, index) {
+          final b = branches[index];
+          return InkWell(
+            key: ValueKey('git_remote_branch_${b.name}'),
+            onTap: () {
+              Navigator.of(dialogCtx).pop();
+              widget.onCheckoutRemoteBranch(b);
+            },
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.cloud_outlined,
+                    size: 15,
+                    color: b.isCheckedOut
+                        ? colorScheme.primary
+                        : colorScheme.onSurfaceVariant,
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          b.name,
+                          style: TextStyle(
+                            fontSize: 12.5,
+                            fontFamily: 'JetBrains Mono',
+                            fontWeight:
+                                b.isCheckedOut ? FontWeight.bold : FontWeight.normal,
+                            color: b.isCheckedOut
+                                ? colorScheme.primary
+                                : colorScheme.onSurface,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        Text(
+                          b.isCheckedOut
+                              ? widget.l10n.gitRemoteBranchCheckedOut
+                              : widget.l10n.gitCheckoutRemoteBranch,
+                          style: TextStyle(
+                            fontSize: 10,
+                            color: colorScheme.onSurfaceVariant,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildBranchList(
+    BuildContext dialogCtx,
+    ColorScheme colorScheme,
+    List<String> branches, {
+    bool shrinkWrap = false,
+  }) {
     if (branches.isEmpty) {
       return Padding(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -2870,6 +3173,8 @@ class _BranchOrTagSelectorMenuDialogState extends State<_BranchOrTagSelectorMenu
       child: ListView.builder(
         itemExtent: itemHeight,
         itemCount: branches.length,
+        shrinkWrap: shrinkWrap,
+        physics: shrinkWrap ? const NeverScrollableScrollPhysics() : null,
         padding: const EdgeInsets.symmetric(vertical: 2),
         itemBuilder: (ctx, index) {
           final b = branches[index];

@@ -21,6 +21,56 @@ class GitEnvironmentStatus {
   });
 }
 
+/// 云端（网络）Git 操作的执行结果，附带完整原始输出供 UI 展开详情
+class GitRemoteCommandResult {
+  final bool success;
+  final int exitCode;
+  final String stdout;
+  final String stderr;
+
+  /// 命令是否因用户取消而中止
+  final bool cancelled;
+
+  const GitRemoteCommandResult({
+    required this.success,
+    required this.exitCode,
+    required this.stdout,
+    required this.stderr,
+    this.cancelled = false,
+  });
+
+  factory GitRemoteCommandResult.error(String message, {int exitCode = -1}) {
+    return GitRemoteCommandResult(
+      success: false,
+      exitCode: exitCode,
+      stdout: '',
+      stderr: message,
+    );
+  }
+
+  factory GitRemoteCommandResult.cancelled() => const GitRemoteCommandResult(
+        success: false,
+        exitCode: -1,
+        stdout: '',
+        stderr: '',
+        cancelled: true,
+      );
+
+  /// 合并后的输出，供错误映射使用
+  String get combinedOutput => '$stderr\n$stdout';
+}
+
+/// 需要实时输出回调与取消能力的命令执行器签名（可注入以便测试）
+typedef GitStreamRunner = Future<ProcessResult?> Function({
+  required String executable,
+  required List<String> arguments,
+  required String workspacePath,
+  required String? containerWorkDir,
+  void Function(String chunk)? onOutput,
+  HeadlessCancelToken? cancelToken,
+  Duration timeout,
+});
+
 /// Git 核心服务层（单例模式，封装底层命令行交互与文件系统快速探测）
 class GitService {
   static final GitService instance = GitService._internal();
@@ -30,6 +80,14 @@ class GitService {
   @visibleForTesting
   Future<ProcessResult> Function(String executable, List<String> arguments, {String? workingDirectory})?
       processRunner;
+
+  /// 允许在测试环境下注入云端命令的流式执行器（跳过真实 PRoot 容器）
+  @visibleForTesting
+  GitStreamRunner? streamRunner;
+
+  /// 允许在测试环境下覆写宿主路径 → 容器内路径的映射
+  @visibleForTesting
+  String Function(String hostPath)? containerPathMapper;
 
   /// 自定义 Git 可执行程序路径（默认从系统 PATH 查找 'git'）
   String gitExecutable = 'git';
@@ -45,6 +103,8 @@ class GitService {
   /// 重置测试环境状态与进程注入
   void resetForTesting() {
     processRunner = null;
+    streamRunner = null;
+    containerPathMapper = null;
     _cachedEnvStatus = null;
   }
 
@@ -1114,6 +1174,821 @@ class GitService {
       arguments,
       workingDirectory: workingDirectory,
       runInShell: Platform.isWindows,
+    );
+  }
+
+  // ==========================================================================
+  //  云端（远程仓库）操作
+  //
+  //  设计要点：
+  //  1. 容器启动配置使用 `/usr/bin/env -i` 完全隔离环境变量，因此从 Dart 侧
+  //     传给 proot 进程的 environment 无法抵达容器内的 git。所有环境相关设置
+  //     （GIT_TERMINAL_PROMPT / GIT_SSH_COMMAND 等）必须内联进 guest 命令串。
+  //  2. 由于没有 PTY，git 需要凭据时会尝试读取终端并长时间挂起。
+  //     GIT_TERMINAL_PROMPT=0 让其在缺少凭据时立即失败并给出可识别的报错。
+  //  3. 非 TTY 下 git 默认关闭进度输出，网络命令必须显式传 --progress。
+  // ==========================================================================
+
+  /// 容器内 SSH 客户端参数：仅使用指定私钥、禁用交互，并自动接受首次出现的主机指纹
+  ///
+  /// `BatchMode=yes` 保证密钥不被接受时立即失败而不是挂起等待密码输入；
+  /// `StrictHostKeyChecking=accept-new` 避免首次推送必然撞上 "Host key verification failed"。
+  static const String containerSshCommand =
+      'ssh -o StrictHostKeyChecking=accept-new -o BatchMode=yes '
+      '-o IdentitiesOnly=yes -o ConnectTimeout=20 -i /root/.ssh/id_ed25519';
+
+  /// 宿主仓库路径 → 容器内路径（工程根挂载到 /workspace）
+  ///
+  /// 直接跑在宿主平台的测试环境里没有 /workspace 这层映射，此时原样返回。
+  @visibleForTesting
+  String mapToContainerPath(String repoPath, String? rootPath) {
+    if (containerPathMapper != null) {
+      return containerPathMapper!(repoPath);
+    }
+    if (!Platform.isAndroid || rootPath == null || rootPath.trim().isEmpty) {
+      return repoPath;
+    }
+    final normalizedRepo = p.normalize(repoPath);
+    final normalizedRoot = p.normalize(rootPath);
+    if (normalizedRepo == normalizedRoot) return '/workspace';
+    // 嵌套仓库（子模块）→ /workspace/<相对路径>
+    if (p.isWithin(normalizedRoot, normalizedRepo)) {
+      final relative = p.relative(normalizedRepo, from: normalizedRoot);
+      return '/workspace/$relative'.replaceAll(r'\', '/');
+    }
+    return '/workspace';
+  }
+
+  /// 组装容器内实际执行的 git 命令串：注入禁交互环境与 SSH 参数
+  @visibleForTesting
+  String buildGuestGitCommand(List<String> args) {
+    final body = args.map(_escapeShellArg).join(' ');
+    // 注意：GIT_SSH_COMMAND 必须带引号，避免其中的 ssh 参数被当作独立命令
+    return 'GIT_TERMINAL_PROMPT=0 '
+        'GIT_SSH_COMMAND="$containerSshCommand" '
+        'git -c safe.directory=* -c credential.interactive=false -c core.askPass= $body';
+  }
+
+  /// 从 git 进度输出行解析阶段名与百分比
+  ///
+  /// 形如 `Receiving objects:  45% (450/1000), 1.2 MiB | 300 KiB/s`。
+  /// 无法解析出百分比时返回 null，由 UI 展示不确定态进度。
+  @visibleForTesting
+  int? parseProgressPercent(String line) {
+    final match = RegExp(r'(\d{1,3})%').firstMatch(line);
+    if (match == null) return null;
+    final value = int.tryParse(match.group(1)!);
+    if (value == null) return null;
+    return value.clamp(0, 100);
+  }
+
+  /// 判断输出行是否为值得展示的进度行
+  @visibleForTesting
+  bool isProgressLine(String line) {
+    final t = line.trim();
+    if (t.isEmpty) return false;
+    if (t.startsWith('remote:')) return false;
+    // 形如 `Receiving objects: ...` / `Writing objects: ...` / `Counting objects: ...`
+    if (RegExp(r'^[A-Z][A-Za-z ]+:\s').hasMatch(t)) return true;
+    if (t.startsWith('From ') || t.startsWith('To ')) return true;
+    if (t.contains('->') && (t.contains('new branch') || t.contains('new tag'))) return true;
+    return false;
+  }
+
+  /// 云端网络命令的默认超时
+  ///
+  /// 大仓库（如 llama.cpp 这类上万提交的项目）在 Android + PRoot 下抓取/推送
+  /// 的 packfile 很容易超过 5 分钟；超时会被 sigkill，表现为"进度走到一半就没了"。
+  /// 因此放宽到 15 分钟 —— UI 侧始终提供取消按钮，用户不必干等。
+  static const Duration remoteNetworkTimeout = Duration(minutes: 15);
+
+  /// 执行一条云端 git 命令（带进度回调与取消能力）
+  Future<GitRemoteCommandResult> runRemoteGitCommand(
+    String repoPath,
+    List<String> args, {
+    String? rootPath,
+    Duration timeout = remoteNetworkTimeout,
+    void Function(GitOperationProgress progress)? onProgress,
+    HeadlessCancelToken? cancelToken,
+  }) async {
+    final env = await checkGitInstalled();
+    if (!env.isInstalled) {
+      return GitRemoteCommandResult.error(
+        env.errorMessage ?? '未检测到 Git 命令行工具，请先在内置容器中安装 git',
+      );
+    }
+
+    final containerCmd = buildGuestGitCommand(args);
+    final containerWorkDir = mapToContainerPath(repoPath, rootPath);
+
+    void emit(String chunk) {
+      if (onProgress == null) return;
+      for (final line in chunk.split('\n')) {
+        if (!isProgressLine(line)) continue;
+        onProgress(GitOperationProgress(
+          phase: _phaseOf(args),
+          percent: parseProgressPercent(line),
+          raw: line.trim(),
+        ));
+      }
+    }
+
+    try {
+      final ProcessResult? res;
+      if (streamRunner != null) {
+        res = await streamRunner!(
+          executable: containerCmd,
+          arguments: const [],
+          workspacePath: repoPath,
+          containerWorkDir: containerWorkDir,
+          onOutput: emit,
+          cancelToken: cancelToken,
+          timeout: timeout,
+        );
+      } else {
+        final runner = _defaultStreamRunner;
+        res = await runner(
+          executable: containerCmd,
+          arguments: const [],
+          workspacePath: repoPath,
+          containerWorkDir: containerWorkDir,
+          onOutput: emit,
+          cancelToken: cancelToken,
+          timeout: timeout,
+        );
+      }
+
+      // 取消：可能是取消令牌在流程中被触发，也可能是命令自身因超时被杀
+      if (cancelToken?.isCancelled ?? false) {
+        return GitRemoteCommandResult.cancelled();
+      }
+      if (res == null) {
+        return GitRemoteCommandResult.error('云端命令执行失败：容器引擎无响应');
+      }
+
+      return GitRemoteCommandResult(
+        success: res.exitCode == 0,
+        exitCode: res.exitCode,
+        stdout: res.stdout.toString(),
+        stderr: res.stderr.toString(),
+      );
+    } catch (e) {
+      return GitRemoteCommandResult.error('云端命令异常: $e');
+    }
+  }
+
+  /// 从参数推断当前操作阶段（驱动 UI 文案）
+  String _phaseOf(List<String> args) {
+    if (args.isEmpty) return 'git';
+    if (args.contains('fetch')) return 'fetch';
+    if (args.contains('pull')) return 'pull';
+    if (args.contains('push')) return 'push';
+    if (args.contains('clone')) return 'clone';
+    if (args.contains('ls-remote')) return 'auth';
+    if (args.contains('remote')) return 'remote';
+    return args.first;
+  }
+
+  /// 默认流式执行器：把命令投递到 PRoot 容器（或宿主回退）执行
+  ///
+  /// 注意 [arguments] 为空，最终命令已内联在 [executable] 中，
+  /// 因为 runHeadlessCommand 只接受单一命令串。
+  Future<ProcessResult?> _defaultStreamRunnerImpl({
+    required String executable,
+    required List<String> arguments,
+    required String workspacePath,
+    required String? containerWorkDir,
+    void Function(String chunk)? onOutput,
+    HeadlessCancelToken? cancelToken,
+    Duration timeout = remoteNetworkTimeout,
+  }) async {
+    final fullCommand = arguments.isEmpty
+        ? executable
+        : '$executable ${arguments.map(_escapeShellArg).join(' ')}';
+
+    if (Platform.isAndroid) {
+      final engine = InternalEngineService.instance;
+      if (await engine.isEngineInstalled()) {
+        final rootfs = await engine.getRootfsDir();
+        final res = await DistroManager().runHeadlessCommand(
+          systemName: DistroRepository.defaultSystemName,
+          customRootDir: rootfs,
+          workspacePath: workspacePath,
+          command: fullCommand,
+          timeout: timeout,
+          cancelToken: cancelToken,
+          onStdout: onOutput,
+        );
+        if (res != null) return res;
+      }
+    }
+
+    // 宿主回退（桌面调试场景），环境变量已内联在命令串前缀中
+    if (cancelToken != null) {
+      return DistroManager().runHeadlessCommand(
+        systemName: 'host',
+        command: fullCommand,
+        timeout: timeout,
+        cancelToken: cancelToken,
+        onStdout: onOutput,
+      );
+    }
+    return Process.run(
+      Platform.isWindows ? 'cmd' : '/bin/sh',
+      Platform.isWindows ? ['/c', fullCommand] : ['-c', fullCommand],
+      workingDirectory: workspacePath,
+    );
+  }
+
+  /// 默认流式执行器实例（延迟绑定，便于测试替换）
+  GitStreamRunner get _defaultStreamRunner => _defaultStreamRunnerImpl;
+
+  // ------------------------------ 远端仓库管理 ------------------------------
+
+  /// 列出所有远端仓库 (`git remote -v`)
+  Future<List<GitRemote>> getRemotes(String repoPath) async {
+    final res = await runGitCommand(['remote', '-v'], workingDir: repoPath);
+    if (!res.success) return [];
+    return parseRemotes(res.stdout);
+  }
+
+  /// 解析 `git remote -v` 输出
+  @visibleForTesting
+  List<GitRemote> parseRemotes(String stdout) {
+    // 保持出现顺序：fetch 行确立顺序，push 行补充 pushUrl
+    final order = <String>[];
+    final fetchUrls = <String, String>{};
+    final pushUrls = <String, String>{};
+
+    for (final line in LineSplitter.split(stdout)) {
+      final trimmed = line.trim();
+      if (trimmed.isEmpty) continue;
+      // 形如 `origin\thttps://github.com/a/b.git (fetch)`
+      final match = RegExp(r'^(\S+)\s+(\S+)\s+\((fetch|push)\)$').firstMatch(trimmed);
+      if (match == null) continue;
+      final name = match.group(1)!;
+      final url = match.group(2)!;
+      final kind = match.group(3)!;
+      if (!order.contains(name)) order.add(name);
+      if (kind == 'fetch') {
+        fetchUrls[name] = url;
+      } else {
+        pushUrls[name] = url;
+      }
+    }
+
+    final remotes = <GitRemote>[];
+    for (final name in order) {
+      final fetchUrl = fetchUrls[name] ?? pushUrls[name];
+      if (fetchUrl == null) continue;
+      final pushUrl = pushUrls[name];
+      remotes.add(GitRemote(
+        name: name,
+        fetchUrl: fetchUrl,
+        // 仅在与 fetch 地址不同时才保留，避免 UI 重复展示
+        pushUrl: (pushUrl != null && pushUrl != fetchUrl) ? pushUrl : null,
+      ));
+    }
+    return remotes;
+  }
+
+  /// 添加远端仓库 (`git remote add <name> <url>`)
+  Future<GitCommandResult> addRemote(
+    String repoPath,
+    String name,
+    String url, {
+    String? pushUrl,
+  }) async {
+    final cleanName = name.trim();
+    final cleanUrl = url.trim();
+    if (cleanName.isEmpty) return GitCommandResult.error('远端名称不能为空');
+    if (cleanUrl.isEmpty) return GitCommandResult.error('远端地址不能为空');
+
+    final res = await runGitCommand(
+      ['remote', 'add', cleanName, cleanUrl],
+      workingDir: repoPath,
+    );
+    if (!res.success) return res;
+
+    if (pushUrl != null && pushUrl.trim().isNotEmpty && pushUrl.trim() != cleanUrl) {
+      return runGitCommand(
+        ['remote', 'set-url', '--push', cleanName, pushUrl.trim()],
+        workingDir: repoPath,
+      );
+    }
+    return res;
+  }
+
+  /// 移除远端仓库 (`git remote remove <name>`)
+  Future<GitCommandResult> removeRemote(String repoPath, String name) async {
+    return runGitCommand(['remote', 'remove', name.trim()], workingDir: repoPath);
+  }
+
+  /// 重命名远端仓库 (`git remote rename <old> <new>`)
+  Future<GitCommandResult> renameRemote(
+    String repoPath,
+    String oldName,
+    String newName,
+  ) async {
+    final cleanNew = newName.trim();
+    if (cleanNew.isEmpty) return GitCommandResult.error('新的远端名称不能为空');
+    if (oldName.trim() == cleanNew) {
+      return GitCommandResult.error('新名称与原名相同');
+    }
+    return runGitCommand(
+      ['remote', 'rename', oldName.trim(), cleanNew],
+      workingDir: repoPath,
+    );
+  }
+
+  /// 修改远端地址 (`git remote set-url [--push] <name> <url>`)
+  Future<GitCommandResult> setRemoteUrl(
+    String repoPath,
+    String name,
+    String url, {
+    bool push = false,
+  }) async {
+    final cleanUrl = url.trim();
+    if (cleanUrl.isEmpty) return GitCommandResult.error('远端地址不能为空');
+    final args = ['remote', 'set-url'];
+    if (push) args.add('--push');
+    args.addAll([name.trim(), cleanUrl]);
+    return runGitCommand(args, workingDir: repoPath);
+  }
+
+  /// 清理远端已删除的追踪分支 (`git remote prune <name>`)
+  Future<GitCommandResult> pruneRemote(String repoPath, String name) async {
+    return runGitCommand(['remote', 'prune', name.trim()], workingDir: repoPath);
+  }
+
+  // ------------------------------ 网络同步操作 ------------------------------
+
+  /// 抓取远端更新 (`git fetch --progress [--prune] <remote>`)
+  ///
+  /// 默认开启 `--prune`，与 VS Code / GitHub Desktop 行为一致，避免远端已删除的
+  /// 分支长期残留。不传 `--tags`，避免意外拉入大量标签。
+  Future<GitRemoteCommandResult> fetch(
+    String repoPath, {
+    String? rootPath,
+    String? remote,
+    bool prune = true,
+    void Function(GitOperationProgress progress)? onProgress,
+    HeadlessCancelToken? cancelToken,
+    Duration timeout = remoteNetworkTimeout,
+  }) async {
+    final args = ['fetch', '--progress'];
+    if (prune) args.add('--prune');
+    if (remote != null && remote.trim().isNotEmpty) args.add(remote.trim());
+    return runRemoteGitCommand(
+      repoPath,
+      args,
+      rootPath: rootPath,
+      timeout: timeout,
+      onProgress: onProgress,
+      cancelToken: cancelToken,
+    );
+  }
+
+  /// 拉取并变基 (`git pull --progress --rebase <remote> <branch>`)
+  ///
+  /// 采用 rebase 以保持历史线性。调用方需在外层处理未提交改动（提交或贮藏）。
+  Future<GitRemoteCommandResult> pullRebase(
+    String repoPath, {
+    String? rootPath,
+    String? remote,
+    String? branch,
+    bool autostash = false,
+    void Function(GitOperationProgress progress)? onProgress,
+    HeadlessCancelToken? cancelToken,
+    Duration timeout = remoteNetworkTimeout,
+  }) async {
+    final args = ['pull', '--progress', '--rebase'];
+    if (autostash) args.add('--autostash');
+    if (remote != null && remote.trim().isNotEmpty) args.add(remote.trim());
+    if (branch != null && branch.trim().isNotEmpty) args.add(branch.trim());
+    return runRemoteGitCommand(
+      repoPath,
+      args,
+      rootPath: rootPath,
+      timeout: timeout,
+      onProgress: onProgress,
+      cancelToken: cancelToken,
+    );
+  }
+
+  /// 推送到远端 (`git push --progress [--set-upstream] [--force-with-lease] ...`)
+  ///
+  /// 强制推送一律使用 `--force-with-lease`：当远端已被他人更新时会被拒绝，
+  /// 而不是静默覆盖别人的提交。
+  Future<GitRemoteCommandResult> push(
+    String repoPath, {
+    String? rootPath,
+    String? remote,
+    String? branch,
+    bool setUpstream = false,
+    bool forceWithLease = false,
+    void Function(GitOperationProgress progress)? onProgress,
+    HeadlessCancelToken? cancelToken,
+    Duration timeout = remoteNetworkTimeout,
+  }) async {
+    final args = ['push', '--progress'];
+    if (forceWithLease) args.add('--force-with-lease');
+    if (setUpstream) args.add('--set-upstream');
+    if (remote != null && remote.trim().isNotEmpty) args.add(remote.trim());
+    if (branch != null && branch.trim().isNotEmpty) args.add(branch.trim());
+    return runRemoteGitCommand(
+      repoPath,
+      args,
+      rootPath: rootPath,
+      timeout: timeout,
+      onProgress: onProgress,
+      cancelToken: cancelToken,
+    );
+  }
+
+  /// 放弃进行中的 rebase (`git rebase --abort`)
+  ///
+  /// 冲突后必须给用户一条明确的退出路径，否则仓库会卡在 rebase 中间状态。
+  Future<GitCommandResult> abortRebase(String repoPath) async {
+    return runGitCommand(['rebase', '--abort'], workingDir: repoPath);
+  }
+
+  /// 是否正处于 rebase 中间状态（存在 .git/rebase-merge 或 .git/rebase-apply）
+  bool isRebaseInProgress(String repoPath) {
+    try {
+      return Directory(p.join(repoPath, '.git', 'rebase-merge')).existsSync() ||
+          Directory(p.join(repoPath, '.git', 'rebase-apply')).existsSync();
+    } catch (_) {
+      return false;
+    }
+  }
+
+  /// 验证远端连通性与认证是否可用 (`git ls-remote <url> HEAD`)
+  /// 比"推送失败后再猜错误码"友好得多，用于账号管理页的自检按钮。
+  Future<GitRemoteCommandResult> checkRemoteAuth(
+    String repoPath,
+    String url, {
+    String? rootPath,
+    HeadlessCancelToken? cancelToken,
+    Duration timeout = const Duration(seconds: 45),
+  }) async {
+    final cleanUrl = url.trim();
+    if (cleanUrl.isEmpty) {
+      return GitRemoteCommandResult.error('远端地址不能为空');
+    }
+    return runRemoteGitCommand(
+      repoPath,
+      ['ls-remote', '--exit-code', cleanUrl, 'HEAD'],
+      rootPath: rootPath,
+      timeout: timeout,
+      cancelToken: cancelToken,
+    );
+  }
+
+  // ---------------------------- 远程目标解析 ----------------------------
+
+  /// 读取某个配置键的值；未设置时返回 null
+  ///
+  /// `git config <key>` 在键不存在时以非 0 退出，这是正常情况而非错误。
+  Future<String?> getConfigValue(String repoPath, String key) async {
+    final res = await runGitCommand(['config', key], workingDir: repoPath);
+    if (!res.success) return null;
+    final value = res.stdout.trim();
+    return value.isEmpty ? null : value;
+  }
+
+  /// 读取某分支的推送远程 (`branch.<name>.pushRemote`)
+  Future<String?> getBranchPushRemote(String repoPath, String branch) async {
+    if (branch.trim().isEmpty) return null;
+    return getConfigValue(repoPath, 'branch.${branch.trim()}.pushRemote');
+  }
+
+  /// 读取全局推送默认远程 (`remote.pushDefault`)
+  Future<String?> getRemotePushDefault(String repoPath) async {
+    return getConfigValue(repoPath, 'remote.pushDefault');
+  }
+
+  /// 读取某分支的抓取/上游远程 (`branch.<name>.remote`)
+  Future<String?> getBranchRemote(String repoPath, String branch) async {
+    if (branch.trim().isEmpty) return null;
+    return getConfigValue(repoPath, 'branch.${branch.trim()}.remote');
+  }
+
+  // ---------------------------- 远端分支 ----------------------------
+
+  /// 列出所有远端追踪分支 (`git branch -r`)
+  ///
+  /// `git fetch` 之后如果界面上看不到远端分支，用户会以为"抓取没生效"。
+  /// 这里连同「已被哪个本地分支检出」一起解析出来，供分支选择器分区展示
+  /// 并支持基于远端分支创建本地分支。
+  ///
+  /// 使用固定分隔符 `|` 而非制表符：制表符与 `%(HEAD)` 的前导空格混在一起后
+  /// 无法可靠切列（`' *\tname'` 里到底有几个前导空格由 git 决定）。
+  Future<List<GitRemoteBranch>> getRemoteBranches(String repoPath) async {
+    final res = await runGitCommand(
+      ['branch', '-r', '--format=%(HEAD)|%(refname:short)'],
+      workingDir: repoPath,
+    );
+    if (!res.success) return [];
+    return parseRemoteBranches(res.stdout);
+  }
+
+  /// 解析 `git branch -r --format=%(HEAD)|%(refname:short)` 输出
+  @visibleForTesting
+  List<GitRemoteBranch> parseRemoteBranches(String stdout) {
+    final branches = <GitRemoteBranch>[];
+    for (final rawLine in LineSplitter.split(stdout)) {
+      final line = rawLine.trim();
+      if (line.isEmpty) continue;
+
+      // 第一段是 HEAD 标记（'*' 表示已被某个本地分支检出）
+      final marker = line.split('|').first.trim();
+      final name = _lastRefSegment(line);
+      if (name.isEmpty) continue;
+      // 跳过 `origin/HEAD -> origin/main` 这类符号引用行
+      if (name.endsWith('/HEAD')) continue;
+      // `refs/remotes/origin/main` 这种完整引用先去掉 refs/remotes/ 前缀
+      final cleaned = name.startsWith('refs/remotes/')
+          ? name.substring('refs/remotes/'.length)
+          : name;
+
+      final slash = cleaned.indexOf('/');
+      if (slash <= 0) continue;
+
+      branches.add(GitRemoteBranch(
+        name: cleaned,
+        remoteName: cleaned.substring(0, slash),
+        branchName: cleaned.substring(slash + 1),
+        isCheckedOut: marker.startsWith('*'),
+      ));
+    }
+    return branches;
+  }
+
+  /// 取 `%(HEAD)|%(refname:short)` 一行中最靠右的一段作为引用名
+  ///
+  /// 兼容 `(HEAD detached at x)`、`origin/HEAD -> origin/main` 这类
+  /// 左侧带额外说明的输出。
+  String _lastRefSegment(String line) {
+    final segments = line
+        .split(RegExp(r'[|\t]'))
+        .map((s) => s.trim())
+        .where((s) => s.isNotEmpty)
+        .toList();
+    if (segments.isEmpty) return '';
+    return segments.last;
+  }
+
+  /// 基于远端分支创建并检出一个同名本地分支
+  ///
+  /// 若同名本地分支已存在则直接切换过去（`git checkout <branch>` 会自动
+  /// 建立追踪关系），否则用 `git checkout -b <branch> <remote>/<branch>`
+  /// 以远端分支为起点创建。
+  Future<GitCommandResult> checkoutRemoteBranch(
+    String repoPath,
+    String remoteName,
+    String branchName, {
+    bool forceCreate = false,
+  }) async {
+    final local = branchName.trim();
+    if (local.isEmpty) return GitCommandResult.error('分支名称不能为空');
+
+    if (!forceCreate) {
+      final existing = await getLocalBranches(repoPath);
+      if (existing.contains(local)) {
+        return runGitCommand(['checkout', local], workingDir: repoPath);
+      }
+    }
+    return runGitCommand(
+      ['checkout', '-b', local, '--track', '${remoteName.trim()}/$local'],
+      workingDir: repoPath,
+    );
+  }
+
+  // ---------------------------- 仓库自检 ----------------------------
+
+  /// 仓库完整性自检 (`git fsck --no-progress`)
+  ///
+  /// 目的：`.git/objects` 中的对象在 PRoot 容器重建等场景下可能丢失，
+  /// 若不做检查，用户只会在某次提交时撞上 "invalid object ... building trees"，
+  /// 且完全不知道原因。这里把问题提前暴露出来。
+  ///
+  /// 只读，不修改任何内容（不自动 `fsck --lost-found`，避免留下 .git/lost-found）。
+  Future<GitFsckReport> fsck(
+    String repoPath, {
+    Duration timeout = const Duration(minutes: 2),
+    HeadlessCancelToken? cancelToken,
+  }) async {
+    final res = await runGitCommand(
+      ['fsck', '--no-progress'],
+      workingDir: repoPath,
+      timeout: timeout,
+    );
+    // git fsck 发现问题时以非 0 退出，但输出仍是有效报告，因此照常解析
+    return parseFsckReport(res.stdout, res.stderr, exitCode: res.exitCode);
+  }
+
+  /// 解析 `git fsck` 输出
+  @visibleForTesting
+  GitFsckReport parseFsckReport(
+    String stdout,
+    String stderr, {
+    required int exitCode,
+  }) {
+    final missing = <String>[];
+    final corrupt = <String>[];
+    final dangling = <String>[];
+
+    /// 例行输出不是问题，绝不能被归类为损坏 —— 否则干净的仓库会被告知"已损坏"
+    bool isNoise(String t) {
+      if (t.startsWith('Checking ') || t.startsWith('checking ')) return true;
+      if (t.startsWith('notice:')) return true;
+      if (t.startsWith('fatal:')) return true;
+      // 进度行 `Checking object directories: 100% (256/256), done.`
+      if (t.contains('%') && t.endsWith('done.')) return true;
+      return false;
+    }
+
+    void classify(String line) {
+      final t = line.trim();
+      if (t.isEmpty) return;
+      if (isNoise(t)) return;
+
+      // 只有明确的 missing/broken/无法读取才算对象库受损
+      if (t.startsWith('missing ') ||
+          t.startsWith('broken link') ||
+          t.startsWith('unable to read') ||
+          t.startsWith('invalid ')) {
+        missing.add(t);
+        return;
+      }
+      if (t.startsWith('error:')) {
+        corrupt.add(t);
+        return;
+      }
+      if (t.startsWith('dangling ') || t.startsWith('unreachable ')) {
+        dangling.add(t);
+        return;
+      }
+      // `broken link from ...` 的续行形如 `              to    blob <sha>`，
+      // 属于同一个问题的组成部分，归入 missing 而不是"无法归类"
+      if (t.startsWith('to ')) {
+        missing.add(t);
+        return;
+      }
+      corrupt.add(t);
+    }
+
+    for (final line in LineSplitter.split(stdout)) {
+      classify(line);
+    }
+    for (final line in LineSplitter.split(stderr)) {
+      classify(line);
+    }
+
+    return GitFsckReport(
+      // 有 missing/corrupt 即视为对象库受损；dangling 只是提示，不影响使用
+      isHealthy: missing.isEmpty && corrupt.isEmpty && exitCode == 0,
+      hasObjectLoss: missing.isNotEmpty || corrupt.isNotEmpty,
+      missing: List.unmodifiable(missing),
+      corrupt: List.unmodifiable(corrupt),
+      dangling: List.unmodifiable(dangling),
+      exitCode: exitCode,
+    );
+  }
+
+  // ---------------------------- 克隆 ----------------------------
+
+  /// 克隆远端仓库到工作区内的某个子目录
+  ///
+  /// 实现说明：容器里宿主工程目录被挂载为 `/workspace`，且不支持额外挂载点，
+  /// 因此把克隆父目录（项目根）作为 workspacePath，在容器内克隆到
+  /// `/workspace/<目录名>` —— 其写回宿主的正是期望位置。
+  Future<GitRemoteCommandResult> clone(
+    String parentDir,
+    String url,
+    String targetDirName, {
+    String? rootPath,
+    String? branch,
+    int? depth,
+    void Function(GitOperationProgress progress)? onProgress,
+    HeadlessCancelToken? cancelToken,
+    Duration timeout = const Duration(minutes: 30),
+  }) async {
+    final cleanUrl = url.trim();
+    final cleanName = targetDirName.trim();
+    if (cleanUrl.isEmpty) {
+      return GitRemoteCommandResult.error('仓库地址不能为空');
+    }
+    if (cleanName.isEmpty) {
+      return GitRemoteCommandResult.error('目标目录名不能为空');
+    }
+
+    final args = ['clone', '--progress'];
+    if (depth != null && depth > 0) args.addAll(['--depth', '$depth']);
+    if (branch != null && branch.trim().isNotEmpty) {
+      args.addAll(['--branch', branch.trim()]);
+    }
+    args.addAll([cleanUrl, cleanName]);
+
+    return runRemoteGitCommand(
+      parentDir,
+      args,
+      rootPath: rootPath,
+      timeout: timeout,
+      onProgress: onProgress,
+      cancelToken: cancelToken,
+    );
+  }
+
+  // ---------------------------- 上游追踪与领先/落后 ----------------------------
+
+  /// 读取当前分支的上游追踪状态 (`git status -sb --porcelain=v2 --branch`)
+  ///
+  /// 一次进程调用同时拿到分支名、上游、ahead/behind，避免为领先/落后单独开进程。
+  Future<GitBranchTracking> getBranchTracking(String repoPath) async {
+    final res = await runGitCommand(
+      ['status', '-sb', '--porcelain=v2', '--branch'],
+      workingDir: repoPath,
+    );
+    if (!res.success) {
+      final branch = await getCurrentBranch(repoPath);
+      return GitBranchTracking.noUpstream(branch);
+    }
+    return parseBranchTracking(res.stdout, fallbackBranch: null);
+  }
+
+  /// 解析 `git status --porcelain=v2 --branch` 输出中的追踪信息
+  ///
+  /// 兼容两种格式：
+  /// - porcelain v2: `# branch.head main` / `# branch.upstream origin/main` / `# branch.ab +1 -2`
+  /// - porcelain v1 (`-sb` 简写): `## main...origin/main [ahead 1, behind 2]` / `## main...origin/main [gone]`
+  @visibleForTesting
+  GitBranchTracking parseBranchTracking(String stdout, {String? fallbackBranch}) {
+    String? branch = fallbackBranch;
+    String? upstream;
+    int ahead = 0;
+    int behind = 0;
+    bool gone = false;
+
+    for (final line in LineSplitter.split(stdout)) {
+      final t = line.trim();
+      if (t.isEmpty) continue;
+
+      if (t.startsWith('# branch.head ')) {
+        final value = t.substring('# branch.head '.length).trim();
+        // detached HEAD 会返回 (detached)
+        if (value.isNotEmpty && value != '(detached)') branch = value;
+        continue;
+      }
+      if (t.startsWith('# branch.upstream ')) {
+        final value = t.substring('# branch.upstream '.length).trim();
+        if (value.isNotEmpty) upstream = value;
+        continue;
+      }
+      if (t.startsWith('# branch.ab ')) {
+        final m = RegExp(r'\+(\d+)\s+-(\d+)').firstMatch(t);
+        if (m != null) {
+          ahead = int.tryParse(m.group(1)!) ?? 0;
+          behind = int.tryParse(m.group(2)!) ?? 0;
+        }
+        continue;
+      }
+
+      // 兼容 porcelain v1 的 `## ...` 行
+      if (t.startsWith('## ')) {
+        final body = t.substring(3).trim();
+        // 去掉 [ahead 1, behind 2] / [gone] 尾巴
+        final bracketIdx = body.indexOf(' [');
+        final namePart = bracketIdx >= 0 ? body.substring(0, bracketIdx) : body;
+        final bracketPart = bracketIdx >= 0 ? body.substring(bracketIdx + 1) : '';
+
+        if (namePart.contains('...')) {
+          final parts = namePart.split('...');
+          branch ??= parts[0].trim();
+          final up = parts.length > 1 ? parts[1].trim() : '';
+          if (up.isNotEmpty) upstream = up;
+        } else {
+          branch ??= namePart.trim();
+        }
+
+        if (bracketPart.contains('gone')) {
+          gone = true;
+        }
+        final m = RegExp(r'ahead (\d+)').firstMatch(bracketPart);
+        if (m != null) ahead = int.tryParse(m.group(1)!) ?? 0;
+        final mb = RegExp(r'behind (\d+)').firstMatch(bracketPart);
+        if (mb != null) behind = int.tryParse(mb.group(1)!) ?? 0;
+        continue;
+      }
+    }
+
+    return GitBranchTracking(
+      branch: branch ?? 'main',
+      upstream: upstream,
+      ahead: ahead,
+      behind: behind,
+      isGone: gone,
     );
   }
 }

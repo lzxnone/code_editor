@@ -103,12 +103,41 @@ class GitAccountService extends ChangeNotifier {
     final jsonList = _accounts.map((a) => a.toJson()).toList();
     await file.writeAsString(const JsonEncoder.withIndent('  ').convert(jsonList));
     notifyListeners();
+    // 账号发生变更，需要强制重新灌注容器凭据
+    _credentialsSyncedThisSession = false;
     await syncContainerCredentials();
+    _credentialsSyncedThisSession = true;
+  }
+
+  /// 确保容器内的 ~/.git-credentials 与本机保存的账号一致（每次 App 会话至多做一次）
+  ///
+  /// 云端网络操作（fetch/pull/push）执行前调用：容器被重建后凭据文件会随 rootfs
+  /// 一起丢失，若不重写，git 会立刻因缺少凭据而报认证失败。
+  /// 不需要每次操作都同步，因此按会话缓存；账号增删改时由 [_saveToDisk] 强制刷新。
+  static bool _credentialsSyncedThisSession = false;
+
+  Future<void> ensureContainerCredentials() async {
+    if (_credentialsSyncedThisSession) return;
+    try {
+      await loadAccounts();
+      await syncContainerCredentials();
+      _credentialsSyncedThisSession = true;
+    } catch (e) {
+      debugPrint('[GitAccountService] 确保容器凭据异常: $e');
+    }
+  }
+
+  /// 容器重建后需要重新灌注凭据
+  void invalidateCredentialSync() {
+    _credentialsSyncedThisSession = false;
   }
 
   /// 将所有已保存的账号凭据同步写入容器的 ~/.git-credentials，使容器内终端与 UI 操作均免密生效
   Future<void> syncContainerCredentials() async {
     try {
+      // 仅 Android 的内置容器需要落盘凭据；宿主/桌面环境不走这条路径
+      if (!Platform.isAndroid) return;
+
       final engine = InternalEngineService.instance;
       if (!await engine.isEngineInstalled()) return;
 
@@ -125,7 +154,10 @@ class GitAccountService extends ChangeNotifier {
         }
       }
       credFile.parent.createSync(recursive: true);
-      await credFile.writeAsString(lines.join('\n'));
+      // 末尾补换行：git 的 store helper 按行解析，缺少结尾换行虽可容错，
+      // 但会让 `cat` / `sed` 等排查手段把提示符粘在最后一行，容易误判。
+      final content = lines.isEmpty ? '' : '${lines.join('\n')}\n';
+      await credFile.writeAsString(content);
 
       // 确保全局开启 credential.helper store
       await DistroManager().runHeadlessCommand(

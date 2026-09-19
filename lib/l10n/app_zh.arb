@@ -1294,6 +1294,325 @@
   "gitSearchBranches": "搜索分支...",
   "gitSearchTags": "搜索标签...",
   "gitNoBranches": "暂无分支",
+
+  "gitRemoteBranches": "远端分支",
+  "gitLocalBranches": "本地分支",
+  "gitNoRemoteBranches": "暂无远端分支，请先执行抓取",
+  "gitCheckoutRemoteBranch": "检出为本地分支",
+  "gitRemoteBranchCheckedOut": "该远端分支已在本地检出",
+  "gitCheckoutRemoteBranchSuccess": "已基于 {remote} 创建并切换到本地分支 {branch}",
+  "@gitCheckoutRemoteBranchSuccess": {
+    "placeholders": {
+      "remote": {
+        "type": "String"
+      },
+      "branch": {
+        "type": "String"
+      }
+    }
+  },
+  "gitSearchRemoteBranches": "搜索远端分支...",
+
+  "gitRepairCheck": "仓库自检",
+  "gitRepairCheckRunning": "正在自检...",
+  "gitRepairCheckHealthy": "仓库完整，未发现对象丢失",
+  "gitRepairCheckHealthyHint": "对象库校验通过，可以正常提交与同步。",
+  "gitRepairCheckObjectLoss": "检测到对象丢失（{count} 处问题）",
+  "@gitRepairCheckObjectLoss": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "gitRepairCheckObjectLossHint": "这类损坏会导致提交时报错 Error building trees。常见原因是容器被重建导致 .git/objects 丢失。建议先备份项目目录，再按下方提示处理。",
+  "gitRepairCheckDangling": "另有 {count} 个悬空对象（正常现象，无需处理）",
+  "@gitRepairCheckDangling": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "gitRepairCheckFailed": "自检未能完成",
+  "gitRepairCheckFailedHint": "可能因为仓库过大或执行超时，可稍后重试。",
+  "gitRepairCheckRerun": "重新自检",
+  "gitRepairAdviceTitle": "如何处理",
+  "gitRepairAdviceRemoveStale": "未提交的损坏条目：执行 git reset 让索引与最后一次提交对齐，然后重新暂存需要的文件。",
+  "gitRepairAdviceRestore": "已提交的历史损坏：需要从远端重新克隆，或从其他副本恢复。",
+
+  "gitClone": "克隆远程仓库",
+  "gitCloneUrl": "仓库地址",
+  "gitCloneUrlHint": "https://github.com/user/repo.git",
+  "gitCloneDirName": "本地目录名",
+  "gitCloneDirNameHint": "留空则从地址自动推导",
+  "gitCloneBranch": "指定分支（可选）",
+  "gitCloneBranchHint": "留空则使用远端默认分支",
+  "gitCloneDepth": "浅克隆深度（可选）",
+  "gitCloneDepthHint": "如 1 表示只克隆最近 1 个提交",
+  "gitCloneUrlRequired": "请输入仓库地址",
+  "gitCloneDirRequired": "请输入本地目录名",
+  "gitCloneDirExists": "目录已存在，请换一个名字",
+  "gitCloneRunning": "正在克隆...",
+  "gitCloneSuccess": "克隆完成：{name}",
+  "@gitCloneSuccess": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "gitCloneFailed": "克隆失败",
+  "gitCloneCancel": "取消克隆",
+
+  "gitPushTargetTooltip": "推送目标：{name}\n{reason}",
+  "@gitPushTargetTooltip": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      },
+      "reason": {
+        "type": "String"
+      }
+    }
+  },
+  "gitPushReasonPushRemote": "由分支配置 branch.*.pushRemote 决定",
+  "gitPushReasonPushDefault": "由仓库配置 remote.pushDefault 决定",
+  "gitPushReasonUpstream": "当前分支的上游远程",
+  "gitPushReasonBranchRemote": "由分支配置 branch.*.remote 决定",
+  "gitPushReasonFallback": "默认远程（origin 优先）",
+  "gitPushReasonOverridden": "你已在本次会话中手动切换",
+  "gitFetchTargetTooltip": "抓取目标：{name}",
+  "@gitFetchTargetTooltip": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "gitTogglePushTarget": "选择推送目标",
+  "gitSyncCloudTooltip": "同步：抓取 / 拉取 / 推送",
+  "gitPushTargetChanged": "推送目标已切换为 {name}",
+  "@gitPushTargetChanged": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "gitPushTargetDiffers": "推送目标与上游不同",
+  "gitPushTargetDiffersNotice": "拉取走 {upstream}，推送走 {push}",
+  "@gitPushTargetDiffersNotice": {
+    "placeholders": {
+      "upstream": {
+        "type": "String"
+      },
+      "push": {
+        "type": "String"
+      }
+    }
+  },
+  "gitRemoteRoleUpstream": "上游（拉取）",
+
+  "gitErrAuthFailed": "认证失败：令牌无效、已过期或用户名不匹配",
+  "gitErrAuthFailedHint": "请到「Git 账号管理」检查令牌是否有效，并确认账号用户名与平台登录名一致。",
+  "gitErrWritePermissionDenied": "当前账号对该仓库没有写权限",
+  "gitErrWritePermissionDeniedHint": "若这是别人的仓库（上游），请先 Fork 到你自己的账号，再把远端地址改为你的 Fork（如 https://github.com/你的用户名/仓库.git）。",
+  "gitErrRepositoryNotFound": "仓库不存在，或当前账号无权访问",
+  "gitErrRepositoryNotFoundHint": "GitHub 对「无权限」和「不存在」都返回 404。请确认远端地址拼写正确，且该令牌有权访问该仓库。",
+  "gitErrProxyAuthRequired": "网络代理需要认证",
+  "gitErrProxyAuthRequiredHint": "当前网络经过需要认证的代理（HTTP 407）。请检查容器内代理配置与凭据。",
+  "gitErrRequestRejected": "服务器拒绝了本次请求",
+  "gitErrRequestRejectedHint": "通常表示推送内容或分支引用不合法（HTTP 422），例如分支名不符合平台规则或提交信息被策略拦截。",
+  "gitErrRateLimited": "请求过于频繁，已被平台限流",
+  "gitErrRateLimitedHint": "请稍等几分钟后重试（HTTP 429）。短时间内反复重试会延长限制时间。",
+  "gitErrHttpError": "服务器返回了错误状态码",
+  "gitErrHttpErrorHint": "请根据下方状态码排查：401 令牌无效、403 无权限、404 仓库不存在或无权访问、407 需要代理认证、429 被限流。",
+  "gitErrPasswordAuthDisabled": "该平台已禁用账号密码认证",
+  "gitErrPasswordAuthDisabledHint": "请在「Git 账号管理」中使用个人访问令牌 (PAT) 重新添加账号。",
+  "gitErrNetworkUnreachable": "网络无法连接到远端服务器",
+  "gitErrNetworkUnreachableHint": "请检查网络连接，以及容器内 DNS 配置（/etc/resolv.conf）是否正常。",
+  "gitErrSshPublicKeyDenied": "SSH 公钥认证被拒绝",
+  "gitErrSshPublicKeyDeniedHint": "请确认容器内的公钥已添加到平台的 SSH Keys 中，或改用 HTTPS + 访问令牌。",
+  "gitErrSshKeyUnusable": "SSH 私钥无法使用（权限或格式异常）",
+  "gitErrSshKeyUnusableHint": "私钥权限需为 600。可在「Git 账号管理」中重新生成密钥对。",
+  "gitErrHostKeyUnverified": "目标服务器的主机指纹尚未确认，连接被中断",
+  "gitErrHostKeyUnverifiedHint": "首次连接需要确认主机指纹。若刚更换过服务器密钥，请清理容器内 ~/.ssh/known_hosts 后重试。",
+  "gitErrNonFastForward": "推送被拒绝：远端存在本地尚无的提交",
+  "gitErrNonFastForwardHint": "请先执行 Pull（rebase 方式）合并远端改动，再重新推送。",
+  "gitErrStaleForcePush": "强推被拒绝：远端分支已被他人更新",
+  "gitErrStaleForcePushHint": "请先执行 Fetch 获取最新远端状态，确认差异后再强制推送。",
+  "gitErrConflictDetected": "合并/rebase 出现冲突，需要手动解决",
+  "gitErrConflictDetectedHint": "请逐个解决冲突文件，或放弃本次操作（git rebase --abort）。",
+  "gitErrLocalChanges": "本地未提交的改动会被覆盖，操作已中止",
+  "gitErrLocalChangesHint": "请先提交改动，或将其贮藏（stash）后再执行。",
+  "gitErrNoUpstream": "当前分支尚未关联远端分支",
+  "gitErrNoUpstreamHint": "请使用「发布分支」将本地分支推送到远端并建立追踪关系。",
+  "gitErrRefLockFailed": "Git 引用文件被占用（存在残留锁）",
+  "gitErrRefLockFailedHint": "可能有另一个 Git 进程正在运行。稍后重试，或清理 .git 目录下的 .lock 文件。",
+  "gitErrOutOfSpace": "设备存储空间不足",
+  "gitErrOutOfSpaceHint": "请清理容器或设备空间后重试。",
+  "gitErrTimeout": "操作超时",
+  "gitErrTimeoutHint": "仓库较大或网络较慢时可能超时。可改用终端观察进度，或在网络较好时重试。",
+  "gitErrIncomplete": "操作未完成，但没有返回具体错误信息",
+  "gitErrIncompleteHint": "通常是被超时或网络中断打断。仓库较大时建议改用终端执行 fetch 观察进度，或稍后在网络较好时重试。",
+  "gitErrUnknown": "Git 操作失败",
+  "gitErrUnknownHint": "请展开下方原始输出查看详细信息。",
+  "gitRawOutput": "原始输出",
+
+  "gitElapsed": "已用 {time}",
+  "@gitElapsed": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "gitElapsedMinutesSeconds": "{minutes}:{seconds}",
+  "@gitElapsedMinutesSeconds": {
+    "placeholders": {
+      "minutes": {
+        "type": "int"
+      },
+      "seconds": {
+        "type": "String"
+      }
+    }
+  },
+
+  "gitFetch": "抓取",
+  "gitFetchTooltip": "从远端抓取最新提交（不合并到本地）",
+  "gitPull": "拉取",
+  "gitPullTooltip": "拉取远端提交并以 rebase 方式合并到当前分支",
+  "gitPush": "推送",
+  "gitPushTooltip": "将本地提交推送到远端",
+  "gitPublishBranch": "发布分支",
+  "gitPublishBranchTooltip": "将本地分支推送到远端并建立追踪关系",
+  "gitSync": "同步",
+  "gitSyncTooltip": "先拉取远端改动，再推送本地提交",
+  "gitCancelOperation": "取消",
+  "gitRemoteOperationRunning": "云端操作进行中...",
+  "gitRemoteOperationCancelled": "操作已取消",
+  "gitRemoteOperationBusy": "已有云端操作正在进行，请稍候",
+  "gitFetchSuccess": "抓取完成",
+  "gitFetchNoChanges": "已是最新状态",
+  "gitPullSuccess": "拉取完成",
+  "gitPullAlreadyUpToDate": "已是最新，无需拉取",
+  "gitPushSuccess": "推送完成",
+  "gitPushUpToDate": "远端已是最新，无需推送",
+  "gitNoRemoteConfigured": "尚未配置远程仓库",
+  "gitNoRemoteDesc": "添加远程仓库地址后，即可抓取、拉取与推送代码。",
+  "gitAddRemote": "添加远程仓库",
+  "gitRemoteManagement": "远程仓库管理",
+  "gitRemoteName": "远程名称",
+  "gitRemoteNameHint": "例如 origin",
+  "gitRemoteUrl": "远程地址",
+  "gitRemoteUrlHint": "https://github.com/user/repo.git 或 git@github.com:user/repo.git",
+  "gitRemotePushUrl": "推送地址（可选）",
+  "gitRemotePushUrlHint": "留空则与抓取地址相同",
+  "gitRemoteNameRequired": "请输入远程名称",
+  "gitRemoteUrlRequired": "请输入远程地址",
+  "gitRemoteAdded": "已添加远程仓库 {name}",
+  "@gitRemoteAdded": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "gitRemoteRemoved": "已移除远程仓库 {name}",
+  "@gitRemoteRemoved": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "gitRemoteRenamed": "已将 {old} 重命名为 {newName}",
+  "@gitRemoteRenamed": {
+    "placeholders": {
+      "old": {
+        "type": "String"
+      },
+      "newName": {
+        "type": "String"
+      }
+    }
+  },
+  "gitRemoteUrlUpdated": "已更新远程地址",
+  "gitRemotePruned": "已清理远端已删除的分支",
+  "gitRemoteRemoveConfirm": "确定要移除远程仓库 {name} 吗？本地代码不会被删除。",
+  "@gitRemoteRemoveConfirm": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "gitRemoteEdit": "编辑远程仓库",
+  "gitRemoteFetchUrl": "抓取地址",
+  "gitRemoteSetPushUrl": "设置推送地址",
+  "gitRemotePrune": "清理失效分支",
+  "gitCheckConnection": "检测连接",
+  "gitCheckConnectionSuccess": "连接正常，认证可用",
+  "gitNoRemotes": "暂无远程仓库",
+  "gitFetchFailed": "抓取失败",
+  "gitPullFailed": "拉取失败",
+  "gitPushFailed": "推送失败",
+  "gitForcePush": "强制推送",
+  "gitForcePushTooltip": "覆盖远端分支（使用 --force-with-lease 安全校验）",
+  "gitForcePushWarning": "强制推送会用本地提交覆盖远端分支，可能导致他人提交丢失。",
+  "gitForcePushConfirm": "确认强制推送",
+  "gitForcePushConfirmDesc": "该操作将改写远端 {branch} 分支的历史。仅在确认远端没有他人新提交时使用。",
+  "@gitForcePushConfirmDesc": {
+    "placeholders": {
+      "branch": {
+        "type": "String"
+      }
+    }
+  },
+  "gitForcePushUseLease": "使用安全强推（--force-with-lease）",
+  "gitPullThenPush": "先拉取再推送",
+  "gitPullThenPushDesc": "远端存在本地没有的提交，先拉取合并后再推送。",
+  "gitConflictAbort": "放弃本次变基",
+  "gitConflictAbortConfirm": "确定要放弃本次变基操作并回到操作前的状态吗？",
+  "gitUncommittedChangesTitle": "存在未提交的改动",
+  "gitUncommittedChangesDesc": "拉取前需要先处理本地未提交的改动，否则可能被覆盖。",
+  "gitUncommittedStashAndPull": "贮藏并拉取",
+  "gitUncommittedCommitFirst": "先去提交",
+  "gitUncommittedCancel": "取消",
+  "gitStashAndPullSuccess": "已贮藏本地改动并完成拉取",
+  "gitViewOperationLog": "查看详情",
+  "gitHideOperationLog": "收起详情",
+  "gitAheadBehind": "领先 {ahead} / 落后 {behind}",
+  "@gitAheadBehind": {
+    "placeholders": {
+      "ahead": {
+        "type": "int"
+      },
+      "behind": {
+        "type": "int"
+      }
+    }
+  },
+  "gitUpstreamGone": "上游分支已不存在",
+  "gitBehindTooltip": "本地落后远端 {behind} 个提交",
+  "@gitBehindTooltip": {
+    "placeholders": {
+      "behind": {
+        "type": "int"
+      }
+    }
+  },
+  "gitAheadTooltip": "本地领先远端 {ahead} 个提交",
+  "@gitAheadTooltip": {
+    "placeholders": {
+      "ahead": {
+        "type": "int"
+      }
+    }
+  },
+
   "gitDiff": "差异对比",
   "gitDiffOriginal": "原始版本",
   "gitDiffModified": "修改版本",

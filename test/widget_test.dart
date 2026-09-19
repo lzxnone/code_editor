@@ -782,6 +782,15 @@ void main() {
     );
   });
 
+  test('buildAppTheme leaves horizontal margin for dialogs on narrow screens', () {
+    // 窄屏下对话框若顶满两侧，含输入框的弹窗容易水平溢出
+    final theme = buildAppTheme(seedColor: Colors.blue, brightness: Brightness.light);
+    final inset = theme.dialogTheme.insetPadding!;
+    expect(inset.horizontal, greaterThan(0));
+    // 320dp 屏扣掉边距后仍应留出足够的表单宽度
+    expect(320 - inset.horizontal, greaterThanOrEqualTo(280));
+  });
+
   test('terminalThemeWithBackground switches foreground on light backgrounds', () {
     final dark = terminalThemeWithBackground(const Color(0xFF1E1E1E));
     expect(dark.background.toARGB32(), 0xFF1E1E1E);
