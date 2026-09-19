@@ -31,12 +31,35 @@ class GitRemoteCommandResult {
   /// 命令是否因用户取消而中止
   final bool cancelled;
 
+  /// 实际执行的完整命令串（含环境前缀），仅用于排查环境差异问题
+  final String? executedCommand;
+
+  /// 实际使用的容器内工作目录
+  final String? containerWorkDir;
+
+  /// 传给 proot 的宿主仓库路径 —— 它就挂载为容器内的 `/workspace`
+  final String? hostRepoPath;
+
+  /// 传给 proot 的宿主工程根路径（决定 `mapToContainerPath` 的结果）
+  final String? hostRootPath;
+
+  /// 实际作为 `/workspace` 挂载源的宿主路径
+  ///
+  /// 正常情况下应等于工程根 —— 若它等于某个仓库路径，说明在 Source Control
+  /// 里切换仓库会改变 `/workspace` 的含义，远程 URL 将随之失效。
+  final String? mountSource;
+
   const GitRemoteCommandResult({
     required this.success,
     required this.exitCode,
     required this.stdout,
     required this.stderr,
     this.cancelled = false,
+    this.executedCommand,
+    this.containerWorkDir,
+    this.hostRepoPath,
+    this.hostRootPath,
+    this.mountSource,
   });
 
   factory GitRemoteCommandResult.error(String message, {int exitCode = -1}) {
@@ -56,8 +79,34 @@ class GitRemoteCommandResult {
         cancelled: true,
       );
 
-  /// 合并后的输出，供错误映射使用
-  String get combinedOutput => '$stderr\n$stdout';
+  /// 合并后的输出，供错误映射与详情展示使用
+  ///
+  /// 把实际执行环境一并带上：定位"同一路径在终端能用、在面板不能用"这类
+  /// 差异时，缺少这些值就只能靠猜 —— 而 proot 的挂载源正是 [hostRepoPath]，
+  /// 它一旦不对，容器内 `/workspace` 的内容就会和终端看到的完全不同。
+  String get combinedOutput {
+    final buffer = StringBuffer();
+    if (mountSource != null && mountSource!.isNotEmpty) {
+      buffer.writeln('# mount: $mountSource -> /workspace');
+    }
+    if (hostRepoPath != null &&
+        hostRepoPath!.isNotEmpty &&
+        hostRepoPath != mountSource) {
+      buffer.writeln('# repo:  $hostRepoPath');
+    }
+    if (hostRootPath != null && hostRootPath!.isNotEmpty) {
+      buffer.writeln('# root:  $hostRootPath');
+    }
+    if (containerWorkDir != null && containerWorkDir!.isNotEmpty) {
+      buffer.writeln('# cwd:   $containerWorkDir');
+    }
+    if (executedCommand != null && executedCommand!.isNotEmpty) {
+      buffer.writeln('# cmd:   $executedCommand');
+    }
+    if (buffer.isNotEmpty) buffer.writeln();
+    buffer.write('$stderr\n$stdout');
+    return buffer.toString();
+  }
 }
 
 /// 需要实时输出回调与取消能力的命令执行器签名（可注入以便测试）
@@ -237,6 +286,12 @@ class GitService {
       final emailCheck = await _runProcess('git', ['config', '--global', 'user.email']);
       if (emailCheck.stdout.toString().trim().isEmpty) {
         await _runProcess('git', ['config', '--global', 'user.email', 'user@codeeditor.local']);
+      }
+      // 冲突时保留「共同祖先」段：只有 base 才能让用户看出两边各自改了什么，
+      // 默认风格只给两个版本，用户只能靠猜。这是全局配置，配一次长期生效。
+      final styleCheck = await _runProcess('git', ['config', '--global', 'merge.conflictStyle']);
+      if (styleCheck.stdout.toString().trim().isEmpty) {
+        await _runProcess('git', ['config', '--global', 'merge.conflictStyle', 'diff3']);
       }
     } catch (_) {}
   }
@@ -1229,6 +1284,66 @@ class GitService {
         'git -c safe.directory=* -c credential.interactive=false -c core.askPass= $body';
   }
 
+  /// 把参数里的**本地文件路径型远程地址**换算成容器内路径
+  ///
+  /// 只处理确实指向宿主文件系统上存在路径的参数，其余（子命令、选项、
+  /// 分支名、网络地址）一律原样返回。
+  ///
+  /// 必须如此保守：`git push --progress origin master` 里的每个词都是普通
+  /// 字符串，一旦按"相对路径"去拼就会变成 `<工程根>/fetch` 这类垃圾路径，
+  /// 把命令整个写坏。
+  @visibleForTesting
+  String mapRemoteArgToContainer(String url, String rootPath) {
+    final trimmed = url.trim();
+    if (trimmed.isEmpty) return url;
+
+    // 网络地址与选项不需处理
+    if (trimmed.startsWith('-')) return url;
+    if (trimmed.startsWith('http://') ||
+        trimmed.startsWith('https://') ||
+        trimmed.startsWith('ssh://') ||
+        trimmed.startsWith('git://') ||
+        RegExp(r'^[^/\\@]+@[^:]+:').hasMatch(trimmed)) {
+      return url;
+    }
+
+    final hostPath = _resolveHostLocalPath(trimmed);
+    // 只有宿主上真实存在才认定为"路径型远程"：
+    // 这是区分 `origin`（远程名）与 `../server.git`（路径）的唯一可靠依据。
+    if (hostPath == null || !_hostPathExists(hostPath)) return url;
+
+    final hostRoot = p.normalize(rootPath);
+    final normalizedTarget = p.normalize(hostPath);
+    // 只映射工程目录内的路径：工程根挂载为 /workspace，
+    // 目录之外的宿主路径在容器内不存在，映射过去只会误导。
+    if (normalizedTarget == hostRoot || p.isWithin(hostRoot, normalizedTarget)) {
+      return mapToContainerPath(normalizedTarget, rootPath);
+    }
+    return url;
+  }
+
+  /// 把本地路径型地址解析为宿主的绝对路径；无法解析时返回 null
+  String? _resolveHostLocalPath(String url) {
+    try {
+      if (url.startsWith('file://')) {
+        final uri = Uri.tryParse(url);
+        if (uri == null) return null;
+        return p.normalize(uri.toFilePath());
+      }
+      return p.normalize(url);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  bool _hostPathExists(String hostPath) {
+    try {
+      return Directory(hostPath).existsSync() || File(hostPath).existsSync();
+    } catch (_) {
+      return false;
+    }
+  }
+
   /// 从 git 进度输出行解析阶段名与百分比
   ///
   /// 形如 `Receiving objects:  45% (450/1000), 1.2 MiB | 300 KiB/s`。
@@ -1278,8 +1393,39 @@ class GitService {
       );
     }
 
-    final containerCmd = buildGuestGitCommand(args);
+    // 参数里的本地路径型远程地址（如 /root/demo/server.git 或 file://…）
+    // 必须一并映射进容器；否则容器内工作目录对了，URL 指向的路径却不存在，
+    // 表现为 "'/workspace/xxx' does not appear to be a git repository"。
+    final effectiveRoot = rootPath ?? repoPath;
+    final mappedArgs = args
+        .map((a) => mapRemoteArgToContainer(a, effectiveRoot))
+        .toList();
+
+    final containerCmd = buildGuestGitCommand(mappedArgs);
     final containerWorkDir = mapToContainerPath(repoPath, rootPath);
+
+    // 挂载源必须是**项目根**而不是当前选中的仓库：
+    //   /workspace 固定对应项目根，仓库位置由工作目录（cwd）表达。
+    // 若挂载源取 repoPath，那么在 Source Control 里切换仓库就会改变
+    // /workspace 的含义 —— 同一个容器路径 `/workspace/server.git` 会时有时无，
+    // 远程 URL 也随之失效。项目根在整个会话中是稳定的，正确。
+    final mountSource = (rootPath != null && rootPath.trim().isNotEmpty)
+        ? rootPath
+        : repoPath;
+
+    // 把 cd 拼进命令串本身，而不是依赖 proot 的 `-w`：
+    // proot 按参数顺序处理，`-w` 位于 `-b` 之后、挂载尚未生效，
+    // 指向挂载点内部的路径（如 /workspace/work）会 chdir 失败，
+    // 表现为 git 在容器的 `/` 下执行并报 "not a git repository"。
+    //
+    // 在此处拼装而非在执行器内部：这样 `# cmd:` 诊断显示的就是真实命令，
+    // 且注入式测试也能断言到它。
+    // 容器内是 Linux，路径必须用正斜杠：p.join/p.normalize 在 Windows 上
+    // 会产出反斜杠，直接拼进命令会变成 `cd /workspace\work` 而失败。
+    final effectiveWorkDir = (containerWorkDir.isNotEmpty && containerWorkDir.startsWith('/'))
+        ? containerWorkDir.replaceAll(r'\', '/')
+        : '/workspace';
+    final commandWithCd = 'cd $effectiveWorkDir && $containerCmd';
 
     void emit(String chunk) {
       if (onProgress == null) return;
@@ -1297,9 +1443,9 @@ class GitService {
       final ProcessResult? res;
       if (streamRunner != null) {
         res = await streamRunner!(
-          executable: containerCmd,
+          executable: commandWithCd,
           arguments: const [],
-          workspacePath: repoPath,
+          workspacePath: mountSource,
           containerWorkDir: containerWorkDir,
           onOutput: emit,
           cancelToken: cancelToken,
@@ -1308,9 +1454,9 @@ class GitService {
       } else {
         final runner = _defaultStreamRunner;
         res = await runner(
-          executable: containerCmd,
+          executable: commandWithCd,
           arguments: const [],
-          workspacePath: repoPath,
+          workspacePath: mountSource,
           containerWorkDir: containerWorkDir,
           onOutput: emit,
           cancelToken: cancelToken,
@@ -1331,6 +1477,11 @@ class GitService {
         exitCode: res.exitCode,
         stdout: res.stdout.toString(),
         stderr: res.stderr.toString(),
+        executedCommand: commandWithCd,
+        containerWorkDir: containerWorkDir,
+        hostRepoPath: repoPath,
+        hostRootPath: rootPath,
+        mountSource: mountSource,
       );
     } catch (e) {
       return GitRemoteCommandResult.error('云端命令异常: $e');
@@ -1362,6 +1513,8 @@ class GitService {
     HeadlessCancelToken? cancelToken,
     Duration timeout = remoteNetworkTimeout,
   }) async {
+    // executable 已是可直接执行的完整命令（含 cd 与 git 全局选项），
+    // 由 runRemoteGitCommand 统一拼装 —— 那里同时是诊断显示的来源。
     final fullCommand = arguments.isEmpty
         ? executable
         : '$executable ${arguments.map(_escapeShellArg).join(' ')}';
@@ -1899,6 +2052,284 @@ class GitService {
       onProgress: onProgress,
       cancelToken: cancelToken,
     );
+  }
+
+  // ---------------------------- 冲突解决 ----------------------------
+
+  /// 探测当前是否存在中断的 Git 操作
+  ///
+  /// 纯文件系统探测（毫秒级、无进程开销），并区分具体是哪种操作 ——
+  /// 因为「继续」按钮的含义完全取决于它是 rebase 还是 merge：
+  /// `git rebase --continue` 与 `git merge --continue` 是不同命令。
+  GitPendingOperation getPendingOperation(String repoPath) {
+    try {
+      final gitDir = Directory(p.join(repoPath, '.git'));
+      if (!gitDir.existsSync()) return GitPendingOperation.none;
+
+      // cherry-pick / revert 都使用 sequencer 目录，需再读 todo 文件区分
+      if (Directory(p.join(gitDir.path, 'sequencer')).existsSync()) {
+        final todo = File(p.join(gitDir.path, 'sequencer', 'todo'));
+        if (todo.existsSync()) {
+          final first = todo.readAsStringSync().split('\n').first.trim();
+          if (first.startsWith('pick')) return GitPendingOperation.cherryPick;
+          if (first.startsWith('revert')) return GitPendingOperation.revert;
+        }
+        // todo 读不到时按 cherry-pick 处理（更常见）
+        return GitPendingOperation.cherryPick;
+      }
+
+      if (Directory(p.join(gitDir.path, 'rebase-merge')).existsSync() ||
+          Directory(p.join(gitDir.path, 'rebase-apply')).existsSync()) {
+        return GitPendingOperation.rebase;
+      }
+
+      if (File(p.join(gitDir.path, 'MERGE_HEAD')).existsSync()) {
+        return GitPendingOperation.merge;
+      }
+
+      return GitPendingOperation.none;
+    } catch (_) {
+      return GitPendingOperation.none;
+    }
+  }
+
+  /// 读取所有存在冲突的文件 (`git diff --name-only --diff-filter=U`)
+  ///
+  /// 用 `-z` 以 NUL 分隔：文件路径可能含空格或特殊字符，按行切会解析错。
+  /// 用 `--diff-filter=U` 而不是 `git status --porcelain`：后者同一文件可能
+  /// 产生多行（暂存/工作区各一行），这里要的是"未合并"的准确集合。
+  Future<List<GitConflictedFile>> getConflictedFiles(String repoPath) async {
+    final res = await runGitCommand(
+      ['diff', '--name-only', '--diff-filter=U', '-z'],
+      workingDir: repoPath,
+    );
+    if (!res.success) return [];
+
+    final paths = res.stdout
+        .split('\x00')
+        .map((s) => s.trim())
+        .where((s) => s.isNotEmpty)
+        .toList();
+    if (paths.isEmpty) return [];
+
+    // 一次性拿到所有文件的两位数冲突类型
+    final types = await _getConflictTypes(repoPath);
+
+    final files = <GitConflictedFile>[];
+    for (final path in paths) {
+      final normalized = path.replaceAll('\\', '/');
+      files.add(GitConflictedFile(
+        relativePath: normalized,
+        absolutePath: p.normalize(p.join(repoPath, normalized)),
+        type: types[normalized] ?? GitConflictType.unknown,
+        isBinary: await _isBinaryPath(repoPath, normalized),
+      ));
+    }
+    files.sort((a, b) => a.relativePath.compareTo(b.relativePath));
+    return files;
+  }
+
+  /// 解析 `git status --porcelain` 中的未合并类型映射
+  Future<Map<String, GitConflictType>> _getConflictTypes(String repoPath) async {
+    final res = await runGitCommand(
+      ['status', '--porcelain', '-uall', '-z'],
+      workingDir: repoPath,
+    );
+    if (!res.success) return const {};
+    return parseUnmergedTypes(res.stdout);
+  }
+
+  /// 从 porcelain 输出解析出 `路径 → 冲突类型`
+  ///
+  /// 处理 `-z` 格式：条目以 NUL 分隔，重命名条目的原路径作为**独立字段**
+  /// 紧随其后（因此遇到 R/C 状态需要多跳一个字段）。
+  @visibleForTesting
+  Map<String, GitConflictType> parseUnmergedTypes(String stdout) {
+    final result = <String, GitConflictType>{};
+    final entries = stdout.split('\x00');
+    for (var i = 0; i < entries.length; i++) {
+      final entry = entries[i];
+      if (entry.length < 4) continue;
+
+      final x = entry[0];
+      final y = entry[1];
+      final path = entry.substring(3);
+      if (path.isEmpty) continue;
+
+      // 重命名/复制会额外带一个原路径字段，跳过它避免被当成下一个条目
+      if (x == 'R' || x == 'C') i++;
+
+      final type = _mapConflictType(x, y);
+      if (type != null) {
+        result[path] = type;
+      }
+    }
+    return result;
+  }
+
+  /// 映射 XY 两位状态到冲突类型；非未合并组合返回 null
+  GitConflictType? _mapConflictType(String x, String y) {
+    return switch ('$x$y') {
+      'UU' => GitConflictType.bothModified,
+      'AA' => GitConflictType.bothAdded,
+      'DU' => GitConflictType.deletedByUs,
+      'UD' => GitConflictType.deletedByThem,
+      'AU' => GitConflictType.addedByUs,
+      'UA' => GitConflictType.addedByThem,
+      'DD' => GitConflictType.bothDeleted,
+      _ => null,
+    };
+  }
+
+  /// 判断某路径是否为二进制（用 `git diff --numstat` 的 `-` 标记）
+  Future<bool> _isBinaryPath(String repoPath, String relativePath) async {
+    try {
+      final res = await runGitCommand(
+        ['diff', '--numstat', '--diff-filter=U', '--', relativePath],
+        workingDir: repoPath,
+      );
+      if (!res.success) return false;
+      // 二进制文件的 added/deleted 列为 `-`
+      return RegExp(r'^-\s+-\s', multiLine: true).hasMatch(res.stdout);
+    } catch (_) {
+      return false;
+    }
+  }
+
+  /// 冲突三方内容（共同祖先 / ours / theirs）
+  ///
+  /// 直接复用 `git show :<stage>:<path>`：
+  /// stage 1 = 共同祖先，stage 2 = ours，stage 3 = theirs。
+  Future<({String? base, String? ours, String? theirs})> getConflictContents(
+    String repoPath,
+    String relativePath,
+  ) async {
+    final normalized = relativePath.replaceAll('\\', '/');
+    final base = await getFileContentAtRef(repoPath, ':1', normalized);
+    final ours = await getFileContentAtRef(repoPath, ':2', normalized);
+    final theirs = await getFileContentAtRef(repoPath, ':3', normalized);
+    return (base: base, ours: ours, theirs: theirs);
+  }
+
+  /// 把某个冲突文件标记为已解决 (`git add`)
+  ///
+  /// 这一步的实质是：把索引里的 stage 1/2/3 合并回 stage 0，
+  /// 也就是"以当前工作区内容为准，冲突结束"。
+  Future<GitCommandResult> markResolved(String repoPath, String relativePath) async {
+    return runGitCommand(['add', '--', relativePath], workingDir: repoPath);
+  }
+
+  /// 整文件采用某一侧
+  ///
+  /// [useOurs] 对应 `--ours`（stage 2）、否则 `--theirs`（stage 3）。
+  /// ⚠️ 在 rebase 语境下 ours 指的是**被变基到的基线**、theirs 是**正在应用的
+  /// 提交**，与直觉相反，因此 UI 文案必须按实际操作类型翻译，不能写"我的/对方的"。
+  Future<GitCommandResult> checkoutConflictSide(
+    String repoPath,
+    String relativePath, {
+    required bool useOurs,
+  }) async {
+    final res = await runGitCommand(
+      ['checkout', useOurs ? '--ours' : '--theirs', '--', relativePath],
+      workingDir: repoPath,
+    );
+    if (!res.success) return res;
+    // 选边后必须加入索引，否则冲突仍未解决
+    return runGitCommand(['add', '--', relativePath], workingDir: repoPath);
+  }
+
+  /// 重新生成标记 (`git checkout --merge`)
+  ///
+  /// 用户把标记删坏后用它恢复，比手动撤销可靠。
+  Future<GitCommandResult> recreateConflictMarkers(
+    String repoPath,
+    String relativePath,
+  ) async {
+    return runGitCommand(
+      ['checkout', '--merge', '--', relativePath],
+      workingDir: repoPath,
+    );
+  }
+
+  /// 从版本库中删除冲突文件 (`git rm -f`)
+  ///
+  /// 用于 modify/delete 冲突中选择"确认删除"。
+  Future<GitCommandResult> removeConflictedFile(
+    String repoPath,
+    String relativePath,
+  ) async {
+    return runGitCommand(['rm', '-f', '--', relativePath], workingDir: repoPath);
+  }
+
+  /// 继续被中断的操作
+  ///
+  /// 显式禁用编辑器：非交互环境下 `--continue` 会沿用原提交信息，
+  /// 若 git 试图拉起编辑器会直接挂死（没有 TTY）。
+  Future<GitCommandResult> continueOperation(
+    String repoPath,
+    GitPendingOperation operation,
+  ) async {
+    final args = switch (operation) {
+      GitPendingOperation.rebase => ['-c', 'core.editor=true', 'rebase', '--continue'],
+      GitPendingOperation.merge => ['-c', 'core.editor=true', 'merge', '--continue'],
+      GitPendingOperation.cherryPick => [
+          '-c',
+          'core.editor=true',
+          'cherry-pick',
+          '--continue',
+        ],
+      GitPendingOperation.revert => ['-c', 'core.editor=true', 'revert', '--continue'],
+      GitPendingOperation.none => <String>[],
+    };
+    if (args.isEmpty) {
+      return GitCommandResult.error('当前没有需要继续的操作');
+    }
+    return runGitCommand(args, workingDir: repoPath);
+  }
+
+  /// 跳过当前提交（仅 rebase / cherry-pick / revert 有意义）
+  Future<GitCommandResult> skipOperation(
+    String repoPath,
+    GitPendingOperation operation,
+  ) async {
+    final args = switch (operation) {
+      GitPendingOperation.rebase => ['rebase', '--skip'],
+      GitPendingOperation.cherryPick => ['cherry-pick', '--skip'],
+      GitPendingOperation.revert => ['revert', '--skip'],
+      // merge 没有 skip 语义：跳过等于放弃整个合并
+      _ => <String>[],
+    };
+    if (args.isEmpty) {
+      return GitCommandResult.error('当前操作不支持跳过');
+    }
+    return runGitCommand(args, workingDir: repoPath);
+  }
+
+  /// 放弃被中断的操作
+  Future<GitCommandResult> abortOperation(
+    String repoPath,
+    GitPendingOperation operation,
+  ) async {
+    final args = switch (operation) {
+      GitPendingOperation.rebase => ['rebase', '--abort'],
+      GitPendingOperation.merge => ['merge', '--abort'],
+      GitPendingOperation.cherryPick => ['cherry-pick', '--abort'],
+      GitPendingOperation.revert => ['revert', '--abort'],
+      GitPendingOperation.none => <String>[],
+    };
+    if (args.isEmpty) {
+      return GitCommandResult.error('当前没有需要放弃的操作');
+    }
+    return runGitCommand(args, workingDir: repoPath);
+  }
+
+  /// 检测「继续」后是否因提交为空而再次停下（需要用户选择 skip）
+  bool isOperationStoppedForEmptyCommit(String stderr) {
+    final t = stderr.toLowerCase();
+    return t.contains('nothing to commit') ||
+        t.contains('no changes') ||
+        t.contains('patch is empty') ||
+        t.contains('previous cherry-pick is now empty');
   }
 
   // ---------------------------- 上游追踪与领先/落后 ----------------------------

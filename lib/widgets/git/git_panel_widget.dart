@@ -12,6 +12,7 @@ import '../../providers/project_provider.dart';
 import '../../providers/tab_provider.dart';
 import '../../utils/dialog_utils.dart';
 import '../../utils/file_icon_utils.dart';
+import 'git_conflict_panel.dart';
 import 'git_diff_page.dart';
 import 'git_graph_painter.dart';
 import 'git_remote_management_sheet.dart';
@@ -579,9 +580,29 @@ class _GitPanelWidgetState extends State<GitPanelWidget> {
             case 'force_push':
               _handleForcePush(context, l10n, gitProvider);
               break;
+            case 'resolve_conflict':
+              GitConflictPanel.show(context);
+              break;
           }
         },
         itemBuilder: (ctx) => [
+          // 冲突时置顶：此时其它操作基本都无法推进，必须先解决它
+          if (gitProvider.hasPendingOperation) ...[
+            PopupMenuItem(
+              value: 'resolve_conflict',
+              child: Row(
+                children: [
+                  Icon(Icons.merge_type, size: 16, color: theme.colorScheme.error),
+                  const SizedBox(width: 8),
+                  Text(
+                    l10n.gitConflictTitle,
+                    style: TextStyle(fontSize: 13, color: theme.colorScheme.error),
+                  ),
+                ],
+              ),
+            ),
+            const PopupMenuDivider(),
+          ],
           if (gitProvider.hasRepository) ...[
             PopupMenuItem(
               value: 'undo_commit',

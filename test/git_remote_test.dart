@@ -7,6 +7,7 @@ import 'package:code_editor/services/git_service.dart';
 import 'package:code_editor/utils/git_error_mapper.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:path/path.dart' as p;
 
 /// 记录每一次流式执行的调用参数，便于断言生成的 git 参数是否正确
 class _StreamCall {
@@ -424,6 +425,66 @@ void main() {
       expect(res.success, isFalse);
       expect(calls, isEmpty);
     });
+
+    test('结果携带完整执行环境，供定位"终端能跑、面板不能跑"的差异', () async {
+      fakeStream(stdout: 'ok\n');
+      final res = await GitService.instance.fetch(
+        '/host/projects/demo/work',
+        rootPath: '/host/projects/demo',
+        remote: 'origin',
+      );
+
+      // 关键：挂载源必须是**项目根**，而不是当前选中的仓库。
+      // 否则在 Source Control 里切换仓库会改变 /workspace 的含义，
+      // 同一个容器路径时有时无，远程 URL 随之失效。
+      expect(res.mountSource, equals('/host/projects/demo'));
+      expect(res.hostRepoPath, equals('/host/projects/demo/work'));
+      expect(res.hostRootPath, equals('/host/projects/demo'));
+
+      final log = res.combinedOutput;
+      expect(log, contains('# mount: /host/projects/demo -> /workspace'));
+      expect(log, contains('# repo:  /host/projects/demo/work'));
+      expect(log, contains('# root:  /host/projects/demo'));
+      expect(log, contains('# cmd:'));
+      expect(log, contains('ok'));
+    });
+
+    test('未提供工程根时挂载源退化为仓库路径', () async {
+      fakeStream();
+      final res = await GitService.instance.fetch(tempDir.path, remote: 'origin');
+      // 没有工程根信息时只能挂仓库，但这是降级路径，不是常态
+      expect(res.mountSource, equals(tempDir.path));
+    });
+
+    test('命令在容器内显式 cd 到仓库目录，不依赖 proot 的 -w', () async {
+      // 真实事故：proot 按参数顺序处理，-w 位于 -b 之后、挂载尚未生效，
+      // 指向挂载点内部的 /workspace/work 会 chdir 失败，
+      // git 于是在容器的 / 下执行并报 "not a git repository"。
+      GitService.instance.containerPathMapper = (hostPath) {
+        const root = '/host/projects/demo';
+        if (p.normalize(hostPath) == root) return '/workspace';
+        if (p.isWithin(root, p.normalize(hostPath))) {
+          return '/workspace${p.normalize(hostPath).substring(root.length)}';
+        }
+        return '/workspace';
+      };
+      fakeStream();
+      await GitService.instance.fetch(
+        '/host/projects/demo/work',
+        rootPath: '/host/projects/demo',
+        remote: 'origin',
+      );
+
+      final cmd = calls.first.executable;
+      expect(cmd, contains('cd /workspace/work &&'));
+      expect(cmd, contains('fetch --progress --prune origin'));
+    });
+
+    test('未执行到命令时诊断信息缺失但不报错', () {
+      final res = GitRemoteCommandResult.error('boom');
+      expect(res.hostRepoPath, isNull);
+      expect(res.combinedOutput, contains('boom'));
+    });
   });
 
   group('远端仓库管理命令', () {
@@ -641,6 +702,30 @@ void main() {
       final info = GitErrorMapper.describe('');
       expect(info.kind, equals(GitOperationErrorKind.operationIncomplete));
       expect(info.kind.message(l10nZh), isNotEmpty);
+    });
+
+    test('本地路径型远端不存在时不再误报为 GitHub 权限问题', () {
+      // 真实事故：错误面板显示 "GitHub returns 404 for both no permission and
+      // does not exist... Verify the token"，把用户引去查令牌，
+      // 而实际问题只是本地裸仓库路径在容器内不存在。
+      final info = GitErrorMapper.describe(
+        "fatal: '/workspace/conflict-demo/server.git' does not appear to be a git repository\n"
+        'fatal: Could not read from remote repository.',
+      );
+      expect(info.kind, equals(GitOperationErrorKind.localRemotePathMissing));
+      // 绝不能再提示去检查账号/令牌
+      expect(info.needsAccountFix, isFalse);
+      expect(info.kind.message(l10nZh), contains('本地'));
+      expect(info.kind.suggestion(l10nZh), contains('项目目录'));
+    });
+
+    test('真正的 GitHub 404 仍归为仓库不存在', () {
+      final info = GitErrorMapper.describe(
+        'remote: Repository not found.\n'
+        'fatal: repository not found',
+      );
+      expect(info.kind, equals(GitOperationErrorKind.repositoryNotFound));
+      expect(info.needsAccountFix, isTrue);
     });
 
     test('未归类错误保留真实错误行便于排查', () {
@@ -959,6 +1044,321 @@ void main() {
       );
       expect(r2.success, isFalse);
       expect(calls, isEmpty);
+    });
+  });
+
+  group('本地路径型远程地址的容器映射', () {
+    late GitService svc;
+    late Directory rootDir;
+    late String rootPath;
+
+    setUp(() {
+      svc = GitService.instance;
+      // 用真实的临时目录：映射的判定依据是"宿主上确实存在这个路径"
+      rootDir = Directory.systemTemp.createTempSync('git_root_map_');
+      rootPath = p.normalize(rootDir.path);
+      Directory(p.join(rootPath, 'server.git')).createSync(recursive: true);
+      svc.containerPathMapper = (hostPath) {
+        final normalized = p.normalize(hostPath);
+        if (normalized == rootPath) return '/workspace';
+        if (p.isWithin(rootPath, normalized)) {
+          return '/workspace${normalized.substring(rootPath.length)}'
+              .replaceAll(r'\', '/');
+        }
+        return '/workspace';
+      };
+    });
+
+    tearDown(() {
+      if (rootDir.existsSync()) rootDir.deleteSync(recursive: true);
+    });
+
+    test('工程根内的绝对路径被映射进容器', () {
+      // 真实事故：工作目录映射对了，但 remote URL 里的宿主路径没映射，
+      // 导致容器内 '/workspace/conflict-demo/server.git' 不存在
+      final mapped = svc.mapRemoteArgToContainer(
+        p.join(rootPath, 'server.git'),
+        rootPath,
+      );
+      expect(mapped, equals('/workspace/server.git'));
+    });
+
+    test('file:// 形式的本地地址被映射进容器', () {
+      final uri = Uri.file(p.join(rootPath, 'server.git')).toString();
+      final mapped = svc.mapRemoteArgToContainer(uri, rootPath);
+      expect(mapped, equals('/workspace/server.git'));
+    });
+
+    test('工程目录之外的宿主路径保持原样（映射过去只会误导）', () {
+      final outside = Directory.systemTemp.createTempSync('git_outside_');
+      addTearDown(() {
+        if (outside.existsSync()) outside.deleteSync(recursive: true);
+      });
+
+      final mapped = svc.mapRemoteArgToContainer(outside.path, rootPath);
+      expect(mapped, equals(outside.path));
+    });
+
+    test('普通参数（子命令/选项/远程名/分支名）一律不改写', () {
+      // 回归：宽松启发式曾把 fetch / --progress / origin 拼成 <工程根>/fetch，
+      // 把整条命令写坏
+      expect(svc.mapRemoteArgToContainer('fetch', rootPath), equals('fetch'));
+      expect(svc.mapRemoteArgToContainer('--progress', rootPath), equals('--progress'));
+      expect(svc.mapRemoteArgToContainer('--prune', rootPath), equals('--prune'));
+      expect(svc.mapRemoteArgToContainer('origin', rootPath), equals('origin'));
+      expect(svc.mapRemoteArgToContainer('master', rootPath), equals('master'));
+      expect(svc.mapRemoteArgToContainer('', rootPath), equals(''));
+    });
+
+    test('网络地址一律不改写', () {
+      expect(
+        svc.mapRemoteArgToContainer('https://github.com/a/b.git', rootPath),
+        equals('https://github.com/a/b.git'),
+      );
+      expect(
+        svc.mapRemoteArgToContainer('git@github.com:a/b.git', rootPath),
+        equals('git@github.com:a/b.git'),
+      );
+      expect(
+        svc.mapRemoteArgToContainer('ssh://git@host/a/b.git', rootPath),
+        equals('ssh://git@host/a/b.git'),
+      );
+    });
+
+    test('不存在的宿主路径保持原样（避免误判为路径型远程）', () {
+      final missing = p.join(rootPath, 'no-such-repo.git');
+      expect(svc.mapRemoteArgToContainer(missing, rootPath), equals(missing));
+    });
+  });
+
+  group('冲突检测与解决', () {
+    test('从 porcelain -z 解析七种未合并类型', () {
+      // 条目以 NUL 分隔；UU/AA/DU/UD/AU/UA/DD 都是未合并状态
+      const stdout = 'UU lib/a.dart\x00'
+          'AA lib/b.dart\x00'
+          'DU lib/c.dart\x00'
+          'UD lib/d.dart\x00'
+          'AU lib/e.dart\x00'
+          'UA lib/f.dart\x00'
+          'DD lib/g.dart\x00';
+
+      final types = GitService.instance.parseUnmergedTypes(stdout);
+      expect(types.length, equals(7));
+      expect(types['lib/a.dart'], equals(GitConflictType.bothModified));
+      expect(types['lib/b.dart'], equals(GitConflictType.bothAdded));
+      expect(types['lib/c.dart'], equals(GitConflictType.deletedByUs));
+      expect(types['lib/d.dart'], equals(GitConflictType.deletedByThem));
+      expect(types['lib/e.dart'], equals(GitConflictType.addedByUs));
+      expect(types['lib/f.dart'], equals(GitConflictType.addedByThem));
+      expect(types['lib/g.dart'], equals(GitConflictType.bothDeleted));
+    });
+
+    test('非未合并状态不进入冲突集合', () {
+      // ` M` / `M ` / `??` 都是普通变更，不是冲突
+      const stdout =
+          ' M lib/a.dart\x00M  lib/b.dart\x00?? lib/c.dart\x00A  lib/d.dart\x00';
+
+      final types = GitService.instance.parseUnmergedTypes(stdout);
+      expect(types, isEmpty);
+    });
+
+    test('重命名条目会多跳一个原路径字段，不污染后续条目', () {
+      // -z 格式下 R 状态后面紧跟一个独立的原路径字段
+      const stdout = 'R  lib/new.dart\x00lib/old.dart\x00'
+          'UU lib/conflict.dart\x00';
+
+      final types = GitService.instance.parseUnmergedTypes(stdout);
+      expect(types.length, equals(1));
+      expect(types['lib/conflict.dart'], equals(GitConflictType.bothModified));
+      // 原路径字段不能被当成冲突文件
+      expect(types.containsKey('lib/old.dart'), isFalse);
+    });
+
+    test('空输出安全', () {
+      expect(GitService.instance.parseUnmergedTypes(''), isEmpty);
+    });
+
+    test('探测中断操作：无任何标记时为 none', () {
+      final dir = Directory.systemTemp.createTempSync('git_conflict_probe_');
+      Directory(p.join(dir.path, '.git')).createSync(recursive: true);
+      expect(
+        GitService.instance.getPendingOperation(dir.path),
+        equals(GitPendingOperation.none),
+      );
+      dir.deleteSync(recursive: true);
+    });
+
+    test('探测中断操作：rebase-merge 目录 → rebase', () {
+      final dir = Directory.systemTemp.createTempSync('git_conflict_probe_');
+      Directory(
+        p.join(dir.path, '.git', 'rebase-merge'),
+      ).createSync(recursive: true);
+      expect(
+        GitService.instance.getPendingOperation(dir.path),
+        equals(GitPendingOperation.rebase),
+      );
+      dir.deleteSync(recursive: true);
+    });
+
+    test('探测中断操作：MERGE_HEAD → merge', () {
+      final dir = Directory.systemTemp.createTempSync('git_conflict_probe_');
+      Directory(p.join(dir.path, '.git')).createSync(recursive: true);
+      File(p.join(dir.path, '.git', 'MERGE_HEAD')).writeAsStringSync('abc123\n');
+      expect(
+        GitService.instance.getPendingOperation(dir.path),
+        equals(GitPendingOperation.merge),
+      );
+      dir.deleteSync(recursive: true);
+    });
+
+    test('探测中断操作：sequencer/todo 区分 cherry-pick 与 revert', () {
+      final dir = Directory.systemTemp.createTempSync('git_conflict_probe_');
+      final seq = Directory(p.join(dir.path, '.git', 'sequencer'))
+        ..createSync(recursive: true);
+
+      File(p.join(seq.path, 'todo')).writeAsStringSync('pick abc123 msg\n');
+      expect(
+        GitService.instance.getPendingOperation(dir.path),
+        equals(GitPendingOperation.cherryPick),
+      );
+
+      File(p.join(seq.path, 'todo')).writeAsStringSync('revert abc123 msg\n');
+      expect(
+        GitService.instance.getPendingOperation(dir.path),
+        equals(GitPendingOperation.revert),
+      );
+
+      dir.deleteSync(recursive: true);
+    });
+
+    test('标记已解决本质是 git add', () async {
+      final executed = <List<String>>[];
+      GitService.instance.processRunner = (exec, args, {workingDirectory}) async {
+        executed.add(args);
+        if (args.contains('--version')) {
+          return ProcessResult(0, 0, 'git version 2.45.0\n', '');
+        }
+        return ProcessResult(0, 0, '', '');
+      };
+
+      await GitService.instance.markResolved(tempDir.path, 'lib/a.dart');
+      expect(executed.last, equals(['add', '--', 'lib/a.dart']));
+    });
+
+    test('整文件采用某一侧后必须补一次 add', () async {
+      final executed = <List<String>>[];
+      GitService.instance.processRunner = (exec, args, {workingDirectory}) async {
+        executed.add(args);
+        if (args.contains('--version')) {
+          return ProcessResult(0, 0, 'git version 2.45.0\n', '');
+        }
+        return ProcessResult(0, 0, '', '');
+      };
+
+      await GitService.instance.checkoutConflictSide(
+        tempDir.path,
+        'lib/a.dart',
+        useOurs: true,
+      );
+      expect(
+        executed[executed.length - 2],
+        equals(['checkout', '--ours', '--', 'lib/a.dart']),
+      );
+      // 只 checkout 不 add 的话冲突仍未解决，这一步不能少
+      expect(executed.last, equals(['add', '--', 'lib/a.dart']));
+
+      await GitService.instance.checkoutConflictSide(
+        tempDir.path,
+        'lib/a.dart',
+        useOurs: false,
+      );
+      expect(
+        executed[executed.length - 2],
+        equals(['checkout', '--theirs', '--', 'lib/a.dart']),
+      );
+    });
+
+    test('continue 显式禁用编辑器，避免无 TTY 时挂死', () async {
+      final executed = <List<String>>[];
+      GitService.instance.processRunner = (exec, args, {workingDirectory}) async {
+        executed.add(args);
+        if (args.contains('--version')) {
+          return ProcessResult(0, 0, 'git version 2.45.0\n', '');
+        }
+        return ProcessResult(0, 0, '', '');
+      };
+
+      await GitService.instance.continueOperation(
+        tempDir.path,
+        GitPendingOperation.rebase,
+      );
+      expect(
+        executed.last,
+        equals(['-c', 'core.editor=true', 'rebase', '--continue']),
+      );
+    });
+
+    test('skip 仅对 rebase/cherry-pick/revert 可用', () async {
+      GitService.instance.processRunner = (exec, args, {workingDirectory}) async {
+        if (args.contains('--version')) {
+          return ProcessResult(0, 0, 'git version 2.45.0\n', '');
+        }
+        return ProcessResult(0, 0, '', '');
+      };
+
+      final mergeSkip = await GitService.instance.skipOperation(
+        tempDir.path,
+        GitPendingOperation.merge,
+      );
+      expect(mergeSkip.success, isFalse);
+
+      final noneSkip = await GitService.instance.skipOperation(
+        tempDir.path,
+        GitPendingOperation.none,
+      );
+      expect(noneSkip.success, isFalse);
+    });
+
+    test('abort 与 continue 按操作类型生成对应命令', () async {
+      final executed = <List<String>>[];
+      GitService.instance.processRunner = (exec, args, {workingDirectory}) async {
+        executed.add(args);
+        if (args.contains('--version')) {
+          return ProcessResult(0, 0, 'git version 2.45.0\n', '');
+        }
+        return ProcessResult(0, 0, '', '');
+      };
+
+      await GitService.instance.abortOperation(
+        tempDir.path,
+        GitPendingOperation.merge,
+      );
+      expect(executed.last, equals(['merge', '--abort']));
+
+      await GitService.instance.continueOperation(
+        tempDir.path,
+        GitPendingOperation.cherryPick,
+      );
+      expect(
+        executed.last,
+        equals(['-c', 'core.editor=true', 'cherry-pick', '--continue']),
+      );
+    });
+
+    test('识别"提交为空"导致的再次停下', () {
+      final svc = GitService.instance;
+      expect(
+        svc.isOperationStoppedForEmptyCommit('nothing to commit, working tree clean'),
+        isTrue,
+      );
+      expect(
+        svc.isOperationStoppedForEmptyCommit(
+          'The previous cherry-pick is now empty',
+        ),
+        isTrue,
+      );
+      expect(svc.isOperationStoppedForEmptyCommit('patch is empty'), isTrue);
+      expect(svc.isOperationStoppedForEmptyCommit('CONFLICT (content)'), isFalse);
     });
   });
 }

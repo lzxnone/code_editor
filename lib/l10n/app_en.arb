@@ -1295,6 +1295,77 @@
   "gitSearchTags": "Search tags...",
   "gitNoBranches": "No branches",
 
+  "gitConflictTitle": "Resolve Conflicts",
+  "gitConflictRebaseInProgress": "Rebase in progress",
+  "gitConflictMergeInProgress": "Merge in progress",
+  "gitConflictCherryPickInProgress": "Cherry-pick in progress",
+  "gitConflictRevertInProgress": "Revert in progress",
+  "gitConflictRemaining": "{count} file(s) still unresolved",
+  "@gitConflictRemaining": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "gitConflictAllResolved": "All conflicts resolved, ready to continue",
+  "gitConflictResolved": "Marked as resolved: {path}",
+  "@gitConflictResolved": {
+    "placeholders": {
+      "path": {
+        "type": "String"
+      }
+    }
+  },
+  "gitConflictOpenFile": "Open file to edit",
+  "gitConflictTakeBaseline": "Take version from {name}",
+  "@gitConflictTakeBaseline": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "gitConflictTakeIncoming": "Take version from the commit being applied",
+  "gitConflictTakeBaselineGeneric": "Take the baseline version for the whole file",
+  "gitConflictRecreate": "Regenerate conflict markers",
+  "gitConflictRecreateDone": "Conflict markers regenerated",
+  "gitConflictRemoveFile": "Delete this file",
+  "gitConflictBinaryHint": "Binary files cannot be resolved with markers — choose which side to keep",
+  "gitConflictDeleteHint": "This file was deleted on one side — choose whether to keep or delete it",
+  "gitConflictContinue": "Continue",
+  "gitConflictSkip": "Skip this commit",
+  "gitConflictAbort": "Abort the whole operation",
+  "gitConflictAbortConfirm": "Abort this operation? All resolutions will be discarded.",
+  "gitConflictContinueSuccess": "Operation completed",
+  "gitConflictSkipSuccess": "Commit skipped",
+  "gitConflictAbortSuccess": "Operation aborted",
+  "gitConflictBlockedByUnresolved": "Some conflicts are still unresolved — mark them all resolved first",
+  "gitConflictEmptyCommitNotice": "This commit became empty when applied (its changes already exist in the baseline). You can skip it.",
+  "gitConflictSkipHint": "This commit became empty when applied — its changes usually already exist in the baseline",
+  "gitConflictTypeBothModified": "Both modified",
+  "gitConflictTypeBothAdded": "Both added",
+  "gitConflictTypeDeletedByUs": "Theirs modified, ours deleted",
+  "gitConflictTypeDeletedByThem": "Ours modified, theirs deleted",
+  "gitConflictTypeAddedByUs": "Ours added, theirs exists",
+  "gitConflictTypeAddedByThem": "Theirs added, ours exists",
+  "gitConflictTypeBothDeleted": "Both deleted",
+  "gitConflictTypeUnknown": "Conflict",
+  "gitConflictBaseSegment": "Common ancestor",
+  "gitConflictOursSegment": "Current side",
+  "gitConflictTheirsSegment": "Incoming side",
+  "gitConflictMalformed": "Conflict markers are malformed — edit this file manually",
+  "gitConflictBlockCount": "{count} conflict(s)",
+  "@gitConflictBlockCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "gitConflictApplyOurs": "Use this",
+  "gitConflictApplyBoth": "Keep both",
+
   "gitRemoteBranches": "Remote Branches",
   "gitLocalBranches": "Local Branches",
   "gitNoRemoteBranches": "No remote branches yet — fetch first",
@@ -1419,6 +1490,8 @@
   "gitErrWritePermissionDenied": "This account has no write access to this repository",
   "gitErrWritePermissionDeniedHint": "If this is someone else's repository (upstream), fork it to your own account first, then point the remote at your fork (e.g. https://github.com/your-name/repo.git).",
   "gitErrRepositoryNotFound": "Repository not found, or this account has no access to it",
+  "gitErrLocalRemoteMissing": "The local remote path does not exist inside the container",
+  "gitErrLocalRemoteMissingHint": "This remote is a local directory (not a network address like GitHub), and it is outside the currently opened project folder. The container only mounts the current project folder, so paths outside it are unreachable. Move the directory into the project, or switch to a network URL.",
   "gitErrRepositoryNotFoundHint": "GitHub returns 404 for both \"no permission\" and \"does not exist\". Verify the remote URL and that the token can access this repository.",
   "gitErrProxyAuthRequired": "The network proxy requires authentication",
   "gitErrProxyAuthRequiredHint": "This network goes through an authenticated proxy (HTTP 407). Check the proxy configuration and credentials inside the container.",

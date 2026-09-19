@@ -2188,6 +2188,140 @@ class AppLocalizationsZh extends AppLocalizations {
   String get gitNoBranches => '暂无分支';
 
   @override
+  String get gitConflictTitle => '解决冲突';
+
+  @override
+  String get gitConflictRebaseInProgress => '变基进行中';
+
+  @override
+  String get gitConflictMergeInProgress => '合并进行中';
+
+  @override
+  String get gitConflictCherryPickInProgress => '拣选进行中';
+
+  @override
+  String get gitConflictRevertInProgress => '回滚进行中';
+
+  @override
+  String gitConflictRemaining(int count) {
+    return '还有 $count 个文件未解决';
+  }
+
+  @override
+  String get gitConflictAllResolved => '冲突已全部解决，可以继续';
+
+  @override
+  String gitConflictResolved(String path) {
+    return '已标记为已解决：$path';
+  }
+
+  @override
+  String get gitConflictOpenFile => '打开文件编辑';
+
+  @override
+  String gitConflictTakeBaseline(String name) {
+    return '采用 $name 的版本';
+  }
+
+  @override
+  String get gitConflictTakeIncoming => '采用正在应用的提交版本';
+
+  @override
+  String get gitConflictTakeBaselineGeneric => '整文件采用基线版本';
+
+  @override
+  String get gitConflictRecreate => '重新生成冲突标记';
+
+  @override
+  String get gitConflictRecreateDone => '已重新生成冲突标记';
+
+  @override
+  String get gitConflictRemoveFile => '删除此文件';
+
+  @override
+  String get gitConflictBinaryHint => '二进制文件无法用标记解决，请选择保留哪一边';
+
+  @override
+  String get gitConflictDeleteHint => '该文件在一侧被删除，请选择保留还是删除';
+
+  @override
+  String get gitConflictContinue => '继续';
+
+  @override
+  String get gitConflictSkip => '跳过此提交';
+
+  @override
+  String get gitConflictAbort => '放弃本次变基';
+
+  @override
+  String get gitConflictAbortConfirm => '确定要放弃本次变基操作并回到操作前的状态吗？';
+
+  @override
+  String get gitConflictContinueSuccess => '操作已完成';
+
+  @override
+  String get gitConflictSkipSuccess => '已跳过当前提交';
+
+  @override
+  String get gitConflictAbortSuccess => '已放弃本次操作';
+
+  @override
+  String get gitConflictBlockedByUnresolved => '仍有未解决的冲突文件，请先全部标记为已解决';
+
+  @override
+  String get gitConflictEmptyCommitNotice => '该提交在应用后变为空（内容已存在于基线中），可以跳过它';
+
+  @override
+  String get gitConflictSkipHint => '该提交在应用后变为空，通常表示它的改动已存在于基线中';
+
+  @override
+  String get gitConflictTypeBothModified => '双方修改';
+
+  @override
+  String get gitConflictTypeBothAdded => '双方新增';
+
+  @override
+  String get gitConflictTypeDeletedByUs => '对方修改、我方删除';
+
+  @override
+  String get gitConflictTypeDeletedByThem => '我方修改、对方删除';
+
+  @override
+  String get gitConflictTypeAddedByUs => '我方新增、对方已存在';
+
+  @override
+  String get gitConflictTypeAddedByThem => '对方新增、我方已存在';
+
+  @override
+  String get gitConflictTypeBothDeleted => '双方删除';
+
+  @override
+  String get gitConflictTypeUnknown => '冲突';
+
+  @override
+  String get gitConflictBaseSegment => '共同祖先';
+
+  @override
+  String get gitConflictOursSegment => '当前侧';
+
+  @override
+  String get gitConflictTheirsSegment => '传入侧';
+
+  @override
+  String get gitConflictMalformed => '冲突标记结构异常，请手工编辑该文件';
+
+  @override
+  String gitConflictBlockCount(int count) {
+    return '$count 处冲突';
+  }
+
+  @override
+  String get gitConflictApplyOurs => '采用此段';
+
+  @override
+  String get gitConflictApplyBoth => '两段都要';
+
+  @override
   String get gitRemoteBranches => '远端分支';
 
   @override
@@ -2370,6 +2504,13 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get gitErrRepositoryNotFound => '仓库不存在，或当前账号无权访问';
+
+  @override
+  String get gitErrLocalRemoteMissing => '本地远端路径在容器内不存在';
+
+  @override
+  String get gitErrLocalRemoteMissingHint =>
+      '该远端是一个本地目录（不是 GitHub 等网络地址），但它不在当前打开的项目目录内。容器只挂载当前项目目录，因此项目外的路径无法访问。请把该目录移到项目内，或改用网络地址。';
 
   @override
   String get gitErrRepositoryNotFoundHint =>
@@ -2690,12 +2831,6 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get gitPullThenPushDesc => '远端存在本地没有的提交，先拉取合并后再推送。';
-
-  @override
-  String get gitConflictAbort => '放弃本次变基';
-
-  @override
-  String get gitConflictAbortConfirm => '确定要放弃本次变基操作并回到操作前的状态吗？';
 
   @override
   String get gitUncommittedChangesTitle => '存在未提交的改动';

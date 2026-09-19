@@ -9,6 +9,7 @@ import '../../providers/git_provider.dart';
 import '../../utils/dialog_utils.dart';
 import '../../utils/git_error_mapper.dart';
 import '../../views/git_account_management_view.dart';
+import 'git_conflict_panel.dart';
 import 'git_remote_management_sheet.dart';
 
 /// Git 云端同步工具条
@@ -97,6 +98,11 @@ class _GitSyncBarState extends State<GitSyncBar> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       mainAxisSize: MainAxisSize.min,
       children: [
+        // 冲突优先于一切：此时同步动作都无法继续，必须先把冲突摆到最前面
+        if (gitProvider.hasPendingOperation) ...[
+          _buildConflictBanner(context, theme, l10n, gitProvider),
+          const SizedBox(height: 6),
+        ],
         // 与上方「分支」行完全一致的结构：左侧占满的选择条 + 右侧 32×32 图标按钮。
         // 这样三行（分支 / 远程 / 进度）视觉对齐，宽度也天然不会溢出。
         Row(
@@ -173,6 +179,65 @@ class _GitSyncBarState extends State<GitSyncBar> {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  /// 冲突横幅：把用户直接引到冲突解决面板
+  ///
+  /// 冲突时 push/pull 都无法推进，所以它必须排在远程行之前，
+  /// 而不是和错误面板一起挤在下面。
+  Widget _buildConflictBanner(
+    BuildContext context,
+    ThemeData theme,
+    AppLocalizations l10n,
+    GitProvider provider,
+  ) {
+    final colorScheme = theme.colorScheme;
+    final remaining = provider.conflictState.conflictCount;
+
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        key: const ValueKey('git_conflict_banner'),
+        borderRadius: BorderRadius.circular(6),
+        onTap: () => GitConflictPanel.show(context),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+          decoration: BoxDecoration(
+            color: colorScheme.errorContainer.withValues(alpha: 0.6),
+            borderRadius: BorderRadius.circular(6),
+            border: Border.all(
+              color: colorScheme.error.withValues(alpha: 0.5),
+              width: 0.8,
+            ),
+          ),
+          child: Row(
+            children: [
+              Icon(Icons.merge_type, size: 15, color: colorScheme.error),
+              const SizedBox(width: 6),
+              Expanded(
+                child: Text(
+                  remaining > 0
+                      ? l10n.gitConflictRemaining(remaining)
+                      : l10n.gitConflictAllResolved,
+                  style: TextStyle(
+                    fontSize: 11.5,
+                    fontWeight: FontWeight.w600,
+                    color: colorScheme.onErrorContainer,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              Icon(
+                Icons.chevron_right,
+                size: 16,
+                color: colorScheme.onErrorContainer,
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

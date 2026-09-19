@@ -55,6 +55,12 @@ class GitProvider extends ChangeNotifier {
 
   bool _isCloning = false;
 
+  /// 冲突/中断操作状态
+  GitConflictState _conflictState = GitConflictState.idle;
+
+  /// 最近一次冲突操作的结果说明（供 UI 提示，如"因提交为空而停下"）
+  String? _conflictNotice;
+
   bool _isFetching = false;
   bool _isPulling = false;
   bool _isPushing = false;
@@ -117,6 +123,18 @@ class GitProvider extends ChangeNotifier {
   bool get isFsckRunning => _isFsckRunning;
   bool get isCloning => _isCloning;
   GitOperationProgress? get cloneProgress => _cloneProgress;
+
+  /// 冲突/中断操作状态
+  GitConflictState get conflictState => _conflictState;
+
+  /// 是否有未解决的冲突
+  bool get hasConflicts => _conflictState.hasUnresolvedFiles;
+
+  /// 是否有操作处于中断状态（含"冲突已解决待继续"）
+  bool get hasPendingOperation => _conflictState.isPending;
+
+  /// 冲突相关的提示信息（一次性，读取后由 UI 清除）
+  String? get conflictNotice => _conflictNotice;
   bool get isFetching => _isFetching;
   bool get isPulling => _isPulling;
   bool get isPushing => _isPushing;
@@ -364,6 +382,8 @@ class GitProvider extends ChangeNotifier {
     _isFsckRunning = false;
     _cloneProgress = null;
     _isCloning = false;
+    _conflictState = GitConflictState.idle;
+    _conflictNotice = null;
     _isFetching = false;
     _isPulling = false;
     _isPushing = false;
@@ -823,6 +843,8 @@ class GitProvider extends ChangeNotifier {
       _remoteBranches = await _gitService.getRemoteBranches(_currentRepoPath!);
       // 远程目标解析依赖 branch.<name>.* 与 remote.pushDefault
       await _loadRemoteTargetConfig();
+      // 冲突/中断状态：pull 撞冲突后必须立刻能呈现给用户
+      await _loadConflictState();
 
       // 同步更新 repositories 列表中当前项的分支信息
       final idx = _repositories.indexWhere((r) => r.rootPath == _currentRepoPath);
@@ -930,6 +952,8 @@ class GitProvider extends ChangeNotifier {
       if (res.success) _lastFetchAt = DateTime.now();
       // fetch 会改变 ahead/behind，必须即时刷新远端状态
       await _loadRemoteStateOnly();
+      // fetch 本身不产生冲突，但用户可能在中断状态下点它，这里顺带校正状态
+      await _reloadConflictStateAndNotify();
       return res;
     } finally {
       _isFetching = false;
@@ -976,6 +1000,9 @@ class GitProvider extends ChangeNotifier {
         notifyListeners();
       } else {
         await _loadRemoteStateOnly();
+        // 失败很可能正是因为撞了冲突：必须立刻探测，否则冲突横幅不会出现，
+        // 用户根本找不到解决入口（只有下次完整刷新才会暴露）
+        await _reloadConflictStateAndNotify();
       }
       return res;
     } finally {
@@ -1025,6 +1052,9 @@ class GitProvider extends ChangeNotifier {
       _recordRemoteResult(res);
       if (res.success) {
         await _loadRemoteStateOnly();
+      } else {
+        // 推送失败也可能是中断状态导致的，同样校正一次
+        await _reloadConflictStateAndNotify();
       }
       return res;
     } finally {
@@ -1158,6 +1188,182 @@ class GitProvider extends ChangeNotifier {
   void clearRemoteError() {
     _lastRemoteError = null;
     _remoteLog = '';
+    notifyListeners();
+  }
+
+  // ==========================================================================
+  //  冲突解决
+  // ==========================================================================
+
+  /// 重新读取冲突与中断操作状态
+  Future<void> _loadConflictState() async {
+    if (_currentRepoPath == null) {
+      _conflictState = GitConflictState.idle;
+      return;
+    }
+    try {
+      final operation = _gitService.getPendingOperation(_currentRepoPath!);
+      if (operation == GitPendingOperation.none) {
+        _conflictState = GitConflictState.idle;
+        return;
+      }
+      final files = await _gitService.getConflictedFiles(_currentRepoPath!);
+      _conflictState = GitConflictState(operation: operation, files: files);
+    } catch (e) {
+      debugPrint('[GitProvider] 读取冲突状态异常: $e');
+      _conflictState = GitConflictState.idle;
+    }
+  }
+
+  /// 手动刷新冲突状态（冲突面板打开时调用）
+  Future<void> refreshConflictState() async {
+    await _loadConflictState();
+    notifyListeners();
+  }
+
+  /// 重新探测冲突状态并通知 UI
+  ///
+  /// 先做一次极轻量的文件系统探测（无进程开销），只有确实处于中断状态时
+  /// 才去解析冲突文件列表 —— 这样可以挂在每次网络操作失败之后而不付代价。
+  Future<void> _reloadConflictStateAndNotify() async {
+    if (_currentRepoPath == null) return;
+    final operation = _gitService.getPendingOperation(_currentRepoPath!);
+    if (operation == GitPendingOperation.none) {
+      if (_conflictState.isPending) {
+        _conflictState = GitConflictState.idle;
+        notifyListeners();
+      }
+      return;
+    }
+    await _loadConflictState();
+    notifyListeners();
+  }
+
+  /// 把文件标记为已解决（`git add`）
+  Future<GitCommandResult> markConflictResolved(GitConflictedFile file) async {
+    if (_currentRepoPath == null) return GitCommandResult.error('未选择仓库');
+    final res = await _gitService.markResolved(
+      _currentRepoPath!,
+      file.relativePath,
+    );
+    await _afterConflictAction(res);
+    return res;
+  }
+
+  /// 整文件采用某一侧
+  ///
+  /// [useOurs] 的含义随操作类型变化（rebase 下 ours 是基线），
+  /// 文案由 UI 按 [conflictState] 的 operation 决定。
+  Future<GitCommandResult> takeConflictSide(
+    GitConflictedFile file, {
+    required bool useOurs,
+  }) async {
+    if (_currentRepoPath == null) return GitCommandResult.error('未选择仓库');
+    final res = await _gitService.checkoutConflictSide(
+      _currentRepoPath!,
+      file.relativePath,
+      useOurs: useOurs,
+    );
+    await _afterConflictAction(res);
+    return res;
+  }
+
+  /// 重新生成冲突标记（改坏了用它恢复）
+  Future<GitCommandResult> recreateConflictMarkers(
+    GitConflictedFile file,
+  ) async {
+    if (_currentRepoPath == null) return GitCommandResult.error('未选择仓库');
+    final res = await _gitService.recreateConflictMarkers(
+      _currentRepoPath!,
+      file.relativePath,
+    );
+    if (res.success) {
+      await _loadConflictState();
+      notifyListeners();
+    }
+    return res;
+  }
+
+  /// 删除冲突文件（modify/delete 冲突中选择"确认删除"）
+  Future<GitCommandResult> removeConflictedFile(GitConflictedFile file) async {
+    if (_currentRepoPath == null) return GitCommandResult.error('未选择仓库');
+    final res = await _gitService.removeConflictedFile(
+      _currentRepoPath!,
+      file.relativePath,
+    );
+    await _afterConflictAction(res);
+    return res;
+  }
+
+  /// 继续被中断的操作
+  ///
+  /// 若仍有未解决文件，直接拒绝 —— 否则 git 会立刻再次停下，
+  /// 用户会以为是"继续没生效"。
+  Future<GitCommandResult> continueOperation() async {
+    if (_currentRepoPath == null) return GitCommandResult.error('未选择仓库');
+    if (_conflictState.files.isNotEmpty) {
+      return GitCommandResult.error('仍有未解决的冲突文件，请先全部标记为已解决');
+    }
+    final res = await _gitService.continueOperation(
+      _currentRepoPath!,
+      _conflictState.operation,
+    );
+
+    if (!res.success &&
+        _gitService.isOperationStoppedForEmptyCommit(res.stderr + res.stdout)) {
+      // 提交为空导致再次停下：这是正常现象，但必须明确告诉用户可以跳过
+      _conflictNotice = 'emptyCommit';
+      await _loadConflictState();
+      notifyListeners();
+      return res;
+    }
+
+    await _afterConflictAction(res, fullReload: true);
+    return res;
+  }
+
+  /// 跳过当前提交
+  Future<GitCommandResult> skipOperation() async {
+    if (_currentRepoPath == null) return GitCommandResult.error('未选择仓库');
+    final res = await _gitService.skipOperation(
+      _currentRepoPath!,
+      _conflictState.operation,
+    );
+    await _afterConflictAction(res, fullReload: true);
+    return res;
+  }
+
+  /// 放弃被中断的操作
+  Future<GitCommandResult> abortOperation() async {
+    if (_currentRepoPath == null) return GitCommandResult.error('未选择仓库');
+    final res = await _gitService.abortOperation(
+      _currentRepoPath!,
+      _conflictState.operation,
+    );
+    await _afterConflictAction(res, fullReload: true);
+    return res;
+  }
+
+  /// 清除一次性提示
+  void clearConflictNotice() {
+    _conflictNotice = null;
+    notifyListeners();
+  }
+
+  /// 冲突操作后的统一刷新
+  ///
+  /// [fullReload] 表示操作可能改写了提交历史（continue/skip/abort），
+  /// 此时必须完整刷新而非只刷新远端状态。
+  Future<void> _afterConflictAction(
+    GitCommandResult res, {
+    bool fullReload = false,
+  }) async {
+    if (!res.success) return;
+    if (fullReload) {
+      await _loadCurrentRepoDetails();
+    } else {
+      await _loadConflictState();
+    }
     notifyListeners();
   }
 

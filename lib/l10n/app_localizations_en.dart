@@ -2251,6 +2251,150 @@ class AppLocalizationsEn extends AppLocalizations {
   String get gitNoBranches => 'No branches';
 
   @override
+  String get gitConflictTitle => 'Resolve Conflicts';
+
+  @override
+  String get gitConflictRebaseInProgress => 'Rebase in progress';
+
+  @override
+  String get gitConflictMergeInProgress => 'Merge in progress';
+
+  @override
+  String get gitConflictCherryPickInProgress => 'Cherry-pick in progress';
+
+  @override
+  String get gitConflictRevertInProgress => 'Revert in progress';
+
+  @override
+  String gitConflictRemaining(int count) {
+    return '$count file(s) still unresolved';
+  }
+
+  @override
+  String get gitConflictAllResolved =>
+      'All conflicts resolved, ready to continue';
+
+  @override
+  String gitConflictResolved(String path) {
+    return 'Marked as resolved: $path';
+  }
+
+  @override
+  String get gitConflictOpenFile => 'Open file to edit';
+
+  @override
+  String gitConflictTakeBaseline(String name) {
+    return 'Take version from $name';
+  }
+
+  @override
+  String get gitConflictTakeIncoming =>
+      'Take version from the commit being applied';
+
+  @override
+  String get gitConflictTakeBaselineGeneric =>
+      'Take the baseline version for the whole file';
+
+  @override
+  String get gitConflictRecreate => 'Regenerate conflict markers';
+
+  @override
+  String get gitConflictRecreateDone => 'Conflict markers regenerated';
+
+  @override
+  String get gitConflictRemoveFile => 'Delete this file';
+
+  @override
+  String get gitConflictBinaryHint =>
+      'Binary files cannot be resolved with markers — choose which side to keep';
+
+  @override
+  String get gitConflictDeleteHint =>
+      'This file was deleted on one side — choose whether to keep or delete it';
+
+  @override
+  String get gitConflictContinue => 'Continue';
+
+  @override
+  String get gitConflictSkip => 'Skip this commit';
+
+  @override
+  String get gitConflictAbort => 'Abort Rebase';
+
+  @override
+  String get gitConflictAbortConfirm =>
+      'Abort this rebase and return to the state before it started?';
+
+  @override
+  String get gitConflictContinueSuccess => 'Operation completed';
+
+  @override
+  String get gitConflictSkipSuccess => 'Commit skipped';
+
+  @override
+  String get gitConflictAbortSuccess => 'Operation aborted';
+
+  @override
+  String get gitConflictBlockedByUnresolved =>
+      'Some conflicts are still unresolved — mark them all resolved first';
+
+  @override
+  String get gitConflictEmptyCommitNotice =>
+      'This commit became empty when applied (its changes already exist in the baseline). You can skip it.';
+
+  @override
+  String get gitConflictSkipHint =>
+      'This commit became empty when applied — its changes usually already exist in the baseline';
+
+  @override
+  String get gitConflictTypeBothModified => 'Both modified';
+
+  @override
+  String get gitConflictTypeBothAdded => 'Both added';
+
+  @override
+  String get gitConflictTypeDeletedByUs => 'Theirs modified, ours deleted';
+
+  @override
+  String get gitConflictTypeDeletedByThem => 'Ours modified, theirs deleted';
+
+  @override
+  String get gitConflictTypeAddedByUs => 'Ours added, theirs exists';
+
+  @override
+  String get gitConflictTypeAddedByThem => 'Theirs added, ours exists';
+
+  @override
+  String get gitConflictTypeBothDeleted => 'Both deleted';
+
+  @override
+  String get gitConflictTypeUnknown => 'Conflict';
+
+  @override
+  String get gitConflictBaseSegment => 'Common ancestor';
+
+  @override
+  String get gitConflictOursSegment => 'Current side';
+
+  @override
+  String get gitConflictTheirsSegment => 'Incoming side';
+
+  @override
+  String get gitConflictMalformed =>
+      'Conflict markers are malformed — edit this file manually';
+
+  @override
+  String gitConflictBlockCount(int count) {
+    return '$count conflict(s)';
+  }
+
+  @override
+  String get gitConflictApplyOurs => 'Use this';
+
+  @override
+  String get gitConflictApplyBoth => 'Keep both';
+
+  @override
   String get gitRemoteBranches => 'Remote Branches';
 
   @override
@@ -2447,6 +2591,14 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get gitErrRepositoryNotFound =>
       'Repository not found, or this account has no access to it';
+
+  @override
+  String get gitErrLocalRemoteMissing =>
+      'The local remote path does not exist inside the container';
+
+  @override
+  String get gitErrLocalRemoteMissingHint =>
+      'This remote is a local directory (not a network address like GitHub), and it is outside the currently opened project folder. The container only mounts the current project folder, so paths outside it are unreachable. Move the directory into the project, or switch to a network URL.';
 
   @override
   String get gitErrRepositoryNotFoundHint =>
@@ -2797,13 +2949,6 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get gitPullThenPushDesc =>
       'The remote has commits you do not have. Pull and merge them before pushing.';
-
-  @override
-  String get gitConflictAbort => 'Abort Rebase';
-
-  @override
-  String get gitConflictAbortConfirm =>
-      'Abort this rebase and return to the state before it started?';
 
   @override
   String get gitUncommittedChangesTitle => 'Uncommitted Changes';

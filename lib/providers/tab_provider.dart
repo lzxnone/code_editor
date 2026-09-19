@@ -234,6 +234,39 @@ class TabProvider extends ChangeNotifier {
     }
   }
 
+  /// 强制从磁盘重新加载指定文件的内容（丢弃内存中的编辑）
+  ///
+  /// 冲突解决必须用它而不是 [openFile]：Git 在冲突时**直接改写了工作区文件**
+  /// 并写入 `<<<<<<<` 标记，而 [openFile] 对已打开的 tab 不会重载内容 ——
+  /// 那样用户会看到没有标记的旧内存版本，改完保存还会把标记覆盖掉，
+  /// 索引却仍是 unmerged，状态彻底错乱。
+  ///
+  /// 返回是否成功找到并重载了该 tab。
+  Future<bool> reloadTabFromDisk(String path) async {
+    final cleanPath = p.normalize(path.trim());
+    final index = _openTabs.indexWhere((tab) => p.equals(tab.path, cleanPath));
+    if (index == -1) return false;
+
+    try {
+      final raw = await FileService.instance.readFileContent(cleanPath);
+      final diskContent = raw.replaceAll('\r\n', '\n');
+      final tab = _openTabs[index];
+      tab.content = diskContent;
+      tab.originalContent = diskContent;
+      tab.isModified = false;
+      tab.hasExternalConflict = false;
+      tab.isDeletedOnDisk = false;
+      if (_activeFilePath == tab.path) {
+        _isModified = false;
+      }
+      notifyListeners();
+      return true;
+    } catch (e) {
+      debugPrint('强制重载文件失败: $e');
+      return false;
+    }
+  }
+
   /// 解决外部文件冲突
   Future<void> resolveConflict(EditorTabItem tab, {required bool reloadFromDisk}) async {
     tab.hasExternalConflict = false;

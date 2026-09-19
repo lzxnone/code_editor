@@ -3766,6 +3766,258 @@ abstract class AppLocalizations {
   /// **'暂无分支'**
   String get gitNoBranches;
 
+  /// No description provided for @gitConflictTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'解决冲突'**
+  String get gitConflictTitle;
+
+  /// No description provided for @gitConflictRebaseInProgress.
+  ///
+  /// In zh, this message translates to:
+  /// **'变基进行中'**
+  String get gitConflictRebaseInProgress;
+
+  /// No description provided for @gitConflictMergeInProgress.
+  ///
+  /// In zh, this message translates to:
+  /// **'合并进行中'**
+  String get gitConflictMergeInProgress;
+
+  /// No description provided for @gitConflictCherryPickInProgress.
+  ///
+  /// In zh, this message translates to:
+  /// **'拣选进行中'**
+  String get gitConflictCherryPickInProgress;
+
+  /// No description provided for @gitConflictRevertInProgress.
+  ///
+  /// In zh, this message translates to:
+  /// **'回滚进行中'**
+  String get gitConflictRevertInProgress;
+
+  /// No description provided for @gitConflictRemaining.
+  ///
+  /// In zh, this message translates to:
+  /// **'还有 {count} 个文件未解决'**
+  String gitConflictRemaining(int count);
+
+  /// No description provided for @gitConflictAllResolved.
+  ///
+  /// In zh, this message translates to:
+  /// **'冲突已全部解决，可以继续'**
+  String get gitConflictAllResolved;
+
+  /// No description provided for @gitConflictResolved.
+  ///
+  /// In zh, this message translates to:
+  /// **'已标记为已解决：{path}'**
+  String gitConflictResolved(String path);
+
+  /// No description provided for @gitConflictOpenFile.
+  ///
+  /// In zh, this message translates to:
+  /// **'打开文件编辑'**
+  String get gitConflictOpenFile;
+
+  /// No description provided for @gitConflictTakeBaseline.
+  ///
+  /// In zh, this message translates to:
+  /// **'采用 {name} 的版本'**
+  String gitConflictTakeBaseline(String name);
+
+  /// No description provided for @gitConflictTakeIncoming.
+  ///
+  /// In zh, this message translates to:
+  /// **'采用正在应用的提交版本'**
+  String get gitConflictTakeIncoming;
+
+  /// No description provided for @gitConflictTakeBaselineGeneric.
+  ///
+  /// In zh, this message translates to:
+  /// **'整文件采用基线版本'**
+  String get gitConflictTakeBaselineGeneric;
+
+  /// No description provided for @gitConflictRecreate.
+  ///
+  /// In zh, this message translates to:
+  /// **'重新生成冲突标记'**
+  String get gitConflictRecreate;
+
+  /// No description provided for @gitConflictRecreateDone.
+  ///
+  /// In zh, this message translates to:
+  /// **'已重新生成冲突标记'**
+  String get gitConflictRecreateDone;
+
+  /// No description provided for @gitConflictRemoveFile.
+  ///
+  /// In zh, this message translates to:
+  /// **'删除此文件'**
+  String get gitConflictRemoveFile;
+
+  /// No description provided for @gitConflictBinaryHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'二进制文件无法用标记解决，请选择保留哪一边'**
+  String get gitConflictBinaryHint;
+
+  /// No description provided for @gitConflictDeleteHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'该文件在一侧被删除，请选择保留还是删除'**
+  String get gitConflictDeleteHint;
+
+  /// No description provided for @gitConflictContinue.
+  ///
+  /// In zh, this message translates to:
+  /// **'继续'**
+  String get gitConflictContinue;
+
+  /// No description provided for @gitConflictSkip.
+  ///
+  /// In zh, this message translates to:
+  /// **'跳过此提交'**
+  String get gitConflictSkip;
+
+  /// No description provided for @gitConflictAbort.
+  ///
+  /// In zh, this message translates to:
+  /// **'放弃本次变基'**
+  String get gitConflictAbort;
+
+  /// No description provided for @gitConflictAbortConfirm.
+  ///
+  /// In zh, this message translates to:
+  /// **'确定要放弃本次变基操作并回到操作前的状态吗？'**
+  String get gitConflictAbortConfirm;
+
+  /// No description provided for @gitConflictContinueSuccess.
+  ///
+  /// In zh, this message translates to:
+  /// **'操作已完成'**
+  String get gitConflictContinueSuccess;
+
+  /// No description provided for @gitConflictSkipSuccess.
+  ///
+  /// In zh, this message translates to:
+  /// **'已跳过当前提交'**
+  String get gitConflictSkipSuccess;
+
+  /// No description provided for @gitConflictAbortSuccess.
+  ///
+  /// In zh, this message translates to:
+  /// **'已放弃本次操作'**
+  String get gitConflictAbortSuccess;
+
+  /// No description provided for @gitConflictBlockedByUnresolved.
+  ///
+  /// In zh, this message translates to:
+  /// **'仍有未解决的冲突文件，请先全部标记为已解决'**
+  String get gitConflictBlockedByUnresolved;
+
+  /// No description provided for @gitConflictEmptyCommitNotice.
+  ///
+  /// In zh, this message translates to:
+  /// **'该提交在应用后变为空（内容已存在于基线中），可以跳过它'**
+  String get gitConflictEmptyCommitNotice;
+
+  /// No description provided for @gitConflictSkipHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'该提交在应用后变为空，通常表示它的改动已存在于基线中'**
+  String get gitConflictSkipHint;
+
+  /// No description provided for @gitConflictTypeBothModified.
+  ///
+  /// In zh, this message translates to:
+  /// **'双方修改'**
+  String get gitConflictTypeBothModified;
+
+  /// No description provided for @gitConflictTypeBothAdded.
+  ///
+  /// In zh, this message translates to:
+  /// **'双方新增'**
+  String get gitConflictTypeBothAdded;
+
+  /// No description provided for @gitConflictTypeDeletedByUs.
+  ///
+  /// In zh, this message translates to:
+  /// **'对方修改、我方删除'**
+  String get gitConflictTypeDeletedByUs;
+
+  /// No description provided for @gitConflictTypeDeletedByThem.
+  ///
+  /// In zh, this message translates to:
+  /// **'我方修改、对方删除'**
+  String get gitConflictTypeDeletedByThem;
+
+  /// No description provided for @gitConflictTypeAddedByUs.
+  ///
+  /// In zh, this message translates to:
+  /// **'我方新增、对方已存在'**
+  String get gitConflictTypeAddedByUs;
+
+  /// No description provided for @gitConflictTypeAddedByThem.
+  ///
+  /// In zh, this message translates to:
+  /// **'对方新增、我方已存在'**
+  String get gitConflictTypeAddedByThem;
+
+  /// No description provided for @gitConflictTypeBothDeleted.
+  ///
+  /// In zh, this message translates to:
+  /// **'双方删除'**
+  String get gitConflictTypeBothDeleted;
+
+  /// No description provided for @gitConflictTypeUnknown.
+  ///
+  /// In zh, this message translates to:
+  /// **'冲突'**
+  String get gitConflictTypeUnknown;
+
+  /// No description provided for @gitConflictBaseSegment.
+  ///
+  /// In zh, this message translates to:
+  /// **'共同祖先'**
+  String get gitConflictBaseSegment;
+
+  /// No description provided for @gitConflictOursSegment.
+  ///
+  /// In zh, this message translates to:
+  /// **'当前侧'**
+  String get gitConflictOursSegment;
+
+  /// No description provided for @gitConflictTheirsSegment.
+  ///
+  /// In zh, this message translates to:
+  /// **'传入侧'**
+  String get gitConflictTheirsSegment;
+
+  /// No description provided for @gitConflictMalformed.
+  ///
+  /// In zh, this message translates to:
+  /// **'冲突标记结构异常，请手工编辑该文件'**
+  String get gitConflictMalformed;
+
+  /// No description provided for @gitConflictBlockCount.
+  ///
+  /// In zh, this message translates to:
+  /// **'{count} 处冲突'**
+  String gitConflictBlockCount(int count);
+
+  /// No description provided for @gitConflictApplyOurs.
+  ///
+  /// In zh, this message translates to:
+  /// **'采用此段'**
+  String get gitConflictApplyOurs;
+
+  /// No description provided for @gitConflictApplyBoth.
+  ///
+  /// In zh, this message translates to:
+  /// **'两段都要'**
+  String get gitConflictApplyBoth;
+
   /// No description provided for @gitRemoteBranches.
   ///
   /// In zh, this message translates to:
@@ -4095,6 +4347,18 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'仓库不存在，或当前账号无权访问'**
   String get gitErrRepositoryNotFound;
+
+  /// No description provided for @gitErrLocalRemoteMissing.
+  ///
+  /// In zh, this message translates to:
+  /// **'本地远端路径在容器内不存在'**
+  String get gitErrLocalRemoteMissing;
+
+  /// No description provided for @gitErrLocalRemoteMissingHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'该远端是一个本地目录（不是 GitHub 等网络地址），但它不在当前打开的项目目录内。容器只挂载当前项目目录，因此项目外的路径无法访问。请把该目录移到项目内，或改用网络地址。'**
+  String get gitErrLocalRemoteMissingHint;
 
   /// No description provided for @gitErrRepositoryNotFoundHint.
   ///
@@ -4683,18 +4947,6 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'远端存在本地没有的提交，先拉取合并后再推送。'**
   String get gitPullThenPushDesc;
-
-  /// No description provided for @gitConflictAbort.
-  ///
-  /// In zh, this message translates to:
-  /// **'放弃本次变基'**
-  String get gitConflictAbort;
-
-  /// No description provided for @gitConflictAbortConfirm.
-  ///
-  /// In zh, this message translates to:
-  /// **'确定要放弃本次变基操作并回到操作前的状态吗？'**
-  String get gitConflictAbortConfirm;
 
   /// No description provided for @gitUncommittedChangesTitle.
   ///

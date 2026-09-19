@@ -65,6 +65,106 @@ enum GitRemoteSource {
   manualOverride,
 }
 
+/// 处于中断状态的 Git 操作（决定「继续」到底指什么）
+enum GitPendingOperation {
+  none,
+  rebase,
+  merge,
+  cherryPick,
+  revert,
+}
+
+/// 冲突类型（对应 `git status --porcelain` 的 XY 两位状态组合）
+enum GitConflictType {
+  /// UU —— 双方都修改了同一文件的同一区域，最常见
+  bothModified,
+
+  /// AA —— 双方都新增了同一文件
+  bothAdded,
+
+  /// DU —— 对方删除、我们修改
+  deletedByUs,
+
+  /// UD —— 我们删除、对方修改
+  deletedByThem,
+
+  /// AU —— 我们新增、对方已存在
+  addedByUs,
+
+  /// UA —— 对方新增、我们已存在
+  addedByThem,
+
+  /// DD —— 双方都删除（少见）
+  bothDeleted,
+
+  unknown,
+}
+
+/// 一个存在冲突的文件
+class GitConflictedFile {
+  final String relativePath;
+  final String absolutePath;
+  final GitConflictType type;
+
+  /// 二进制文件无法用 `<<<<<<<` 标记表达，只能整文件选一边
+  final bool isBinary;
+
+  const GitConflictedFile({
+    required this.relativePath,
+    required this.absolutePath,
+    required this.type,
+    this.isBinary = false,
+  });
+
+  /// 是否可通过编辑文本标记来解决
+  bool get canEditManually => !isBinary && type != GitConflictType.bothDeleted;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is GitConflictedFile &&
+          runtimeType == other.runtimeType &&
+          relativePath == other.relativePath &&
+          type == other.type;
+
+  @override
+  int get hashCode => Object.hash(relativePath, type);
+
+  @override
+  String toString() => 'GitConflictedFile($relativePath, ${type.name})';
+}
+
+/// 冲突整体状态
+class GitConflictState {
+  final GitPendingOperation operation;
+  final List<GitConflictedFile> files;
+
+  const GitConflictState({
+    required this.operation,
+    this.files = const [],
+  });
+
+  static const GitConflictState idle = GitConflictState(
+    operation: GitPendingOperation.none,
+  );
+
+  /// 是否有操作处于中断状态（未必有冲突文件：可能冲突已解决待继续）
+  bool get isPending => operation != GitPendingOperation.none;
+
+  /// 是否仍有未解决的文件
+  bool get hasUnresolvedFiles => files.isNotEmpty;
+
+  /// 冲突文件数
+  int get conflictCount => files.length;
+
+  /// 全部解决后才可以「继续」
+  bool get canContinue => isPending && files.isEmpty;
+
+  @override
+  String toString() =>
+      'GitConflictState(${operation.name}, files=${files.length})';
+}
+
 /// 远端追踪分支（`origin/feature-x` 这类）
 ///
 /// 与 [GitRemote] 不同：后者是"远程仓库"（一个名字 + 地址），

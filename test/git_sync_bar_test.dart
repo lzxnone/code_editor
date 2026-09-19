@@ -1119,6 +1119,125 @@ void main() {
     });
   });
 
+  group('冲突状态探测', () {
+    test('pull 撞冲突后必须立刻暴露冲突状态（回归）', () async {
+      // 真实 bug：pull 失败分支只调 _loadRemoteStateOnly()，
+      // 而读冲突状态的逻辑挂在 _loadCurrentRepoDetails() 里 ——
+      // 结果冲突发生了但面板不知道，横幅不出现，用户找不到解决入口。
+      final repoDir = Directory(p.join(tempDir.path, 'conflict_repo'))
+        ..createSync(recursive: true);
+      Directory(p.join(repoDir.path, '.git')).createSync(recursive: true);
+
+      GitService.instance.processRunner = (exec, args, {workingDirectory}) async {
+        if (args.contains('--version')) {
+          return ProcessResult(0, 0, 'git version 2.45.0\n', '');
+        }
+        if (args.isNotEmpty && args[0] == 'config') {
+          return ProcessResult(1, 1, '', '');
+        }
+        if (args.contains('remote') && args.contains('-v')) {
+          return ProcessResult(
+            0,
+            0,
+            'origin\thttps://github.com/me/repo.git (fetch)\n'
+                'origin\thttps://github.com/me/repo.git (push)\n',
+            '',
+          );
+        }
+        if (args.contains('status')) {
+          return ProcessResult(0, 0, '# branch.head master\n# branch.ab +0 -0\n', '');
+        }
+        if (args.contains('diff') && args.contains('--diff-filter=U')) {
+          return ProcessResult(0, 0, 'lib/a.dart\x00', '');
+        }
+        if (args.contains('branch') && args.contains('--show-current')) {
+          return ProcessResult(0, 0, 'master\n', '');
+        }
+        return ProcessResult(0, 0, '', '');
+      };
+
+      // pull 失败，并且仓库已进入 rebase 中断状态（文件系统上真实创建）
+      GitService.instance.streamRunner = ({
+        required String executable,
+        required List<String> arguments,
+        required String workspacePath,
+        required String? containerWorkDir,
+        void Function(String chunk)? onOutput,
+        HeadlessCancelToken? cancelToken,
+        Duration timeout = const Duration(minutes: 5),
+      }) async {
+        Directory(p.join(repoDir.path, '.git', 'rebase-merge'))
+            .createSync(recursive: true);
+        return ProcessResult(
+          1,
+          1,
+          '',
+          'CONFLICT (content): Merge conflict in lib/a.dart',
+        );
+      };
+
+      final provider = GitProvider();
+      provider.bindRootPath(repoDir.path);
+      await provider.refresh();
+      expect(provider.hasPendingOperation, isFalse, reason: '初始无冲突');
+
+      final res = await provider.pull();
+      expect(res.success, isFalse);
+
+      // 关键断言：冲突必须已被探测到
+      expect(provider.hasPendingOperation, isTrue);
+      expect(provider.conflictState.operation, equals(GitPendingOperation.rebase));
+      expect(provider.hasConflicts, isTrue);
+      expect(provider.conflictState.conflictCount, equals(1));
+      expect(provider.conflictState.files.first.relativePath, equals('lib/a.dart'));
+    });
+
+    test('无中断状态时冲突状态为空且可继续为假', () async {
+      final repoDir = Directory(p.join(tempDir.path, 'clean_repo'))
+        ..createSync(recursive: true);
+      Directory(p.join(repoDir.path, '.git')).createSync(recursive: true);
+
+      GitService.instance.processRunner = (
+        String exec,
+        List<String> args, {
+        String? workingDirectory,
+      }) async {
+        if (args.contains('--version')) {
+          return ProcessResult(0, 0, 'git version 2.45.0\n', '');
+        }
+        if (args.isNotEmpty && args[0] == 'config') {
+          return ProcessResult(1, 1, '', '');
+        }
+        if (args.contains('remote') && args.contains('-v')) {
+          return ProcessResult(0, 0, '', '');
+        }
+        if (args.contains('status')) {
+          return ProcessResult(0, 0, '# branch.head master\n', '');
+        }
+        return ProcessResult(0, 0, '', '');
+      };
+      GitService.instance.streamRunner = ({
+        required String executable,
+        required List<String> arguments,
+        required String workspacePath,
+        required String? containerWorkDir,
+        void Function(String chunk)? onOutput,
+        HeadlessCancelToken? cancelToken,
+        Duration timeout = const Duration(minutes: 5),
+      }) async {
+        return ProcessResult(0, 0, '', '');
+      };
+
+      final provider = GitProvider();
+      provider.bindRootPath(repoDir.path);
+      await provider.refresh();
+
+      expect(provider.hasPendingOperation, isFalse);
+      expect(provider.hasConflicts, isFalse);
+      expect(provider.conflictState.canContinue, isFalse);
+    });
+  });
+
   group('GitPanelWidget 集成云端入口', () {
     testWidgets('320dp 手机宽度打开抽屉时 Git 面板不溢出', (tester) async {
       // 端到端验证：真实 Drawer 布局下的可用宽度比单独渲染同步条更窄

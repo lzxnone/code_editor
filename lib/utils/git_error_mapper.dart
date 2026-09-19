@@ -21,6 +21,9 @@ enum GitOperationErrorKind {
   /// 目标仓库不存在，或当前账号无权访问（HTTP 404）
   repositoryNotFound,
 
+  /// 本地路径型远端在容器内不存在（本地裸仓库/目录型 remote 的路径失效）
+  localRemotePathMissing,
+
   /// 需要代理认证（HTTP 407）
   proxyAuthRequired,
 
@@ -220,10 +223,19 @@ class GitErrorMapper {
       return const GitErrorInfo(kind: GitOperationErrorKind.requestRejected);
     }
 
-    // 2h. 仓库不存在 / 无权访问（HTTP 404 或 GitHub 文案）
-    if (text.contains('repository not found') ||
-        text.contains('does not appear to be a git repository') ||
-        text.contains('404')) {
+    // 2h. 本地路径型远端不存在（必须先于通用 404 判断）
+    // 典型输出：`fatal: '/workspace/xxx.git' does not appear to be a git repository`
+    // 这跟账号、令牌、GitHub 完全无关，归到"仓库不存在"会把用户带偏。
+    if (text.contains('does not appear to be a git repository') ||
+        text.contains('could not read from remote repository') ||
+        RegExp(r"fatal: '.*' does not exist").hasMatch(text)) {
+      return const GitErrorInfo(
+        kind: GitOperationErrorKind.localRemotePathMissing,
+      );
+    }
+
+    // 2i. 仓库不存在 / 无权访问（HTTP 404 或 GitHub 文案）
+    if (text.contains('repository not found') || text.contains('404')) {
       return const GitErrorInfo(
         kind: GitOperationErrorKind.repositoryNotFound,
         fixAction: GitErrorFixAction.openAccountManagement,
@@ -417,6 +429,8 @@ extension GitOperationErrorKindL10n on GitOperationErrorKind {
         return l10n.gitErrWritePermissionDenied;
       case GitOperationErrorKind.repositoryNotFound:
         return l10n.gitErrRepositoryNotFound;
+      case GitOperationErrorKind.localRemotePathMissing:
+        return l10n.gitErrLocalRemoteMissing;
       case GitOperationErrorKind.proxyAuthRequired:
         return l10n.gitErrProxyAuthRequired;
       case GitOperationErrorKind.requestRejected:
@@ -469,6 +483,8 @@ extension GitOperationErrorKindL10n on GitOperationErrorKind {
         return l10n.gitErrWritePermissionDeniedHint;
       case GitOperationErrorKind.repositoryNotFound:
         return l10n.gitErrRepositoryNotFoundHint;
+      case GitOperationErrorKind.localRemotePathMissing:
+        return l10n.gitErrLocalRemoteMissingHint;
       case GitOperationErrorKind.proxyAuthRequired:
         return l10n.gitErrProxyAuthRequiredHint;
       case GitOperationErrorKind.requestRejected:

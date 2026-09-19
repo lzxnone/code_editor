@@ -1295,6 +1295,77 @@
   "gitSearchTags": "搜索标签...",
   "gitNoBranches": "暂无分支",
 
+  "gitConflictTitle": "解决冲突",
+  "gitConflictRebaseInProgress": "变基进行中",
+  "gitConflictMergeInProgress": "合并进行中",
+  "gitConflictCherryPickInProgress": "拣选进行中",
+  "gitConflictRevertInProgress": "回滚进行中",
+  "gitConflictRemaining": "还有 {count} 个文件未解决",
+  "@gitConflictRemaining": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "gitConflictAllResolved": "冲突已全部解决，可以继续",
+  "gitConflictResolved": "已标记为已解决：{path}",
+  "@gitConflictResolved": {
+    "placeholders": {
+      "path": {
+        "type": "String"
+      }
+    }
+  },
+  "gitConflictOpenFile": "打开文件编辑",
+  "gitConflictTakeBaseline": "采用 {name} 的版本",
+  "@gitConflictTakeBaseline": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "gitConflictTakeIncoming": "采用正在应用的提交版本",
+  "gitConflictTakeBaselineGeneric": "整文件采用基线版本",
+  "gitConflictRecreate": "重新生成冲突标记",
+  "gitConflictRecreateDone": "已重新生成冲突标记",
+  "gitConflictRemoveFile": "删除此文件",
+  "gitConflictBinaryHint": "二进制文件无法用标记解决，请选择保留哪一边",
+  "gitConflictDeleteHint": "该文件在一侧被删除，请选择保留还是删除",
+  "gitConflictContinue": "继续",
+  "gitConflictSkip": "跳过此提交",
+  "gitConflictAbort": "放弃整个操作",
+  "gitConflictAbortConfirm": "确定放弃本次操作吗？所有已解决的冲突都会回退。",
+  "gitConflictContinueSuccess": "操作已完成",
+  "gitConflictSkipSuccess": "已跳过当前提交",
+  "gitConflictAbortSuccess": "已放弃本次操作",
+  "gitConflictBlockedByUnresolved": "仍有未解决的冲突文件，请先全部标记为已解决",
+  "gitConflictEmptyCommitNotice": "该提交在应用后变为空（内容已存在于基线中），可以跳过它",
+  "gitConflictSkipHint": "该提交在应用后变为空，通常表示它的改动已存在于基线中",
+  "gitConflictTypeBothModified": "双方修改",
+  "gitConflictTypeBothAdded": "双方新增",
+  "gitConflictTypeDeletedByUs": "对方修改、我方删除",
+  "gitConflictTypeDeletedByThem": "我方修改、对方删除",
+  "gitConflictTypeAddedByUs": "我方新增、对方已存在",
+  "gitConflictTypeAddedByThem": "对方新增、我方已存在",
+  "gitConflictTypeBothDeleted": "双方删除",
+  "gitConflictTypeUnknown": "冲突",
+  "gitConflictBaseSegment": "共同祖先",
+  "gitConflictOursSegment": "当前侧",
+  "gitConflictTheirsSegment": "传入侧",
+  "gitConflictMalformed": "冲突标记结构异常，请手工编辑该文件",
+  "gitConflictBlockCount": "{count} 处冲突",
+  "@gitConflictBlockCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "gitConflictApplyOurs": "采用此段",
+  "gitConflictApplyBoth": "两段都要",
+
   "gitRemoteBranches": "远端分支",
   "gitLocalBranches": "本地分支",
   "gitNoRemoteBranches": "暂无远端分支，请先执行抓取",
@@ -1419,6 +1490,8 @@
   "gitErrWritePermissionDenied": "当前账号对该仓库没有写权限",
   "gitErrWritePermissionDeniedHint": "若这是别人的仓库（上游），请先 Fork 到你自己的账号，再把远端地址改为你的 Fork（如 https://github.com/你的用户名/仓库.git）。",
   "gitErrRepositoryNotFound": "仓库不存在，或当前账号无权访问",
+  "gitErrLocalRemoteMissing": "本地远端路径在容器内不存在",
+  "gitErrLocalRemoteMissingHint": "该远端是一个本地目录（不是 GitHub 等网络地址），但它不在当前打开的项目目录内。容器只挂载当前项目目录，因此项目外的路径无法访问。请把该目录移到项目内，或改用网络地址。",
   "gitErrRepositoryNotFoundHint": "GitHub 对「无权限」和「不存在」都返回 404。请确认远端地址拼写正确，且该令牌有权访问该仓库。",
   "gitErrProxyAuthRequired": "网络代理需要认证",
   "gitErrProxyAuthRequiredHint": "当前网络经过需要认证的代理（HTTP 407）。请检查容器内代理配置与凭据。",
