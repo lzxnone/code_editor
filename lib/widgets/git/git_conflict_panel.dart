@@ -7,6 +7,7 @@ import '../../providers/git_provider.dart';
 import '../../providers/tab_provider.dart';
 import '../../utils/dialog_utils.dart';
 import '../../utils/git_error_mapper.dart';
+import 'git_conflict_resolve_page.dart';
 
 /// 冲突解决面板（底部弹出）
 ///
@@ -380,11 +381,19 @@ class _ConflictFileTile extends StatelessWidget {
         tooltip: l10n.gitConflictTitle,
         onSelected: (action) => _handle(context, l10n, provider, action),
         itemBuilder: (_) => [
-          if (file.canEditManually)
+          if (file.canEditManually) ...[
+            PopupMenuItem(
+              value: 'resolve',
+              child: _menuRow(
+                Icons.merge_type,
+                l10n.gitConflictResolveTitle,
+              ),
+            ),
             PopupMenuItem(
               value: 'open',
               child: _menuRow(Icons.open_in_new_rounded, l10n.gitConflictOpenFile),
             ),
+          ],
           PopupMenuItem(
             value: 'ours',
             child: _menuRow(
@@ -415,8 +424,9 @@ class _ConflictFileTile extends StatelessWidget {
           ),
         ],
       ),
+      // 点击文件条目直接进入三方解决页（这是主要路径）
       onTap: file.canEditManually
-          ? () => _handle(context, l10n, provider, 'open')
+          ? () => _openResolvePage(context, provider)
           : null,
     );
   }
@@ -458,6 +468,9 @@ class _ConflictFileTile extends StatelessWidget {
     String action,
   ) async {
     switch (action) {
+      case 'resolve':
+        await _openResolvePage(context, provider);
+        break;
       case 'open':
         await _openInEditor(context, provider);
         break;
@@ -500,6 +513,21 @@ class _ConflictFileTile extends StatelessWidget {
     }
   }
 
+  /// 打开三方冲突解决页（逐块选择，由程序替换而非人工删标记）
+  Future<void> _openResolvePage(BuildContext context, GitProvider provider) async {
+    await provider.refreshConflictState();
+    if (!context.mounted) return;
+
+    // 先收起面板与抽屉，再压入解决页 —— 否则返回时层级会错乱
+    Navigator.of(context).maybePop();
+
+    await Navigator.of(context).push(
+      GitConflictResolvePage.route(file: file, gitProvider: provider),
+    );
+    // 返回后刷新：用户可能已在解决页里标记完成
+    await provider.refreshConflictState();
+  }
+
   /// 在编辑器中打开冲突文件
   ///
   /// **必须先强制从磁盘重载**：Git 冲突时直接改写了工作区文件并写入标记，
@@ -509,11 +537,13 @@ class _ConflictFileTile extends StatelessWidget {
     await provider.refreshConflictState();
     await tabProvider.reloadTabFromDisk(file.absolutePath);
     await tabProvider.openFile(file.absolutePath);
-    if (context.mounted) {
-      // 关闭面板并退出抽屉，把焦点交给编辑器
-      Navigator.of(context).maybePop();
-      Navigator.of(context).maybePop();
-    }
+    if (!context.mounted) return;
+
+    // 先收起 bottom sheet 面板，再显式关闭抽屉。
+    // 这里不能用连续两次 maybePop()：抽屉是 Scaffold 管理的路由，
+    // 用 closeDrawer() 才是项目内一致且可靠的做法（见 file_item_widget）。
+    Navigator.of(context).maybePop();
+    Scaffold.maybeOf(context)?.closeDrawer();
   }
 
   Future<void> _takeSide(

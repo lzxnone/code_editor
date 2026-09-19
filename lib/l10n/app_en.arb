@@ -1365,6 +1365,54 @@
   },
   "gitConflictApplyOurs": "Use this",
   "gitConflictApplyBoth": "Keep both",
+  "gitConflictResolveTitle": "Resolve Conflict",
+  "gitConflictBlockIndex": "Conflict {index} of {total}",
+  "@gitConflictBlockIndex": {
+    "placeholders": {
+      "index": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "gitConflictSectionBaseline": "Baseline (common ancestor)",
+  "gitConflictSectionOurs": "Current side",
+  "gitConflictSectionTheirs": "Incoming side",
+  "gitConflictTakeBoth": "Keep both",
+  "gitConflictEditManually": "Edit manually",
+  "gitConflictAllOurs": "Use current side for all",
+  "gitConflictAllTheirs": "Use incoming side for all",
+  "gitConflictSaveAndMark": "Save and mark resolved",
+  "gitConflictAcceptCurrent": "Accept Current Change",
+  "gitConflictAcceptIncoming": "Accept Incoming Change",
+  "gitConflictAcceptBoth": "Accept Both Changes",
+  "gitConflictCompare": "Compare Changes",
+  "gitConflictPrev": "Previous conflict",
+  "gitConflictNext": "Next conflict",
+  "gitConflictSaveAndMarkDone": "Resolved and written back",
+  "gitConflictNoBlocks": "No conflict markers left in this file",
+  "gitConflictLoadFailed": "Failed to load conflict contents",
+  "gitConflictUnresolvedRemain": "{count} block(s) still unresolved",
+  "@gitConflictUnresolvedRemain": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "gitConflictMarkWithMarkers": "{count} conflict marker(s) still remain in the file",
+  "@gitConflictMarkWithMarkers": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "gitConflictMarkWithMarkersHint": "Marking as resolved would commit them as normal content.",
+  "gitConflictMarkAnyway": "Mark anyway",
+  "gitConflictGoResolve": "Resolve first",
 
   "gitRemoteBranches": "Remote Branches",
   "gitLocalBranches": "Local Branches",

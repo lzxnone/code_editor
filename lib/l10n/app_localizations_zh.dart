@@ -2322,6 +2322,84 @@ class AppLocalizationsZh extends AppLocalizations {
   String get gitConflictApplyBoth => '两段都要';
 
   @override
+  String get gitConflictResolveTitle => '解决冲突';
+
+  @override
+  String gitConflictBlockIndex(int index, int total) {
+    return '冲突 $index / $total';
+  }
+
+  @override
+  String get gitConflictSectionBaseline => '基线（共同祖先）';
+
+  @override
+  String get gitConflictSectionOurs => '当前侧';
+
+  @override
+  String get gitConflictSectionTheirs => '传入侧';
+
+  @override
+  String get gitConflictTakeBoth => '两段都要';
+
+  @override
+  String get gitConflictEditManually => '手动编辑';
+
+  @override
+  String get gitConflictAllOurs => '全部采用当前侧';
+
+  @override
+  String get gitConflictAllTheirs => '全部采用传入侧';
+
+  @override
+  String get gitConflictSaveAndMark => '保存并标记为已解决';
+
+  @override
+  String get gitConflictAcceptCurrent => '采用当前侧';
+
+  @override
+  String get gitConflictAcceptIncoming => '采用传入侧';
+
+  @override
+  String get gitConflictAcceptBoth => '两段都保留';
+
+  @override
+  String get gitConflictCompare => '对比查看';
+
+  @override
+  String get gitConflictPrev => '上一处冲突';
+
+  @override
+  String get gitConflictNext => '下一处冲突';
+
+  @override
+  String get gitConflictSaveAndMarkDone => '已解决并写回文件';
+
+  @override
+  String get gitConflictNoBlocks => '该文件已无冲突标记';
+
+  @override
+  String get gitConflictLoadFailed => '读取冲突内容失败';
+
+  @override
+  String gitConflictUnresolvedRemain(int count) {
+    return '还剩 $count 处未处理';
+  }
+
+  @override
+  String gitConflictMarkWithMarkers(int count) {
+    return '文件里仍残留 $count 处冲突标记';
+  }
+
+  @override
+  String get gitConflictMarkWithMarkersHint => '标记为已解决会把它们当作正常内容提交进仓库。建议先处理干净。';
+
+  @override
+  String get gitConflictMarkAnyway => '仍然标记';
+
+  @override
+  String get gitConflictGoResolve => '去处理';
+
+  @override
   String get gitRemoteBranches => '远端分支';
 
   @override

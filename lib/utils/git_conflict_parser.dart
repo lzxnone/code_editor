@@ -206,4 +206,41 @@ class GitConflictParser {
   static String _labelOf(String line, String marker) {
     return line.length > marker.length ? line.substring(marker.length).trim() : '';
   }
+
+  /// 把第 [blockIndex] 个冲突块替换为 [replacement]，返回新内容
+  ///
+  /// 这是"逐块解决"的核心算法，独立成纯函数以便测试：
+  /// - 只替换**该块的行范围**，前后内容原样保留（多块文件各块互不影响）
+  /// - 传入旧的 [blocks] 与 [content] 必须来自同一次解析，否则行号会错位
+  /// - [replacement] 为空表示"该块删掉"
+  ///
+  /// 调用方应在替换后**重新解析**再处理下一块：块的行号会随替换而整体移动，
+  /// 维护偏移量容易出错，重解析代价可以忽略。
+  static String? replaceBlock({
+    required String content,
+    required List<GitConflictBlock> blocks,
+    required int blockIndex,
+    required String replacement,
+  }) {
+    if (blockIndex < 0 || blockIndex >= blocks.length) return null;
+
+    final lines = content.split('\n');
+    final block = blocks[blockIndex];
+    if (block.startLine < 0 || block.endLine >= lines.length) return null;
+
+    final before = lines.sublist(0, block.startLine);
+    final after = lines.sublist(block.endLine + 1);
+
+    final replacementLines =
+        replacement.isEmpty ? <String>[] : replacement.split('\n').toList();
+    // split 在内容以换行结尾时会多出一个空串，去掉以免多插空行
+    if (replacementLines.isNotEmpty && replacementLines.last.isEmpty) {
+      replacementLines.removeLast();
+    }
+
+    return <String>[...before, ...replacementLines, ...after].join('\n');
+  }
+
+  /// 统计内容中未解决的冲突块数量（不做完整解析，用于快速校验）
+  static int countMarkers(String content) => parse(content).blocks.length;
 }

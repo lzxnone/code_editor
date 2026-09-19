@@ -197,10 +197,21 @@ class _FileItemWidgetState extends State<FileItemWidget> {
               ),
               selected: isSelected,
               selectedTileColor: theme.colorScheme.primaryContainer.withValues(alpha: 0.5),
-              leading: Icon(
-                _getFileIcon(item),
-                size: 20,
-                color: iconColor,
+              // 与文件夹项前导区对齐：文件夹有「折叠箭头 + 间距 + 图标」，
+              // 文件只有图标。若直接给图标，同一层级下文件图标会比文件夹图标
+              // 左移一个箭头的宽度（16+4），视觉上文件缩进反而更浅。
+              // 这里补一个等宽占位（区别于 VS Code：文件项不显示箭头），
+              // 使同一层级的图标与文件名严格对齐。
+              leading: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const SizedBox(width: 16 + 4),
+                  Icon(
+                    _getFileIcon(item),
+                    size: 20,
+                    color: iconColor,
+                  ),
+                ],
               ),
               title: Text(
                 item.name,

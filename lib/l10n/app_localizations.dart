@@ -4018,6 +4018,150 @@ abstract class AppLocalizations {
   /// **'两段都要'**
   String get gitConflictApplyBoth;
 
+  /// No description provided for @gitConflictResolveTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'解决冲突'**
+  String get gitConflictResolveTitle;
+
+  /// No description provided for @gitConflictBlockIndex.
+  ///
+  /// In zh, this message translates to:
+  /// **'冲突 {index} / {total}'**
+  String gitConflictBlockIndex(int index, int total);
+
+  /// No description provided for @gitConflictSectionBaseline.
+  ///
+  /// In zh, this message translates to:
+  /// **'基线（共同祖先）'**
+  String get gitConflictSectionBaseline;
+
+  /// No description provided for @gitConflictSectionOurs.
+  ///
+  /// In zh, this message translates to:
+  /// **'当前侧'**
+  String get gitConflictSectionOurs;
+
+  /// No description provided for @gitConflictSectionTheirs.
+  ///
+  /// In zh, this message translates to:
+  /// **'传入侧'**
+  String get gitConflictSectionTheirs;
+
+  /// No description provided for @gitConflictTakeBoth.
+  ///
+  /// In zh, this message translates to:
+  /// **'两段都要'**
+  String get gitConflictTakeBoth;
+
+  /// No description provided for @gitConflictEditManually.
+  ///
+  /// In zh, this message translates to:
+  /// **'手动编辑'**
+  String get gitConflictEditManually;
+
+  /// No description provided for @gitConflictAllOurs.
+  ///
+  /// In zh, this message translates to:
+  /// **'全部采用当前侧'**
+  String get gitConflictAllOurs;
+
+  /// No description provided for @gitConflictAllTheirs.
+  ///
+  /// In zh, this message translates to:
+  /// **'全部采用传入侧'**
+  String get gitConflictAllTheirs;
+
+  /// No description provided for @gitConflictSaveAndMark.
+  ///
+  /// In zh, this message translates to:
+  /// **'保存并标记为已解决'**
+  String get gitConflictSaveAndMark;
+
+  /// No description provided for @gitConflictAcceptCurrent.
+  ///
+  /// In zh, this message translates to:
+  /// **'采用当前侧'**
+  String get gitConflictAcceptCurrent;
+
+  /// No description provided for @gitConflictAcceptIncoming.
+  ///
+  /// In zh, this message translates to:
+  /// **'采用传入侧'**
+  String get gitConflictAcceptIncoming;
+
+  /// No description provided for @gitConflictAcceptBoth.
+  ///
+  /// In zh, this message translates to:
+  /// **'两段都保留'**
+  String get gitConflictAcceptBoth;
+
+  /// No description provided for @gitConflictCompare.
+  ///
+  /// In zh, this message translates to:
+  /// **'对比查看'**
+  String get gitConflictCompare;
+
+  /// No description provided for @gitConflictPrev.
+  ///
+  /// In zh, this message translates to:
+  /// **'上一处冲突'**
+  String get gitConflictPrev;
+
+  /// No description provided for @gitConflictNext.
+  ///
+  /// In zh, this message translates to:
+  /// **'下一处冲突'**
+  String get gitConflictNext;
+
+  /// No description provided for @gitConflictSaveAndMarkDone.
+  ///
+  /// In zh, this message translates to:
+  /// **'已解决并写回文件'**
+  String get gitConflictSaveAndMarkDone;
+
+  /// No description provided for @gitConflictNoBlocks.
+  ///
+  /// In zh, this message translates to:
+  /// **'该文件已无冲突标记'**
+  String get gitConflictNoBlocks;
+
+  /// No description provided for @gitConflictLoadFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'读取冲突内容失败'**
+  String get gitConflictLoadFailed;
+
+  /// No description provided for @gitConflictUnresolvedRemain.
+  ///
+  /// In zh, this message translates to:
+  /// **'还剩 {count} 处未处理'**
+  String gitConflictUnresolvedRemain(int count);
+
+  /// No description provided for @gitConflictMarkWithMarkers.
+  ///
+  /// In zh, this message translates to:
+  /// **'文件里仍残留 {count} 处冲突标记'**
+  String gitConflictMarkWithMarkers(int count);
+
+  /// No description provided for @gitConflictMarkWithMarkersHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'标记为已解决会把它们当作正常内容提交进仓库。建议先处理干净。'**
+  String get gitConflictMarkWithMarkersHint;
+
+  /// No description provided for @gitConflictMarkAnyway.
+  ///
+  /// In zh, this message translates to:
+  /// **'仍然标记'**
+  String get gitConflictMarkAnyway;
+
+  /// No description provided for @gitConflictGoResolve.
+  ///
+  /// In zh, this message translates to:
+  /// **'去处理'**
+  String get gitConflictGoResolve;
+
   /// No description provided for @gitRemoteBranches.
   ///
   /// In zh, this message translates to:

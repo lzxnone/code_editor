@@ -1365,6 +1365,54 @@
   },
   "gitConflictApplyOurs": "采用此段",
   "gitConflictApplyBoth": "两段都要",
+  "gitConflictResolveTitle": "解决冲突",
+  "gitConflictBlockIndex": "冲突 {index} / {total}",
+  "@gitConflictBlockIndex": {
+    "placeholders": {
+      "index": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "gitConflictSectionBaseline": "基线（共同祖先）",
+  "gitConflictSectionOurs": "当前侧",
+  "gitConflictSectionTheirs": "传入侧",
+  "gitConflictTakeBoth": "两段都要",
+  "gitConflictEditManually": "手动编辑",
+  "gitConflictAllOurs": "全部采用当前侧",
+  "gitConflictAllTheirs": "全部采用传入侧",
+  "gitConflictSaveAndMark": "保存并标记为已解决",
+  "gitConflictAcceptCurrent": "采用当前侧",
+  "gitConflictAcceptIncoming": "采用传入侧",
+  "gitConflictAcceptBoth": "两段都保留",
+  "gitConflictCompare": "对比查看",
+  "gitConflictPrev": "上一处冲突",
+  "gitConflictNext": "下一处冲突",
+  "gitConflictSaveAndMarkDone": "已解决并写回文件",
+  "gitConflictNoBlocks": "该文件已无冲突标记",
+  "gitConflictLoadFailed": "读取冲突内容失败",
+  "gitConflictUnresolvedRemain": "还剩 {count} 处未处理",
+  "@gitConflictUnresolvedRemain": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "gitConflictMarkWithMarkers": "文件里仍残留 {count} 处冲突标记",
+  "@gitConflictMarkWithMarkers": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "gitConflictMarkWithMarkersHint": "标记为已解决会把它们当作正常内容提交进仓库。建议先处理干净。",
+  "gitConflictMarkAnyway": "仍然标记",
+  "gitConflictGoResolve": "去处理",
 
   "gitRemoteBranches": "远端分支",
   "gitLocalBranches": "本地分支",

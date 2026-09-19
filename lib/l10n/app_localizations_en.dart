@@ -2395,6 +2395,85 @@ class AppLocalizationsEn extends AppLocalizations {
   String get gitConflictApplyBoth => 'Keep both';
 
   @override
+  String get gitConflictResolveTitle => 'Resolve Conflict';
+
+  @override
+  String gitConflictBlockIndex(int index, int total) {
+    return 'Conflict $index of $total';
+  }
+
+  @override
+  String get gitConflictSectionBaseline => 'Baseline (common ancestor)';
+
+  @override
+  String get gitConflictSectionOurs => 'Current side';
+
+  @override
+  String get gitConflictSectionTheirs => 'Incoming side';
+
+  @override
+  String get gitConflictTakeBoth => 'Keep both';
+
+  @override
+  String get gitConflictEditManually => 'Edit manually';
+
+  @override
+  String get gitConflictAllOurs => 'Use current side for all';
+
+  @override
+  String get gitConflictAllTheirs => 'Use incoming side for all';
+
+  @override
+  String get gitConflictSaveAndMark => 'Save and mark resolved';
+
+  @override
+  String get gitConflictAcceptCurrent => 'Accept Current Change';
+
+  @override
+  String get gitConflictAcceptIncoming => 'Accept Incoming Change';
+
+  @override
+  String get gitConflictAcceptBoth => 'Accept Both Changes';
+
+  @override
+  String get gitConflictCompare => 'Compare Changes';
+
+  @override
+  String get gitConflictPrev => 'Previous conflict';
+
+  @override
+  String get gitConflictNext => 'Next conflict';
+
+  @override
+  String get gitConflictSaveAndMarkDone => 'Resolved and written back';
+
+  @override
+  String get gitConflictNoBlocks => 'No conflict markers left in this file';
+
+  @override
+  String get gitConflictLoadFailed => 'Failed to load conflict contents';
+
+  @override
+  String gitConflictUnresolvedRemain(int count) {
+    return '$count block(s) still unresolved';
+  }
+
+  @override
+  String gitConflictMarkWithMarkers(int count) {
+    return '$count conflict marker(s) still remain in the file';
+  }
+
+  @override
+  String get gitConflictMarkWithMarkersHint =>
+      'Marking as resolved would commit them as normal content.';
+
+  @override
+  String get gitConflictMarkAnyway => 'Mark anyway';
+
+  @override
+  String get gitConflictGoResolve => 'Resolve first';
+
+  @override
   String get gitRemoteBranches => 'Remote Branches';
 
   @override

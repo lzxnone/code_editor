@@ -243,4 +243,165 @@ void main() {
       expect(block.theirsLabel, contains('1a2b3c4'));
     });
   });
+
+  group('逐块替换（解决冲突的核心算法）', () {
+    const twoBlocks = 'header\n'
+        '<<<<<<< HEAD\n'
+        'ours-1\n'
+        '=======\n'
+        'theirs-1\n'
+        '>>>>>>> x\n'
+        'middle\n'
+        '<<<<<<< HEAD\n'
+        'ours-2\n'
+        '=======\n'
+        'theirs-2\n'
+        '>>>>>>> x\n'
+        'footer';
+
+    test('替换第一个块只影响该块范围，其余原样保留', () {
+      final parsed = GitConflictParser.parse(twoBlocks);
+      expect(parsed.blocks.length, equals(2));
+
+      final result = GitConflictParser.replaceBlock(
+        content: twoBlocks,
+        blocks: parsed.blocks,
+        blockIndex: 0,
+        replacement: 'RESOLVED-1',
+      );
+
+      expect(result, isNotNull);
+      expect(result!, contains('header'));
+      expect(result, contains('RESOLVED-1'));
+      expect(result, contains('middle'));
+      expect(result, contains('footer'));
+      // 第一个块的标记没了
+      expect(result, isNot(contains('ours-1')));
+      expect(result, isNot(contains('theirs-1')));
+      // 第二个块完好无损
+      expect(result, contains('ours-2'));
+      expect(result, contains('theirs-2'));
+    });
+
+    test('替换第二个块时第一个块不受影响', () {
+      final parsed = GitConflictParser.parse(twoBlocks);
+      final result = GitConflictParser.replaceBlock(
+        content: twoBlocks,
+        blocks: parsed.blocks,
+        blockIndex: 1,
+        replacement: 'RESOLVED-2',
+      );
+
+      expect(result, isNotNull);
+      expect(result!, contains('ours-1'));
+      expect(result, contains('theirs-1'));
+      expect(result, contains('RESOLVED-2'));
+      expect(result, isNot(contains('ours-2')));
+    });
+
+    test('替换为空字符串即删除该块内容', () {
+      final parsed = GitConflictParser.parse(twoBlocks);
+      final result = GitConflictParser.replaceBlock(
+        content: twoBlocks,
+        blocks: parsed.blocks,
+        blockIndex: 0,
+        replacement: '',
+      );
+
+      expect(result, isNotNull);
+      // 块内容被整段移除，剩下 header/middle/第二个块/footer
+      expect(result!.split('\n')[0], equals('header'));
+      expect(result.split('\n')[1], equals('middle'));
+      expect(result, isNot(contains('ours-1')));
+    });
+
+    test('多行替换内容保留全部行', () {
+      final parsed = GitConflictParser.parse(twoBlocks);
+      final result = GitConflictParser.replaceBlock(
+        content: twoBlocks,
+        blocks: parsed.blocks,
+        blockIndex: 0,
+        replacement: 'line-a\nline-b\nline-c',
+      );
+
+      expect(result, isNotNull);
+      expect(result!, contains('line-a\nline-b\nline-c'));
+    });
+
+    test('末尾空串不会多插空行', () {
+      final parsed = GitConflictParser.parse(twoBlocks);
+      final result = GitConflictParser.replaceBlock(
+        content: twoBlocks,
+        blocks: parsed.blocks,
+        blockIndex: 0,
+        replacement: 'only\n',
+      );
+      // 'only\n' 应等价于 'only'
+      final result2 = GitConflictParser.replaceBlock(
+        content: twoBlocks,
+        blocks: parsed.blocks,
+        blockIndex: 0,
+        replacement: 'only',
+      );
+      expect(result, equals(result2));
+    });
+
+    test('越界索引返回 null 而不是破坏内容', () {
+      final parsed = GitConflictParser.parse(twoBlocks);
+      expect(
+        GitConflictParser.replaceBlock(
+          content: twoBlocks,
+          blocks: parsed.blocks,
+          blockIndex: 5,
+          replacement: 'x',
+        ),
+        isNull,
+      );
+      expect(
+        GitConflictParser.replaceBlock(
+          content: twoBlocks,
+          blocks: parsed.blocks,
+          blockIndex: -1,
+          replacement: 'x',
+        ),
+        isNull,
+      );
+    });
+
+    test('逐个替换两块后不再有标记', () {
+      // 模拟用户逐块点选：每替换一次都重新解析（行号会移动）
+      var content = twoBlocks;
+      var parsed = GitConflictParser.parse(content);
+      expect(parsed.blocks.length, equals(2));
+
+      content = GitConflictParser.replaceBlock(
+        content: content,
+        blocks: parsed.blocks,
+        blockIndex: 0,
+        replacement: 'R1',
+      )!;
+      parsed = GitConflictParser.parse(content);
+      expect(parsed.blocks.length, equals(1), reason: '重解析后应只剩一块');
+
+      content = GitConflictParser.replaceBlock(
+        content: content,
+        blocks: parsed.blocks,
+        blockIndex: 0,
+        replacement: 'R2',
+      )!;
+      parsed = GitConflictParser.parse(content);
+
+      expect(parsed.blocks, isEmpty);
+      expect(content, contains('R1'));
+      expect(content, contains('R2'));
+      // 全部标记清除
+      expect(content, isNot(contains('<<<<<<<')));
+      expect(content, isNot(contains('>>>>>>>')));
+    });
+
+    test('countMarkers 快速统计残留块数', () {
+      expect(GitConflictParser.countMarkers(twoBlocks), equals(2));
+      expect(GitConflictParser.countMarkers('clean file\n'), equals(0));
+    });
+  });
 }

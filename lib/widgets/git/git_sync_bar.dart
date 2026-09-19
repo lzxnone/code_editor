@@ -98,11 +98,6 @@ class _GitSyncBarState extends State<GitSyncBar> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       mainAxisSize: MainAxisSize.min,
       children: [
-        // 冲突优先于一切：此时同步动作都无法继续，必须先把冲突摆到最前面
-        if (gitProvider.hasPendingOperation) ...[
-          _buildConflictBanner(context, theme, l10n, gitProvider),
-          const SizedBox(height: 6),
-        ],
         // 与上方「分支」行完全一致的结构：左侧占满的选择条 + 右侧 32×32 图标按钮。
         // 这样三行（分支 / 远程 / 进度）视觉对齐，宽度也天然不会溢出。
         Row(
@@ -120,6 +115,12 @@ class _GitSyncBarState extends State<GitSyncBar> {
             _buildSyncButton(context, theme, l10n, gitProvider),
           ],
         ),
+        // 冲突横幅放在远程行**下方**：它是一段需要处理的状态说明，
+        // 放在远程行之上会把「分支 → 远程」这两行的对应关系打断。
+        if (gitProvider.hasPendingOperation) ...[
+          const SizedBox(height: 6),
+          _buildConflictBanner(context, theme, l10n, gitProvider),
+        ],
         // 推送目标与上游不一致时的提示：单独占一行。
         // 绝不能塞进上面的选择条 —— 那是第三个抢宽度的元素，会把远程名挤到溢出。
         if (differs) ...[
