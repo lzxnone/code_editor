@@ -486,6 +486,18 @@ class LspLanguageConfig {
               'apt-get update && apt-get install -y --no-install-recommends npm && npm install -g @bufbuild/buf && ln -sf \$(which buf) /usr/local/bin/bufls',
           enabled: true,
         ),
+        const LspLanguageConfig(
+          id: 'mcfunction',
+          name: 'Minecraft Function',
+          languageId: 'mcfunction',
+          fileExtensions: ['.mcfunction'],
+          serverCommand: 'spyglassmc',
+          serverArgs: ['--stdio'],
+          package: '@spyglassmc/language-server',
+          installCommand:
+              'apt-get update && apt-get install -y --no-install-recommends nodejs npm && npm install -g @spyglassmc/language-server',
+          enabled: true,
+        ),
       ];
 
   /// 保持向后兼容别名

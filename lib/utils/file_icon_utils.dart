@@ -20,9 +20,13 @@ class FileIconUtils {
         lowerName == '.gitmodules') {
       return Icons.commit_outlined;
     }
+    if (lowerName == 'pack.mcmeta') {
+      return Icons.inventory_2_outlined;
+    }
 
     final ext = p.extension(name).toLowerCase();
     return switch (ext) {
+      '.mcfunction' => Icons.integration_instructions_outlined,
       '.dart' => Icons.flutter_dash,
       '.html' || '.htm' => Icons.html,
       '.css' || '.scss' || '.sass' || '.less' => Icons.css,

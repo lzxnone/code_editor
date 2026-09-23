@@ -11,7 +11,18 @@ import '../utils/git_error_mapper.dart';
 class GitProvider extends ChangeNotifier {
   final GitService _gitService;
 
-  GitProvider({GitService? gitService}) : _gitService = gitService ?? GitService.instance;
+  GitProvider({GitService? gitService}) : _gitService = gitService ?? GitService.instance {
+    _initGitEnvironment();
+  }
+
+  void _initGitEnvironment() async {
+    try {
+      final env = await _gitService.checkGitInstalled();
+      _gitInstalled = env.isInstalled;
+      _gitVersion = env.version;
+      notifyListeners();
+    } catch (_) {}
+  }
 
   String? _rootPath;
   List<GitRepositoryInfo> _repositories = [];
@@ -343,11 +354,7 @@ class GitProvider extends ChangeNotifier {
       _errorMessage = null;
       _clearRemoteState();
 
-      if (_rootPath != null) {
-        refresh();
-      } else {
-        notifyListeners();
-      }
+      refresh();
     }
   }
 
@@ -420,6 +427,13 @@ class GitProvider extends ChangeNotifier {
   Future<void> refresh() async {
     final seq = ++_refreshSeq;
 
+    // 1. 无论是否打开工程目录，都先校验环境中的 Git 是否已就绪
+    final env = await _gitService.checkGitInstalled();
+    if (seq != _refreshSeq) return;
+
+    _gitInstalled = env.isInstalled;
+    _gitVersion = env.version;
+
     if (_rootPath == null || _rootPath!.isEmpty) {
       _repositories = [];
       _currentRepoPath = null;
@@ -431,6 +445,7 @@ class GitProvider extends ChangeNotifier {
       _commits = [];
       _stashCount = 0;
       _isLoading = false;
+      _errorMessage = !env.isInstalled ? (env.errorMessage ?? '未检测到 Git 命令行工具') : null;
       _clearRemoteState();
       notifyListeners();
       return;
@@ -441,12 +456,6 @@ class GitProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
-      // 1. 校验 Git 命令行工具环境
-      final env = await _gitService.checkGitInstalled();
-      if (seq != _refreshSeq) return;
-
-      _gitInstalled = env.isInstalled;
-      _gitVersion = env.version;
       if (!env.isInstalled) {
         _errorMessage = env.errorMessage ?? '未检测到 Git 命令行工具';
         _isLoading = false;

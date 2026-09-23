@@ -138,7 +138,9 @@ class SmartCodeAutocompletePromptsBuilder implements CodeAutocompletePromptsBuil
     return (code >= 65 && code <= 90) || // A-Z
         (code >= 97 && code <= 122) || // a-z
         (code >= 48 && code <= 57) || // 0-9
-        code == 95; // _
+        code == 95 || // _
+        code == 64 || // @ (for entity selectors e.g. @a, @e, @s, @p)
+        code == 36; // $ (for macro variables and identifiers)
   }
 }
 

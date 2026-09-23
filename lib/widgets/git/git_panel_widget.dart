@@ -53,10 +53,15 @@ class _GitPanelWidgetState extends State<GitPanelWidget> {
     _scrollController.addListener(_onScrollChanged);
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted && _scrollController.hasClients && gitProvider.scrollOffset > 0) {
-        final maxScroll = _scrollController.position.maxScrollExtent;
-        final target = gitProvider.scrollOffset.clamp(0.0, maxScroll);
-        _scrollController.jumpTo(target);
+      if (mounted) {
+        if (!gitProvider.hasProject) {
+          gitProvider.refresh();
+        }
+        if (_scrollController.hasClients && gitProvider.scrollOffset > 0) {
+          final maxScroll = _scrollController.position.maxScrollExtent;
+          final target = gitProvider.scrollOffset.clamp(0.0, maxScroll);
+          _scrollController.jumpTo(target);
+        }
       }
     });
   }
@@ -1108,7 +1113,12 @@ class _GitPanelWidgetState extends State<GitPanelWidget> {
     AppLocalizations l10n,
     GitProvider gitProvider,
   ) {
-    // 1. 未打开工程目录
+    // 1. 宿主/容器未安装 Git 命令行工具（优先级最高：未安装 Git > 未打开工程）
+    if (!gitProvider.gitInstalled) {
+      return _buildGitNotInstalledView(context, theme, l10n, gitProvider);
+    }
+
+    // 2. 未打开工程目录
     if (!gitProvider.hasProject) {
       return _buildEmptyState(
         theme: theme,
@@ -1116,11 +1126,6 @@ class _GitPanelWidgetState extends State<GitPanelWidget> {
         title: l10n.noOpenDirectory,
         subtitle: null,
       );
-    }
-
-    // 2. 宿主/容器未安装 Git 命令行工具
-    if (!gitProvider.gitInstalled) {
-      return _buildGitNotInstalledView(context, theme, l10n, gitProvider);
     }
 
     // 3. 正在加载中且尚未加载出任何仓库

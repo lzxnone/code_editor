@@ -76,10 +76,10 @@
 ### 方式一：直接安装 Release APK (推荐)
 本项目为不同机型提供了精准分包（已存放于 `releases/` 目录或 GitHub Releases）：
 
-* **`LN-Code-Editor-v1.0.0-arm64-v8a.apk`**（⭐ **绝大多数手机首选**，体积最小、运行最快）
-* **`LN-Code-Editor-v1.0.0-armeabi-v7a.apk`**（适配较早期的 32 位老旧设备）
-* **`LN-Code-Editor-v1.0.0-x86_64.apk`**（适配电脑端安卓模拟器、WSA 或 ChromeOS）
-* **`LN-Code-Editor-v1.0.0-universal.apk`**（全架构合一通用包）
+* **`LN-Code-Editor-<version>-arm64-v8a.apk`**（⭐ **绝大多数主流手机首选**，体积最小、运行最快）
+* **`LN-Code-Editor-<version>-armeabi-v7a.apk`**（适配较早期的 32 位老旧设备）
+* **`LN-Code-Editor-<version>-x86_64.apk`**（适配电脑端安卓模拟器、WSA 或 ChromeOS）
+* **`LN-Code-Editor-<version>-universal.apk`**（全架构合一通用包）
 
 ### 方式二：从源码构建
 
@@ -103,7 +103,7 @@ flutter run
 # Windows PowerShell
 .\tools\build\build-release-apks.ps1
 ```
-打包完成后，产物将自动规范命名并归档至 `releases/v<版本号>/` 目录。
+打包完成后，产物将自动按 `[软件名]-[版本号]-[架构].apk` 规范重命名并归档至 `releases/` 对应版本目录。
 
 ---
 

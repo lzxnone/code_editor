@@ -3,6 +3,7 @@ import 'package:path/path.dart' as p;
 import 'package:re_editor/re_editor.dart';
 import 'package:re_highlight/languages/all.dart';
 import 'package:re_highlight/re_highlight.dart';
+import 'syntax_languages/mcfunction.dart';
 
 /// 语法高亮辅助类：
 /// 1. 基于文件后缀与特殊文件名的 O(1) 语法匹配，彻底避免全量遍历
@@ -125,6 +126,9 @@ class SyntaxHighlightHelper {
     '.dockerfile': 'dockerfile',
     '.graphql': 'graphql',
     '.gql': 'graphql',
+
+    // Minecraft
+    '.mcfunction': 'mcfunction',
   };
 
   /// 根据文件路径获取对应的 re_highlight 语言 ID，未匹配则返回 null
@@ -155,7 +159,7 @@ class SyntaxHighlightHelper {
     if (cached != null) {
       return cached;
     }
-    final definition = builtinAllLanguages[langId];
+    final definition = langId == 'mcfunction' ? langMcfunction : builtinAllLanguages[langId];
     if (definition != null) {
       // 对标 VS Code 性能保护策略：
       // 1. 文件文本超过 2MB 时，安全降级为纯文本，防止巨型语法树引发主线程垃圾回收暂停；
@@ -189,10 +193,13 @@ class SyntaxHighlightHelper {
   static Mode? getGrammarModeForFile(String? filePath) {
     final langId = getLanguageId(filePath);
     if (langId == null) return null;
+    if (langId == 'mcfunction') return langMcfunction;
     return builtinAllLanguages[langId];
   }
 
-  static final Highlight _highlightInstance = Highlight()..registerLanguages(builtinAllLanguages);
+  static final Highlight _highlightInstance = Highlight()
+    ..registerLanguages(builtinAllLanguages)
+    ..registerLanguage('mcfunction', langMcfunction);
 
   /// 针对单行代码生成带语法高亮的 TextSpan（供 Diff 视图等只读代码渲染）
   static TextSpan highlightLine({

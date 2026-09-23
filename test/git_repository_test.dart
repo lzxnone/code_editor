@@ -391,6 +391,23 @@ void main() {
       expect(find.text('当前未打开项目'), findsOneWidget);
     });
 
+    testWidgets('Displays Git install view when Git is not installed even if project is null (priority: not installed > no project)', (tester) async {
+      projectProvider.setHistoryForTesting(const ProjectHistory(rootPath: null, lastOpenedFilePath: null));
+      gitProvider.setStateForTesting(
+        rootPath: null,
+        gitInstalled: false,
+        repositories: [],
+      );
+
+      await tester.pumpWidget(buildTestApp(home: const Scaffold(body: GitPanelWidget())));
+      await tester.pumpAndSettle();
+
+      // 优先级：未安装 Git > 未打开项目
+      expect(find.text('需要安装 Git'), findsOneWidget);
+      expect(find.text('安装 Git'), findsOneWidget);
+      expect(find.text('当前未打开项目'), findsNothing);
+    });
+
     testWidgets('Displays Git install guidance view without not-found warning or code box, provides install button', (tester) async {
       gitProvider.setStateForTesting(
         rootPath: testProjectDir.path,
