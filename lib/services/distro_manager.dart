@@ -391,7 +391,7 @@ class DistroManager {
     }
   }
 
-  static const MethodChannel _nativeChannel = MethodChannel('com.example.code_editor/native');
+  static const MethodChannel _nativeChannel = MethodChannel('com.lzxnone.code_editor/native');
   String? _cachedProotPath;
   String? _cachedNativeDir;
 

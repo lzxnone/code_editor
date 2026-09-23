@@ -290,6 +290,8 @@ class _CodeCompletionManagementViewState
     if (settings == null) return const SizedBox.shrink();
 
     final colorScheme = theme.colorScheme;
+    final isMasterEnabled = settings.enableLspCompletion;
+
     return Card(
       elevation: 0,
       color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.35),
@@ -312,11 +314,50 @@ class _CodeCompletionManagementViewState
                 ),
               ),
             ),
+            // 语言服务总开关
             SwitchListTile(
+              key: const ValueKey('lsp_master_switch'),
               secondary: const Icon(Icons.hub_outlined),
               title: Text(l10n.lspCompletionTitle),
-              value: settings.enableLspCompletion,
+              subtitle: Text(l10n.lspCompletionSubtitle),
+              value: isMasterEnabled,
               onChanged: (val) => settings.setEnableLspCompletion(val),
+            ),
+            Divider(
+              height: 1,
+              indent: 16,
+              endIndent: 16,
+              color: colorScheme.outlineVariant.withValues(alpha: 0.4),
+            ),
+            // 分开关 1：代码补全
+            SwitchListTile(
+              key: const ValueKey('code_completion_sub_switch'),
+              contentPadding: const EdgeInsets.only(left: 32, right: 16),
+              secondary: Icon(
+                Icons.auto_awesome_outlined,
+                color: isMasterEnabled ? null : colorScheme.onSurface.withValues(alpha: 0.38),
+              ),
+              title: Text(l10n.codeCompletionSwitchTitle),
+              subtitle: Text(l10n.codeCompletionSwitchSubtitle),
+              value: settings.enableCodeCompletion,
+              onChanged: isMasterEnabled
+                  ? (val) => settings.setEnableCodeCompletion(val)
+                  : null,
+            ),
+            // 分开关 2：代码纠错
+            SwitchListTile(
+              key: const ValueKey('code_diagnostics_sub_switch'),
+              contentPadding: const EdgeInsets.only(left: 32, right: 16),
+              secondary: Icon(
+                Icons.spellcheck_rounded,
+                color: isMasterEnabled ? null : colorScheme.onSurface.withValues(alpha: 0.38),
+              ),
+              title: Text(l10n.codeDiagnosticsSwitchTitle),
+              subtitle: Text(l10n.codeDiagnosticsSwitchSubtitle),
+              value: settings.enableCodeDiagnostics,
+              onChanged: isMasterEnabled
+                  ? (val) => settings.setEnableCodeDiagnostics(val)
+                  : null,
             ),
           ],
         ),

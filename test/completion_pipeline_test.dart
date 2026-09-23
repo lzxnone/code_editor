@@ -167,6 +167,30 @@ void main() {
       expect(restoredProvider.enableLspCompletion, isFalse);
     });
 
+    test('SettingsProvider sub-switches (code completion & diagnostics) default to true and persist', () async {
+      final provider = SettingsProvider();
+      await provider.init();
+
+      expect(provider.enableCodeCompletion, isTrue);
+      expect(provider.enableCodeDiagnostics, isTrue);
+
+      await provider.setEnableCodeCompletion(false);
+      await provider.setEnableCodeDiagnostics(false);
+
+      expect(provider.enableCodeCompletion, isFalse);
+      expect(provider.enableCodeDiagnostics, isFalse);
+
+      final prefs = await SharedPreferences.getInstance();
+      expect(prefs.getBool('enable_code_completion'), isFalse);
+      expect(prefs.getBool('enable_code_diagnostics'), isFalse);
+
+      // 重新实例化验证从持久化中正确恢复
+      final restoredProvider = SettingsProvider();
+      await restoredProvider.init();
+      expect(restoredProvider.enableCodeCompletion, isFalse);
+      expect(restoredProvider.enableCodeDiagnostics, isFalse);
+    });
+
     test('SmartCodeAutocompletePromptsBuilder provider filtering by flag', () {
       // 1. 默认开启：仅 1 个 LspCompletionProvider
       final builderDefault = SmartCodeAutocompletePromptsBuilder();

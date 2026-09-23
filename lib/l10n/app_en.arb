@@ -844,6 +844,10 @@
   "localCompletionSubtitle": "Built-in language keywords and document lexical heuristic extraction",
   "lspCompletionTitle": "Backend Language Server",
   "lspCompletionSubtitle": "Request real semantic types and function parameters from background compilers",
+  "codeCompletionSwitchTitle": "Code Completion",
+  "codeCompletionSwitchSubtitle": "Real-time function, variable, and syntax suggestions while typing",
+  "codeDiagnosticsSwitchTitle": "Code Correction",
+  "codeDiagnosticsSwitchSubtitle": "Real-time syntax checking, error squiggles, and quick fixes",
   "internalEngineTitle": "Runtime & Code Intelligence Engine (Ubuntu)",
   "internalEngineStatusReady": "Engine Ready",
   "internalEngineStatusNotReady": "Engine Not Started",
@@ -1413,6 +1417,51 @@
   "gitConflictMarkWithMarkersHint": "Marking as resolved would commit them as normal content.",
   "gitConflictMarkAnyway": "Mark anyway",
   "gitConflictGoResolve": "Resolve first",
+  "gitConflictAllResolvedBadge": "All Resolved",
+  "gitConflictUnresolvedBadge": "{count} Unresolved",
+  "@gitConflictUnresolvedBadge": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "gitConflictResetToInitial": "Reset to Initial State",
+  "gitConflictReloadFromDisk": "Reload from Disk",
+  "gitConflictResolvedCommit": "Resolved · Save & Commit",
+  "gitConflictMoreOptions": "More Options",
+  "gitConflictAcceptCurrentShort": "Current",
+  "gitConflictAcceptIncomingShort": "Incoming",
+  "gitConflictAcceptBothShort": "Both",
+  "gitConflictCompareShort": "Compare",
+  "gitConflictSaveAndMarkShort": "Save & Finish",
+  "gitConflictMalformedBanner": "Malformed or nested conflict markers detected. Auto-resolution is disabled. Please edit manually.",
+  "gitConflictMalformedBadge": "Malformed",
+  "gitConflictCompareTitle": "Compare Conflict #{index}",
+  "@gitConflictCompareTitle": {
+    "placeholders": {
+      "index": {
+        "type": "int"
+      }
+    }
+  },
+  "gitConflictBothEmpty": "Both sides are empty",
+  "gitConflictCurrentWithLabel": "Current: {label}",
+  "@gitConflictCurrentWithLabel": {
+    "placeholders": {
+      "label": {
+        "type": "String"
+      }
+    }
+  },
+  "gitConflictIncomingWithLabel": "Incoming: {label}",
+  "@gitConflictIncomingWithLabel": {
+    "placeholders": {
+      "label": {
+        "type": "String"
+      }
+    }
+  },
 
   "gitRemoteBranches": "Remote Branches",
   "gitLocalBranches": "Local Branches",

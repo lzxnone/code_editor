@@ -1,6 +1,6 @@
 {
-    "name": "code_editor",
-    "short_name": "code_editor",
+    "name": "LN 代码编辑器",
+    "short_name": "LN 代码编辑器",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",

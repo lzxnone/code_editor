@@ -2648,6 +2648,30 @@ abstract class AppLocalizations {
   /// **'向后台编译器守护进程请求真实语义类型与函数参数补全'**
   String get lspCompletionSubtitle;
 
+  /// No description provided for @codeCompletionSwitchTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'代码补全'**
+  String get codeCompletionSwitchTitle;
+
+  /// No description provided for @codeCompletionSwitchSubtitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'输入时实时提示函数、变量与语法补全'**
+  String get codeCompletionSwitchSubtitle;
+
+  /// No description provided for @codeDiagnosticsSwitchTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'代码纠错'**
+  String get codeDiagnosticsSwitchTitle;
+
+  /// No description provided for @codeDiagnosticsSwitchSubtitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'实时语法检查、错误波浪线提示与修复建议'**
+  String get codeDiagnosticsSwitchSubtitle;
+
   /// No description provided for @internalEngineTitle.
   ///
   /// In zh, this message translates to:
@@ -4161,6 +4185,108 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'去处理'**
   String get gitConflictGoResolve;
+
+  /// No description provided for @gitConflictAllResolvedBadge.
+  ///
+  /// In zh, this message translates to:
+  /// **'已全部解决'**
+  String get gitConflictAllResolvedBadge;
+
+  /// No description provided for @gitConflictUnresolvedBadge.
+  ///
+  /// In zh, this message translates to:
+  /// **'{count} 未解决'**
+  String gitConflictUnresolvedBadge(int count);
+
+  /// No description provided for @gitConflictResetToInitial.
+  ///
+  /// In zh, this message translates to:
+  /// **'重置为初始冲突状态'**
+  String get gitConflictResetToInitial;
+
+  /// No description provided for @gitConflictReloadFromDisk.
+  ///
+  /// In zh, this message translates to:
+  /// **'重新从磁盘读取'**
+  String get gitConflictReloadFromDisk;
+
+  /// No description provided for @gitConflictResolvedCommit.
+  ///
+  /// In zh, this message translates to:
+  /// **'冲突已解决 · 保存并提交'**
+  String get gitConflictResolvedCommit;
+
+  /// No description provided for @gitConflictMoreOptions.
+  ///
+  /// In zh, this message translates to:
+  /// **'更多操作'**
+  String get gitConflictMoreOptions;
+
+  /// No description provided for @gitConflictAcceptCurrentShort.
+  ///
+  /// In zh, this message translates to:
+  /// **'当前'**
+  String get gitConflictAcceptCurrentShort;
+
+  /// No description provided for @gitConflictAcceptIncomingShort.
+  ///
+  /// In zh, this message translates to:
+  /// **'传入'**
+  String get gitConflictAcceptIncomingShort;
+
+  /// No description provided for @gitConflictAcceptBothShort.
+  ///
+  /// In zh, this message translates to:
+  /// **'双方'**
+  String get gitConflictAcceptBothShort;
+
+  /// No description provided for @gitConflictCompareShort.
+  ///
+  /// In zh, this message translates to:
+  /// **'对比'**
+  String get gitConflictCompareShort;
+
+  /// No description provided for @gitConflictSaveAndMarkShort.
+  ///
+  /// In zh, this message translates to:
+  /// **'保存并完成'**
+  String get gitConflictSaveAndMarkShort;
+
+  /// No description provided for @gitConflictMalformedBanner.
+  ///
+  /// In zh, this message translates to:
+  /// **'检测到冲突标记嵌套或不完整，自动解析已禁用，请点击下方手动编辑'**
+  String get gitConflictMalformedBanner;
+
+  /// No description provided for @gitConflictMalformedBadge.
+  ///
+  /// In zh, this message translates to:
+  /// **'标记异常'**
+  String get gitConflictMalformedBadge;
+
+  /// No description provided for @gitConflictCompareTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'冲突对比 · 第 {index} 处'**
+  String gitConflictCompareTitle(int index);
+
+  /// No description provided for @gitConflictBothEmpty.
+  ///
+  /// In zh, this message translates to:
+  /// **'两端内容均为空'**
+  String get gitConflictBothEmpty;
+
+  /// No description provided for @gitConflictCurrentWithLabel.
+  ///
+  /// In zh, this message translates to:
+  /// **'当前侧: {label}'**
+  String gitConflictCurrentWithLabel(String label);
+
+  /// No description provided for @gitConflictIncomingWithLabel.
+  ///
+  /// In zh, this message translates to:
+  /// **'传入侧: {label}'**
+  String gitConflictIncomingWithLabel(String label);
 
   /// No description provided for @gitRemoteBranches.
   ///

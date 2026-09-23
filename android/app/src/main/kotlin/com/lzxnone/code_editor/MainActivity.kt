@@ -1,11 +1,11 @@
-package com.example.code_editor
+package com.lzxnone.code_editor
 
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
 
 class MainActivity : FlutterActivity() {
-    private val CHANNEL = "com.example.code_editor/native"
+    private val CHANNEL = "com.lzxnone.code_editor/native"
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)

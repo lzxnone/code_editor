@@ -1,5 +1,6 @@
 import 'dart:math' as math;
 
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:path/path.dart' as p;
 import 'package:provider/provider.dart';
@@ -13,43 +14,46 @@ import '../../providers/settings_provider.dart';
 import '../../providers/tab_provider.dart';
 import '../../services/file_service.dart';
 import '../../utils/dialog_utils.dart';
+import '../../utils/file_icon_utils.dart';
 import '../../utils/git_conflict_parser.dart';
+import '../../utils/git_diff_helper.dart';
 import '../../utils/syntax_highlight_helper.dart';
+import '../../views/main_view.dart';
 import 'conflict_view_model.dart';
 
-/// 冲突解决页（VS Code 内联冲突风格）
+/// Git 冲突解决页面（VS Code 风格重制版）
 ///
-/// 视觉与交互参照 VS Code 的内联冲突视图：
-/// - 冲突标记行渲染成**整行色带标题**：`<<<<<<< HEAD (Current Change)` 绿、
-///   `>>>>>>> theirs (Incoming Change)` 蓝、`|||||||` 基线段灰
-/// - 每段内容带**整段底色**（当前侧绿、传入侧蓝）
-/// - 标记行上叠加一行**内联操作**：Accept Current / Accept Incoming /
-///   Accept Both / Compare
-/// - 底部常驻「保存并标记为已解决」
-///
-/// 实现说明：这是**独立页面**，刻意不复用 `git_diff_page.dart` 的代码。
-/// 只读行渲染器 + 固定行号栏 + 全向滚动 + 双指缩放均按该类页面的既有做法
-/// 自行实现，保证缩放手感、行号对齐、横向滚动行为与本 App 其余部分一致。
-///
-/// **不使用 `CodeEditor`**：它来自 `re_editor`，只支持行级着色，
-/// 无法表达"标记行变标题带 + 内容行整段底色"这种行级装饰。
+/// 视觉与交互完全对齐 VS Code 内联冲突（Inline Merge Conflict）规范，
+/// 页面全局主题与代码区主题严格继承并遵循 `GitDiffPage` 规范：
+/// - AppBar：遵循应用标准 Material 3 配色，展示文件图标、路径、冲突徽标与导航工具栏
+/// - CodeLens 悬浮操作胶囊：在冲突块顶部提供「采用当前」、「采用传入」、「保留双方」、「对比查看」
+/// - 视觉分块：当前侧（绿）、分隔线（居中）、传入侧（蓝）、基线侧（灰）带语义色带与软背景
+/// - 高度与对齐：行号区与代码区高度严格同步，彻底根除行号错位与渲染截断 Bug
+/// - 纯手势体验：支持基于原生指针跟踪的平滑单指平移、双指中心锚定缩放、浮动字号气泡与惯性滑动
+/// - 高级功能：支持「对比查看 (Compare Changes)」差异弹窗、重置回初始冲突、批量采用
 class GitConflictResolvePage extends StatefulWidget {
   const GitConflictResolvePage({
     super.key,
     required this.file,
     required this.gitProvider,
+    this.initialContent,
   });
 
   final GitConflictedFile file;
   final GitProvider gitProvider;
+  final String? initialContent;
 
   static Route<void> route({
     required GitConflictedFile file,
     required GitProvider gitProvider,
+    String? initialContent,
   }) {
     return MaterialPageRoute<void>(
-      builder: (_) =>
-          GitConflictResolvePage(file: file, gitProvider: gitProvider),
+      builder: (_) => GitConflictResolvePage(
+        file: file,
+        gitProvider: gitProvider,
+        initialContent: initialContent,
+      ),
     );
   }
 
@@ -61,30 +65,48 @@ class _GitConflictResolvePageState extends State<GitConflictResolvePage> {
   bool _isLoading = true;
   String? _errorMessage;
 
-  /// 当前文件内容（\n 规范化，与解析行号一致）
+  /// 进入页面时从磁盘读取的初始冲突内容（用于重置）
+  String _initialContent = '';
+
+  /// 当前工作内容（\n 规范化）
   String _content = '';
   GitConflictParseResult _parsed = GitConflictParseResult.none;
   List<ConflictLine> _lines = const [];
 
-  // 滚动分工照抄差异页：垂直 / 水平 / 行号各自独立控制器
+  // 当前定位冲突块索引
+  int _currentBlockIndex = 0;
+
+  // 垂直 / 水平 / 行号独立滚动控制器（分工与 GitDiffPage 一致）
   late final ScrollController _vController;
   late final ScrollController _hController;
   late final ScrollController _gutterController;
   bool _syncing = false;
 
-  double? _committedFontSize;
+  // 缩放字号状态
+  double? _splitFontSize;
   double? _activeZoomFontSize;
 
+  // 双指平滑缩放手势跟踪状态（对标 GitDiffPage）
   final Map<int, Offset> _pointers = {};
   int? _pointer1;
   int? _pointer2;
   double? _initialDistance;
   double? _initialFontSize;
+  Offset? _initialLocalFocal;
+  Offset? _currentLocalFocal;
+  double _focalLineContinuous = 0.0;
+  double _focalCharContinuous = 0.0;
   bool _isPinching = false;
   Offset? _lastPanPos;
-  bool _showZoomBadge = false;
+  VelocityTracker? _velocityTracker;
 
-  final Map<String, TextSpan> _highlightCache = {};
+  // 用户正在与 CodeLens 栏交互（左右拖动查看操作按钮，避免触发主代码区单指平移）
+  bool _isInteractingWithCodeLens = false;
+
+  // 语法高亮缓存 (key: '$fontSize-${editorTheme.id}-$code')
+  final Map<String, TextSpan> _highlightSpanCache = {};
+
+  static const double _codeLensBarHeight = 32.0;
 
   @override
   void initState() {
@@ -92,13 +114,26 @@ class _GitConflictResolvePageState extends State<GitConflictResolvePage> {
     _vController = ScrollController();
     _hController = ScrollController();
     _gutterController = ScrollController();
+
     _vController.addListener(_onVerticalScrolled);
-    _load();
+    _gutterController.addListener(_onGutterScrolled);
+
+    if (widget.initialContent != null) {
+      final normalized = widget.initialContent!.replaceAll('\r\n', '\n');
+      _initialContent = normalized;
+      _content = normalized;
+      _parsed = GitConflictParser.parse(normalized);
+      _lines = ConflictLineBuilder.build(normalized, _parsed);
+      _isLoading = false;
+    } else {
+      _loadFromDisk(isInitial: true);
+    }
   }
 
   @override
   void dispose() {
     _vController.removeListener(_onVerticalScrolled);
+    _gutterController.removeListener(_onGutterScrolled);
     _vController.dispose();
     _hController.dispose();
     _gutterController.dispose();
@@ -110,63 +145,50 @@ class _GitConflictResolvePageState extends State<GitConflictResolvePage> {
     _syncing = true;
     _gutterController.jumpTo(
       _vController.offset.clamp(
-        _gutterController.position.minScrollExtent,
+        0.0,
         _gutterController.position.maxScrollExtent,
       ),
     );
     _syncing = false;
   }
 
-  double get _baseFontSize {
-    try {
-      return context.read<SettingsProvider>().fontSize;
-    } catch (_) {
-      return 13.0;
-    }
+  void _onGutterScrolled() {
+    if (_syncing || !_vController.hasClients) return;
+    _syncing = true;
+    _vController.jumpTo(
+      _gutterController.offset.clamp(
+        0.0,
+        _vController.position.maxScrollExtent,
+      ),
+    );
+    _syncing = false;
   }
 
-  double get _effectiveFontSize =>
-      _activeZoomFontSize ?? _committedFontSize ?? _baseFontSize;
+  // ---------------------------- 数据加载与冲突操作 ----------------------------
 
-  double get _rowHeight => (_effectiveFontSize * 1.45 + 4.0).roundToDouble();
-
-  EditorTheme get _editorTheme {
-    try {
-      return context.read<SettingsProvider>().editorTheme;
-    } catch (_) {
-      return EditorTheme.atomOneDark;
-    }
-  }
-
-  AppFontItem get _editorFont {
-    try {
-      return context.read<SettingsProvider>().editorFont;
-    } catch (_) {
-      return AppFonts.editorJetBrainsMono;
-    }
-  }
-
-  // ---------------------------- 数据 ----------------------------
-
-  Future<void> _load() async {
+  Future<void> _loadFromDisk({bool isInitial = false}) async {
     setState(() {
       _isLoading = true;
       _errorMessage = null;
     });
 
     try {
-      // 必须读磁盘：冲突时 Git 已把标记写进文件，内存标签页内容可能已过期
       final raw = await FileService.instance.readFileContent(
         widget.file.absolutePath,
       );
       final normalized = raw.replaceAll('\r\n', '\n');
       final parsed = GitConflictParser.parse(normalized);
+      final lines = ConflictLineBuilder.build(normalized, parsed);
 
       if (!mounted) return;
       setState(() {
+        if (isInitial || _initialContent.isEmpty) {
+          _initialContent = normalized;
+        }
         _content = normalized;
         _parsed = parsed;
-        _lines = ConflictLineBuilder.build(normalized, parsed);
+        _lines = lines;
+        _currentBlockIndex = parsed.blocks.isNotEmpty ? 0 : 0;
         _isLoading = false;
       });
     } catch (e) {
@@ -178,8 +200,9 @@ class _GitConflictResolvePageState extends State<GitConflictResolvePage> {
     }
   }
 
-  /// 取某块某一段的文本（按该段在**本文件中的绝对行号**切分）
+  /// 获取某冲突块某角色的文本
   String _segmentText(int blockIndex, ConflictLineRole side) {
+    if (blockIndex < 0 || blockIndex >= _parsed.blocks.length) return '';
     final lines = _content.split('\n');
     final block = _parsed.blocks[blockIndex];
     final seg = switch (side) {
@@ -194,7 +217,7 @@ class _GitConflictResolvePageState extends State<GitConflictResolvePage> {
     return lines.sublist(start, end).join('\n');
   }
 
-  /// 用 [replacement] 替换某块并立即写回磁盘
+  /// 替换指定冲突块并同步到磁盘
   Future<void> _applyBlock(int blockIndex, String replacement) async {
     final newContent = GitConflictParser.replaceBlock(
       content: _content,
@@ -213,15 +236,18 @@ class _GitConflictResolvePageState extends State<GitConflictResolvePage> {
     }
     if (!mounted) return;
 
-    // 替换后行号整体移动：重新解析比维护偏移量可靠得多
     final parsed = GitConflictParser.parse(newContent);
     setState(() {
       _content = newContent;
       _parsed = parsed;
       _lines = ConflictLineBuilder.build(newContent, parsed);
+      if (_currentBlockIndex >= parsed.blocks.length) {
+        _currentBlockIndex = math.max(0, parsed.blocks.length - 1);
+      }
     });
   }
 
+  /// 采用当前侧更改
   Future<void> _acceptCurrent(int blockIndex) async {
     await _applyBlock(
       blockIndex,
@@ -229,6 +255,7 @@ class _GitConflictResolvePageState extends State<GitConflictResolvePage> {
     );
   }
 
+  /// 采用传入侧更改
   Future<void> _acceptIncoming(int blockIndex) async {
     await _applyBlock(
       blockIndex,
@@ -236,6 +263,7 @@ class _GitConflictResolvePageState extends State<GitConflictResolvePage> {
     );
   }
 
+  /// 保留两段更改
   Future<void> _acceptBoth(int blockIndex) async {
     final current = _segmentText(blockIndex, ConflictLineRole.oursContent);
     final incoming = _segmentText(blockIndex, ConflictLineRole.theirsContent);
@@ -243,47 +271,115 @@ class _GitConflictResolvePageState extends State<GitConflictResolvePage> {
     await _applyBlock(blockIndex, combined);
   }
 
-  Future<void> _scrollToBlock(int blockIndex) async {
-    if (blockIndex < 0 || blockIndex >= _parsed.blocks.length) return;
-    if (!_vController.hasClients) return;
-    final target = (_parsed.blocks[blockIndex].startLine * _rowHeight - 60)
-        .clamp(0.0, _vController.position.maxScrollExtent);
-    await _vController.animateTo(
-      target,
-      duration: const Duration(milliseconds: 220),
-      curve: Curves.easeOut,
+  /// 全部采用当前更改
+  Future<void> _acceptAllCurrent() async {
+    if (_parsed.blocks.isEmpty) return;
+    for (var i = _parsed.blocks.length - 1; i >= 0; i--) {
+      await _acceptCurrent(i);
+    }
+  }
+
+  /// 全部采用传入更改
+  Future<void> _acceptAllIncoming() async {
+    if (_parsed.blocks.isEmpty) return;
+    for (var i = _parsed.blocks.length - 1; i >= 0; i--) {
+      await _acceptIncoming(i);
+    }
+  }
+
+  /// 重置为初始冲突状态
+  Future<void> _resetToInitial() async {
+    if (_initialContent.isEmpty) return;
+    try {
+      await FileService.instance.saveFile(
+        widget.file.absolutePath,
+        _initialContent,
+      );
+    } catch (e) {
+      if (!mounted) return;
+      DialogUtils.showToast(context, e.toString(), type: ToastType.error);
+      return;
+    }
+    if (!mounted) return;
+
+    final parsed = GitConflictParser.parse(_initialContent);
+    setState(() {
+      _content = _initialContent;
+      _parsed = parsed;
+      _lines = ConflictLineBuilder.build(_initialContent, parsed);
+      _currentBlockIndex = 0;
+    });
+    DialogUtils.showToast(
+      context,
+      '已重置为初始冲突标记状态',
+      type: ToastType.info,
     );
   }
 
-  int _nearestBlock(int direction) {
-    if (!_vController.hasClients || _parsed.blocks.isEmpty) return 0;
-    final currentLine = (_vController.offset / _rowHeight).floor();
-    if (direction > 0) {
-      for (var i = 0; i < _parsed.blocks.length; i++) {
-        if (_parsed.blocks[i].startLine > currentLine) return i;
-      }
-      return _parsed.blocks.length - 1;
+  /// 计算指定冲突块或行的垂直像素位置（行号与代码行绝对像素级同步）
+  double _calculateLineTopOffset(int lineIndex, double baseRowHeight) {
+    double offset = 0.0;
+    for (int i = 0; i < lineIndex && i < _lines.length; i++) {
+      offset += _getLineHeight(_lines[i], baseRowHeight);
     }
-    for (var i = _parsed.blocks.length - 1; i >= 0; i--) {
-      if (_parsed.blocks[i].startLine < currentLine) return i;
-    }
-    return 0;
+    return offset;
   }
 
-  /// Compare / 手动编辑：交给完整编辑器（带语法高亮、折叠、LSP）
+  /// 平滑滚动到指定冲突块
+  Future<void> _scrollToBlock(
+    int blockIndex,
+    double baseRowHeight,
+  ) async {
+    if (blockIndex < 0 || blockIndex >= _parsed.blocks.length) return;
+    if (!_vController.hasClients) return;
+
+    setState(() => _currentBlockIndex = blockIndex);
+
+    final targetLine = _parsed.blocks[blockIndex].startLine;
+    final targetY = _calculateLineTopOffset(targetLine, baseRowHeight);
+    final maxScroll = _vController.position.maxScrollExtent;
+    final clamped = (targetY - 40.0).clamp(0.0, maxScroll);
+
+    await _vController.animateTo(
+      clamped,
+      duration: const Duration(milliseconds: 250),
+      curve: Curves.easeOutCubic,
+    );
+  }
+
+  void _navigateToNextBlock(double baseRowHeight) {
+    if (_parsed.blocks.isEmpty) return;
+    final nextIndex = (_currentBlockIndex + 1) % _parsed.blocks.length;
+    _scrollToBlock(nextIndex, baseRowHeight);
+  }
+
+  void _navigateToPrevBlock(double baseRowHeight) {
+    if (_parsed.blocks.isEmpty) return;
+    final prevIndex =
+        (_currentBlockIndex - 1 + _parsed.blocks.length) % _parsed.blocks.length;
+    _scrollToBlock(prevIndex, baseRowHeight);
+  }
+
+  /// 在完整编辑器中打开并手动编辑
   Future<void> _openInEditor() async {
     final tabProvider = context.read<TabProvider>();
     await tabProvider.reloadTabFromDisk(widget.file.absolutePath);
     await tabProvider.openFile(widget.file.absolutePath);
     if (!mounted) return;
-    Navigator.of(context).pop();
+    // 1. 一路关闭全屏冲突页及底下的下拉菜单/冲突面板，回到主页面
+    final nav = Navigator.of(context);
+    if (nav.canPop()) {
+      nav.popUntil((route) => route.isFirst);
+    }
+    // 2. 关闭主界面侧边栏抽屉，直达代码编辑区
+    MainView.closeDrawerIfOpen();
   }
 
+  /// 保存并标记为已解决
   Future<void> _saveAndMark() async {
     final l10n = AppLocalizations.of(context)!;
-
-    // 防线：仍有标记时不允许静默标记 —— 那会把标记当作正常内容提交
     final remaining = _parsed.blocks.length;
+
     if (remaining > 0) {
       final stillMark = await showDialog<bool>(
         context: context,
@@ -337,118 +433,685 @@ class _GitConflictResolvePageState extends State<GitConflictResolvePage> {
     }
   }
 
-  // ---------------------------- 渲染 ----------------------------
+  // ---------------------------- 比较查看 (Compare Changes) 弹窗 ----------------------------
+
+  void _showCompareDialog(
+    int blockIndex,
+    EditorTheme editorTheme,
+    AppFontItem editorFont,
+    double fontSize,
+  ) {
+    if (blockIndex < 0 || blockIndex >= _parsed.blocks.length) return;
+    final block = _parsed.blocks[blockIndex];
+    final oursText = _segmentText(blockIndex, ConflictLineRole.oursContent);
+    final theirsText = _segmentText(blockIndex, ConflictLineRole.theirsContent);
+
+    final split = GitDiffHelper.computeSplitDiff(oursText, theirsText);
+
+    showDialog<void>(
+      context: context,
+      builder: (dialogCtx) => _ConflictCompareDialog(
+        blockIndex: blockIndex,
+        oursLabel: block.oursLabel.isNotEmpty ? block.oursLabel : '当前侧 (Current)',
+        theirsLabel: block.theirsLabel.isNotEmpty ? block.theirsLabel : '传入侧 (Incoming)',
+        oursText: oursText,
+        theirsText: theirsText,
+        splitDiff: split,
+        editorTheme: editorTheme,
+        editorFont: editorFont,
+        fontSize: fontSize,
+        onAcceptCurrent: () {
+          Navigator.of(dialogCtx).pop();
+          _acceptCurrent(blockIndex);
+        },
+        onAcceptIncoming: () {
+          Navigator.of(dialogCtx).pop();
+          _acceptIncoming(blockIndex);
+        },
+        onAcceptBoth: () {
+          Navigator.of(dialogCtx).pop();
+          _acceptBoth(blockIndex);
+        },
+      ),
+    );
+  }
+
+  // ---------------------------- 手势与平滑缩放管理 (与 GitDiffPage 规范一致) ----------------------------
+
+  void _handlePointerDown(
+    PointerDownEvent event,
+    double currentFontSize,
+    double rowH,
+    double charW,
+  ) {
+    if (_isInteractingWithCodeLens) return;
+    _pointers[event.pointer] = event.position;
+    if (_pointers.length == 1) {
+      _lastPanPos = event.position;
+      _velocityTracker = VelocityTracker.withKind(event.kind);
+      _velocityTracker?.addPosition(event.timeStamp, event.position);
+    } else if (_pointers.length >= 2 && !_isPinching) {
+      final keys = _pointers.keys.toList();
+      _pointer1 = keys[0];
+      _pointer2 = keys[1];
+
+      final p1 = _pointers[_pointer1]!;
+      final p2 = _pointers[_pointer2]!;
+
+      _initialDistance = (p1 - p2).distance;
+      _initialFontSize = _activeZoomFontSize ?? currentFontSize;
+      _activeZoomFontSize = _initialFontSize;
+
+      final globalFocal = (p1 + p2) / 2;
+      final renderBox = context.findRenderObject() as RenderBox?;
+      final localFocal =
+          renderBox != null ? renderBox.globalToLocal(globalFocal) : globalFocal;
+      _initialLocalFocal = localFocal;
+
+      final curV = _vController.hasClients ? _vController.offset : 0.0;
+      final curH = _hController.hasClients ? _hController.offset : 0.0;
+
+      _focalLineContinuous = (curV + localFocal.dy) / math.max(1.0, rowH);
+      _focalCharContinuous = curH <= 4.0 ? 0.0 : curH / math.max(1.0, charW);
+
+      _lastPanPos = null;
+      setState(() => _isPinching = true);
+    }
+  }
+
+  void _handlePointerMove(PointerMoveEvent event) {
+    if (_isInteractingWithCodeLens) return;
+    if (!_pointers.containsKey(event.pointer)) return;
+    _pointers[event.pointer] = event.position;
+
+    if (_isPinching) {
+      if (_pointer1 != null &&
+          _pointer2 != null &&
+          _pointers.containsKey(_pointer1) &&
+          _pointers.containsKey(_pointer2) &&
+          _initialDistance != null &&
+          _initialDistance! > 10.0 &&
+          _initialFontSize != null &&
+          _initialLocalFocal != null) {
+        final p1 = _pointers[_pointer1]!;
+        final p2 = _pointers[_pointer2]!;
+
+        final currentDistance = (p1 - p2).distance;
+        final rawScale = currentDistance / _initialDistance!;
+
+        final minScale = SettingsProvider.minFontSize / _initialFontSize!;
+        final maxScale = SettingsProvider.maxFontSize / _initialFontSize!;
+        final clampedScale = rawScale.clamp(minScale * 0.9, maxScale * 1.1);
+
+        final continuousFontSize =
+            ((_initialFontSize! * clampedScale) * 10).round() / 10.0;
+        final newFontSize = continuousFontSize.clamp(
+          SettingsProvider.minFontSize,
+          SettingsProvider.maxFontSize,
+        );
+
+        final newRowH = (newFontSize * 1.45 + 4.0).roundToDouble();
+        final newCharW = newFontSize * 0.60;
+
+        final currentGlobalFocal = (p1 + p2) / 2;
+        final renderBox = context.findRenderObject() as RenderBox?;
+        final currentLocalFocal = renderBox != null
+            ? renderBox.globalToLocal(currentGlobalFocal)
+            : currentGlobalFocal;
+        _currentLocalFocal = currentLocalFocal;
+
+        final targetScrollV =
+            _focalLineContinuous * newRowH - currentLocalFocal.dy;
+        final targetScrollH = _focalCharContinuous <= 0.0
+            ? 0.0
+            : _focalCharContinuous * newCharW;
+
+        _syncing = true;
+        if (_vController.hasClients) {
+          final maxV = _vController.position.maxScrollExtent;
+          final clampedV =
+              targetScrollV.clamp(0.0, math.max(maxV, targetScrollV)).toDouble();
+          _vController.jumpTo(clampedV);
+          if (_gutterController.hasClients) _gutterController.jumpTo(clampedV);
+        }
+        if (_hController.hasClients) {
+          final maxH = _hController.position.maxScrollExtent;
+          final clampedH =
+              targetScrollH.clamp(0.0, math.max(maxH, targetScrollH)).toDouble();
+          _hController.jumpTo(clampedH);
+        }
+        _syncing = false;
+
+        if (_splitFontSize != newFontSize) {
+          setState(() {
+            _splitFontSize = newFontSize;
+            _activeZoomFontSize = newFontSize;
+          });
+        }
+      }
+    } else if (_pointers.length == 1 && !_isPinching) {
+      _velocityTracker?.addPosition(event.timeStamp, event.position);
+      final curPos = event.position;
+      if (_lastPanPos != null) {
+        final delta = curPos - _lastPanPos!;
+        _syncing = true;
+        if (_vController.hasClients) {
+          final maxV = _vController.position.maxScrollExtent;
+          final newV = (_vController.offset - delta.dy).clamp(0.0, maxV);
+          _vController.jumpTo(newV);
+          if (_gutterController.hasClients) _gutterController.jumpTo(newV);
+        }
+        if (_hController.hasClients) {
+          final maxH = _hController.position.maxScrollExtent;
+          final newH = (_hController.offset - delta.dx).clamp(0.0, maxH);
+          _hController.jumpTo(newH);
+        }
+        _syncing = false;
+      }
+      _lastPanPos = curPos;
+    }
+  }
+
+  void _finishPinchZoom() {
+    final finalSize = _activeZoomFontSize;
+    if (finalSize != null) {
+      final double targetFontSize = finalSize
+          .clamp(
+            SettingsProvider.minFontSize,
+            SettingsProvider.maxFontSize,
+          )
+          .roundToDouble();
+      _splitFontSize = targetFontSize;
+      final finalH = (targetFontSize * 1.45 + 4.0).roundToDouble();
+      final finalW = targetFontSize * 0.60;
+      final currentLocalFocal = _currentLocalFocal ?? _initialLocalFocal;
+      if (currentLocalFocal != null) {
+        final targetScrollV =
+            _focalLineContinuous * finalH - currentLocalFocal.dy;
+        final targetScrollH = _focalCharContinuous <= 0.0
+            ? 0.0
+            : _focalCharContinuous * finalW;
+        _syncing = true;
+        if (_vController.hasClients) {
+          final maxV = _vController.position.maxScrollExtent;
+          final clampedV =
+              targetScrollV.clamp(0.0, math.max(maxV, targetScrollV)).toDouble();
+          _vController.jumpTo(clampedV);
+          if (_gutterController.hasClients) _gutterController.jumpTo(clampedV);
+        }
+        if (_hController.hasClients) {
+          final maxH = _hController.position.maxScrollExtent;
+          final clampedH =
+              targetScrollH.clamp(0.0, math.max(maxH, targetScrollH)).toDouble();
+          _hController.jumpTo(clampedH);
+        }
+        _syncing = false;
+      }
+    }
+    setState(() {
+      _isPinching = false;
+      _pointer1 = null;
+      _pointer2 = null;
+      _initialDistance = null;
+      _initialFontSize = null;
+      _activeZoomFontSize = null;
+      _initialLocalFocal = null;
+      _currentLocalFocal = null;
+    });
+  }
+
+  void _handlePointerUp(PointerUpEvent event) {
+    _pointers.remove(event.pointer);
+    if (_isInteractingWithCodeLens) {
+      _isInteractingWithCodeLens = false;
+      _lastPanPos = null;
+      return;
+    }
+    if (_isPinching &&
+        (_pointers.length < 2 ||
+            event.pointer == _pointer1 ||
+            event.pointer == _pointer2)) {
+      _finishPinchZoom();
+    } else if (!_isPinching && _pointers.isEmpty) {
+      if (_velocityTracker != null) {
+        final estimate = _velocityTracker!.getVelocity();
+        final velocity = estimate.pixelsPerSecond;
+        if (velocity.dy.abs() > 60 && _vController.hasClients) {
+          final maxV = _vController.position.maxScrollExtent;
+          final targetV =
+              (_vController.offset - velocity.dy * 0.22).clamp(0.0, maxV);
+          _vController.animateTo(
+            targetV,
+            duration: const Duration(milliseconds: 350),
+            curve: Curves.easeOutCubic,
+          );
+        }
+        if (velocity.dx.abs() > 60 && _hController.hasClients) {
+          final maxH = _hController.position.maxScrollExtent;
+          final targetH =
+              (_hController.offset - velocity.dx * 0.22).clamp(0.0, maxH);
+          _hController.animateTo(
+            targetH,
+            duration: const Duration(milliseconds: 350),
+            curve: Curves.easeOutCubic,
+          );
+        }
+      }
+      _lastPanPos = null;
+    }
+  }
+
+  void _handlePointerCancel(PointerCancelEvent event) {
+    _pointers.remove(event.pointer);
+    if (_isInteractingWithCodeLens) {
+      _isInteractingWithCodeLens = false;
+      _lastPanPos = null;
+      return;
+    }
+    if (_isPinching) {
+      _finishPinchZoom();
+    }
+    _lastPanPos = null;
+  }
+
+  Widget _buildZoomBadge(EditorTheme editorTheme, double fontSize) {
+    return Positioned(
+      top: 16,
+      left: 0,
+      right: 0,
+      child: Center(
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+          decoration: BoxDecoration(
+            color: editorTheme.isDark
+                ? Colors.white.withValues(alpha: 0.85)
+                : Colors.black.withValues(alpha: 0.75),
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.2),
+                blurRadius: 6,
+                offset: const Offset(0, 2),
+              ),
+            ],
+          ),
+          child: Text(
+            '${fontSize.toStringAsFixed(1)} pt',
+            style: TextStyle(
+              color: editorTheme.isDark ? Colors.black : Colors.white,
+              fontWeight: FontWeight.bold,
+              fontSize: 13,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  // ---------------------------- 语法高亮缓存 ----------------------------
+
+  TextSpan _getHighlightedLineSpan({
+    required String code,
+    required TextStyle baseStyle,
+    required EditorTheme editorTheme,
+  }) {
+    if (code.isEmpty) {
+      return TextSpan(text: '', style: baseStyle);
+    }
+    final key = '${baseStyle.fontSize}-${editorTheme.id}-$code';
+    final cached = _highlightSpanCache[key];
+    if (cached != null) return cached;
+
+    final span = SyntaxHighlightHelper.highlightLine(
+      code: code,
+      filePath: widget.file.relativePath,
+      baseStyle: baseStyle,
+      highlightTheme: editorTheme.highlightTheme,
+    );
+    _highlightSpanCache[key] = span;
+    return span;
+  }
+
+  // ---------------------------- 核心 UI 构建 ----------------------------
+
+  double _getLineHeight(ConflictLine line, double baseRowHeight) {
+    // 冲突块开头标记行渲染 CodeLens 操作栏 + 标记行标题，其他行按 baseRowHeight
+    if (line.role == ConflictLineRole.oursHeader) {
+      return baseRowHeight + _codeLensBarHeight;
+    }
+    return baseRowHeight;
+  }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
     final l10n = AppLocalizations.of(context)!;
-    final editorTheme = _editorTheme;
-    final remaining = _parsed.blocks.length;
+
+    // 获取独立的代码编辑器主题与默认字号配置（对齐 GitDiffPage）
+    EditorTheme editorTheme = EditorTheme.atomOneDark;
+    double baseFontSize = 14.0;
+    AppFontItem editorFont = AppFonts.editorJetBrainsMono;
+    try {
+      final settings = context.watch<SettingsProvider>();
+      editorTheme = settings.editorTheme;
+      baseFontSize = settings.fontSize;
+      editorFont = settings.editorFont;
+    } catch (_) {}
+
+    final displayFontSize =
+        _activeZoomFontSize ?? _splitFontSize ?? baseFontSize;
+    final baseRowHeight = (displayFontSize * 1.45 + 4.0).roundToDouble();
+    final remainingConflicts = _parsed.blocks.length;
+
+    final fileName = p.basename(widget.file.relativePath);
+    final dirPath = p.dirname(widget.file.relativePath);
 
     return Scaffold(
       backgroundColor: editorTheme.backgroundColor,
       appBar: AppBar(
-        backgroundColor: editorTheme.backgroundColor,
-        foregroundColor: editorTheme.textColor,
-        title: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
+        titleSpacing: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_rounded),
+          onPressed: () => Navigator.of(context).pop(),
+        ),
+        title: Row(
           children: [
-            Text(
-              p.basename(widget.file.relativePath),
-              style: TextStyle(
-                fontSize: 15,
-                fontWeight: FontWeight.w600,
-                color: editorTheme.textColor,
-              ),
+            Icon(
+              FileIconUtils.getIcon(name: fileName, isDirectory: false),
+              size: 18,
+              color: colorScheme.onSurfaceVariant,
             ),
-            Text(
-              widget.file.relativePath,
-              style: TextStyle(
-                fontSize: 10.5,
-                color: editorTheme.gutterTextColor,
+            const SizedBox(width: 8),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Row(
+                    children: [
+                      Flexible(
+                        child: Text(
+                          fileName,
+                          style: const TextStyle(
+                            fontSize: 14.5,
+                            fontWeight: FontWeight.bold,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      // 冲突状态徽标（VS Code 风格）
+                      if (!_isLoading) ...[
+                        const SizedBox(width: 6),
+                        Flexible(
+                          child: _parsed.isMalformed
+                              ? Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 6,
+                                    vertical: 1.5,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: Colors.orange.withValues(alpha: 0.2),
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      const Icon(
+                                        Icons.warning_amber_rounded,
+                                        size: 11,
+                                        color: Colors.orange,
+                                      ),
+                                      const SizedBox(width: 3),
+                                      Flexible(
+                                        child: Text(
+                                          l10n.gitConflictMalformedBadge,
+                                          style: const TextStyle(
+                                            fontSize: 10.5,
+                                            fontWeight: FontWeight.bold,
+                                            color: Colors.orange,
+                                          ),
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                )
+                              : (remainingConflicts > 0
+                                  ? Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 6,
+                                        vertical: 1.5,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: colorScheme.errorContainer.withValues(
+                                          alpha: 0.85,
+                                        ),
+                                        borderRadius: BorderRadius.circular(10),
+                                      ),
+                                      child: Text(
+                                        l10n.gitConflictUnresolvedBadge(remainingConflicts),
+                                        style: TextStyle(
+                                          fontSize: 10.5,
+                                          fontWeight: FontWeight.bold,
+                                          color: colorScheme.onErrorContainer,
+                                        ),
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    )
+                                  : Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 6,
+                                        vertical: 1.5,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: Colors.green.withValues(alpha: 0.2),
+                                        borderRadius: BorderRadius.circular(10),
+                                      ),
+                                      child: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          const Icon(
+                                            Icons.check_circle_rounded,
+                                            size: 11,
+                                            color: Colors.green,
+                                          ),
+                                          const SizedBox(width: 3),
+                                          Flexible(
+                                            child: Text(
+                                              l10n.gitConflictAllResolvedBadge,
+                                              style: const TextStyle(
+                                                fontSize: 10.5,
+                                                fontWeight: FontWeight.bold,
+                                                color: Colors.green,
+                                              ),
+                                              overflow: TextOverflow.ellipsis,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    )),
+                        ),
+                      ],
+                    ],
+                  ),
+                  if (dirPath != '.' && dirPath.isNotEmpty)
+                    Text(
+                      dirPath,
+                      style: TextStyle(
+                        fontSize: 10.5,
+                        color: colorScheme.onSurfaceVariant.withValues(
+                          alpha: 0.6,
+                        ),
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                ],
               ),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
             ),
           ],
         ),
         actions: [
-          if (!_isLoading && remaining > 0) ...[
-            IconButton(
-              tooltip: l10n.gitConflictPrev,
-              icon: const Icon(Icons.keyboard_arrow_up, size: 20),
-              onPressed: () => _scrollToBlock(_nearestBlock(-1)),
-            ),
-            IconButton(
-              tooltip: l10n.gitConflictNext,
-              icon: const Icon(Icons.keyboard_arrow_down, size: 20),
-              onPressed: () => _scrollToBlock(_nearestBlock(1)),
-            ),
-            Padding(
-              padding: const EdgeInsets.only(right: 10),
-              child: Center(
-                child: Text(
-                  l10n.gitConflictUnresolvedRemain(remaining),
-                  style: TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w600,
-                    color: theme.colorScheme.error,
+          // 上一处冲突
+          IconButton(
+            visualDensity: VisualDensity.compact,
+            padding: EdgeInsets.zero,
+            constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+            splashRadius: 16,
+            iconSize: 20,
+            icon: const Icon(Icons.keyboard_arrow_up_rounded),
+            tooltip: l10n.gitConflictPrev,
+            onPressed: (!_isLoading && _parsed.blocks.isNotEmpty)
+                ? () => _navigateToPrevBlock(baseRowHeight)
+                : null,
+          ),
+          // 下一处冲突
+          IconButton(
+            visualDensity: VisualDensity.compact,
+            padding: EdgeInsets.zero,
+            constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+            splashRadius: 16,
+            iconSize: 20,
+            icon: const Icon(Icons.keyboard_arrow_down_rounded),
+            tooltip: l10n.gitConflictNext,
+            onPressed: (!_isLoading && _parsed.blocks.isNotEmpty)
+                ? () => _navigateToNextBlock(baseRowHeight)
+                : null,
+          ),
+          // 更多操作下拉菜单
+          PopupMenuButton<String>(
+            tooltip: l10n.gitConflictMoreOptions,
+            icon: const Icon(Icons.more_vert_rounded, size: 20),
+            onSelected: (val) {
+              switch (val) {
+                case 'all_current':
+                  _acceptAllCurrent();
+                  break;
+                case 'all_incoming':
+                  _acceptAllIncoming();
+                  break;
+                case 'reset_initial':
+                  _resetToInitial();
+                  break;
+                case 'reload_disk':
+                  _loadFromDisk();
+                  break;
+              }
+            },
+            itemBuilder: (ctx) => [
+              if (remainingConflicts > 0) ...[
+                PopupMenuItem(
+                  value: 'all_current',
+                  child: Row(
+                    children: [
+                      const Icon(
+                        Icons.done_all_rounded,
+                        size: 16,
+                        color: Color(0xFF4CAF50),
+                      ),
+                      const SizedBox(width: 8),
+                      Text(l10n.gitConflictAllOurs),
+                    ],
                   ),
                 ),
+                PopupMenuItem(
+                  value: 'all_incoming',
+                  child: Row(
+                    children: [
+                      const Icon(
+                        Icons.done_all_rounded,
+                        size: 16,
+                        color: Color(0xFF2196F3),
+                      ),
+                      const SizedBox(width: 8),
+                      Text(l10n.gitConflictAllTheirs),
+                    ],
+                  ),
+                ),
+                const PopupMenuDivider(),
+              ],
+              PopupMenuItem(
+                value: 'reset_initial',
+                child: Row(
+                  children: [
+                    const Icon(Icons.restore_rounded, size: 16),
+                    const SizedBox(width: 8),
+                    Text(l10n.gitConflictResetToInitial),
+                  ],
+                ),
               ),
-            ),
-          ],
+              PopupMenuItem(
+                value: 'reload_disk',
+                child: Row(
+                  children: [
+                    const Icon(Icons.refresh_rounded, size: 16),
+                    const SizedBox(width: 8),
+                    Text(l10n.gitConflictReloadFromDisk),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(width: 6),
         ],
       ),
-      body: _buildBody(theme, l10n, editorTheme),
+      body: Column(
+        children: [
+          Expanded(
+            child: _buildBody(
+              context: context,
+              theme: theme,
+              l10n: l10n,
+              editorTheme: editorTheme,
+              editorFont: editorFont,
+              displayFontSize: displayFontSize,
+              baseRowHeight: baseRowHeight,
+            ),
+          ),
+          _buildBottomBar(context, l10n, editorTheme, remainingConflicts),
+        ],
+      ),
     );
   }
 
-  Widget _buildBody(
-    ThemeData theme,
-    AppLocalizations l10n,
-    EditorTheme editorTheme,
-  ) {
+  Widget _buildBody({
+    required BuildContext context,
+    required ThemeData theme,
+    required AppLocalizations l10n,
+    required EditorTheme editorTheme,
+    required AppFontItem editorFont,
+    required double displayFontSize,
+    required double baseRowHeight,
+  }) {
     if (_isLoading) {
-      return Center(
-        child: CircularProgressIndicator(color: theme.colorScheme.primary),
+      return Container(
+        color: editorTheme.backgroundColor,
+        width: double.infinity,
+        height: double.infinity,
+        child: const Center(child: CircularProgressIndicator()),
       );
     }
+
     if (_errorMessage != null) {
-      return Center(
-        child: Padding(
-          padding: const EdgeInsets.all(24),
+      return Container(
+        color: editorTheme.backgroundColor,
+        width: double.infinity,
+        height: double.infinity,
+        child: Center(
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(
-                Icons.error_outline,
-                color: theme.colorScheme.error,
-                size: 32,
-              ),
-              const SizedBox(height: 10),
+              const Icon(Icons.error_outline, size: 44, color: Colors.red),
+              const SizedBox(height: 12),
               Text(
-                l10n.gitConflictLoadFailed,
-                style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  color: editorTheme.textColor,
-                ),
-              ),
-              const SizedBox(height: 6),
-              SelectableText(
                 _errorMessage!,
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 11,
-                  color: editorTheme.gutterTextColor,
-                ),
+                style: TextStyle(fontSize: 13, color: editorTheme.textColor),
               ),
-              const SizedBox(height: 14),
-              OutlinedButton(
-                onPressed: _load,
-                child: Text(l10n.gitRepairCheckRerun),
+              const SizedBox(height: 12),
+              FilledButton.icon(
+                onPressed: () => _loadFromDisk(),
+                icon: const Icon(Icons.refresh, size: 16),
+                label: Text(l10n.gitRefresh),
               ),
             ],
           ),
@@ -456,66 +1119,77 @@ class _GitConflictResolvePageState extends State<GitConflictResolvePage> {
       );
     }
 
-    return Column(
-      children: [
-        Expanded(child: _buildEditorArea(theme, l10n, editorTheme)),
-        _buildBottomBar(l10n, editorTheme),
-      ],
-    );
-  }
-
-  /// 只读行渲染区：行号栏固定 + 代码区全向滚动 + 双指缩放
-  Widget _buildEditorArea(
-    ThemeData theme,
-    AppLocalizations l10n,
-    EditorTheme editorTheme,
-  ) {
-    final fontSize = _effectiveFontSize;
-    final rowHeight = _rowHeight;
-    final charW = fontSize * 0.62;
     final gutterBg =
         editorTheme.gutterBackgroundColor ?? editorTheme.backgroundColor;
-    final dividerColor = editorTheme.gutterTextColor.withValues(alpha: 0.25);
+    final gutterDividerColor =
+        editorTheme.gutterTextColor.withValues(alpha: 0.25);
+    final displayCharWidth = displayFontSize * 0.60;
 
-    return Stack(
-      children: [
-        Positioned.fill(
-          child: LayoutBuilder(
-            builder: (context, constraints) {
-              final viewportWidth = constraints.maxWidth;
-              final digits = '${_lines.length}'.length;
-              final signW = (charW + 4.0).clamp(14.0, 36.0);
-              final gutterWidth = math.max(46.0, digits * charW + signW + 14.0);
-              final hasCodeArea = viewportWidth > gutterWidth + 1;
-              final actualGutter = hasCodeArea
-                  ? gutterWidth
-                  : math.max(0.0, viewportWidth - 1.0);
+    return LayoutBuilder(
+      builder: (ctx, constraints) {
+        final viewportWidth = constraints.maxWidth;
+        final totalLines = _lines.length;
+        final digits = totalLines > 0 ? '$totalLines'.length : 1;
+        final signW = (displayCharWidth + 4.0).clamp(14.0, 36.0);
+        final gutterWidth =
+            math.max(46.0, digits * displayCharWidth + signW + 14.0);
 
-              int maxChars = 0;
-              for (final l in _lines) {
-                if (l.text.length > maxChars) maxChars = l.text.length;
-              }
-              final codeAvailable = math.max(
-                10.0,
-                viewportWidth - gutterWidth - 1,
-              );
-              final maxCodeWidth = math.max(
-                codeAvailable,
-                maxChars * charW + 240.0,
-              );
+        final bool hasCodeArea = viewportWidth > (gutterWidth + 1.0);
+        final double actualGutterWidth = hasCodeArea
+            ? gutterWidth
+            : math.max(0.0, viewportWidth - 1.0);
+        final bool hasDivider = viewportWidth >= 1.0;
 
-              return Listener(
-                behavior: HitTestBehavior.opaque,
-                onPointerDown: (e) => _handlePointerDown(e, fontSize),
-                onPointerMove: _handlePointerMove,
-                onPointerUp: _handlePointerUp,
-                onPointerCancel: _handlePointerCancel,
+        int maxChars = 0;
+        for (final l in _lines) {
+          if (l.text.length > maxChars) maxChars = l.text.length;
+        }
+        final codeContentAvailableWidth =
+            math.max(10.0, viewportWidth - gutterWidth - 1.0);
+        final maxCodeWidth = math.max(
+          codeContentAvailableWidth,
+          maxChars * displayCharWidth + 240.0,
+        );
+
+        return Listener(
+          behavior: HitTestBehavior.opaque,
+          onPointerDown: (e) => _handlePointerDown(
+            e,
+            displayFontSize,
+            baseRowHeight,
+            displayCharWidth,
+          ),
+          onPointerMove: _handlePointerMove,
+          onPointerUp: _handlePointerUp,
+          onPointerCancel: _handlePointerCancel,
+          child: Stack(
+            children: [
+              // 1. 底层常驻背景与分割线（对标 GitDiffPage）
+              Positioned.fill(
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    if (actualGutter > 0)
+                    if (actualGutterWidth > 0)
+                      Container(width: actualGutterWidth, color: gutterBg),
+                    if (hasDivider)
+                      Container(width: 1.0, color: gutterDividerColor),
+                    if (hasCodeArea)
+                      Expanded(
+                        child: Container(color: editorTheme.backgroundColor),
+                      ),
+                  ],
+                ),
+              ),
+
+              // 2. 主体视口内容
+              Positioned.fill(
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    // 行号栏（与代码区高度严格同步，彻底消除错位）
+                    if (actualGutterWidth > 0)
                       SizedBox(
-                        width: actualGutter,
+                        width: actualGutterWidth,
                         child: ClipRect(
                           child: OverflowBox(
                             alignment: Alignment.centerRight,
@@ -523,28 +1197,31 @@ class _GitConflictResolvePageState extends State<GitConflictResolvePage> {
                             maxWidth: gutterWidth,
                             child: SizedBox(
                               width: gutterWidth,
-                              child: Container(
-                                color: gutterBg,
-                                child: ListView.builder(
-                                  controller: _gutterController,
-                                  physics: const NeverScrollableScrollPhysics(),
-                                  itemCount: _lines.length,
-                                  itemExtent: rowHeight,
-                                  padding: const EdgeInsets.only(bottom: 240),
-                                  itemBuilder: (ctx, i) => _buildGutterRow(
-                                    _lines[i],
-                                    rowHeight,
-                                    fontSize,
-                                    editorTheme,
-                                  ),
-                                ),
+                              child: ListView.builder(
+                                controller: _gutterController,
+                                physics: const NeverScrollableScrollPhysics(),
+                                itemCount: _lines.length,
+                                padding: const EdgeInsets.only(bottom: 240.0),
+                                itemBuilder: (ctx, index) {
+                                  return _buildGutterItem(
+                                    line: _lines[index],
+                                    editorTheme: editorTheme,
+                                    editorFont: editorFont,
+                                    fontSize: displayFontSize,
+                                    baseRowHeight: baseRowHeight,
+                                    signW: signW,
+                                  );
+                                },
                               ),
                             ),
                           ),
                         ),
                       ),
-                    if (viewportWidth >= 1)
-                      Container(width: 1.0, color: dividerColor),
+
+                    if (hasDivider)
+                      Container(width: 1.0, color: gutterDividerColor),
+
+                    // 代码内容区（横向滚动支撑与垂直列表同步）
                     if (hasCodeArea)
                       Expanded(
                         child: SingleChildScrollView(
@@ -557,87 +1234,170 @@ class _GitConflictResolvePageState extends State<GitConflictResolvePage> {
                               controller: _vController,
                               physics: const NeverScrollableScrollPhysics(),
                               itemCount: _lines.length,
-                              itemExtent: rowHeight,
-                              padding: const EdgeInsets.only(bottom: 240),
-                              itemBuilder: (ctx, i) => _buildCodeRow(
-                                _lines[i],
-                                rowHeight,
-                                fontSize,
-                                editorTheme,
-                                l10n,
-                              ),
+                              padding: const EdgeInsets.only(bottom: 240.0),
+                              itemBuilder: (ctx, index) {
+                                return _buildCodeItem(
+                                  line: _lines[index],
+                                  editorTheme: editorTheme,
+                                  editorFont: editorFont,
+                                  fontSize: displayFontSize,
+                                  baseRowHeight: baseRowHeight,
+                                  l10n: l10n,
+                                  availableWidth: codeContentAvailableWidth,
+                                );
+                              },
                             ),
                           ),
                         ),
                       ),
                   ],
                 ),
-              );
-            },
+              ),
+
+              // 畸形冲突警告横幅
+              if (_parsed.isMalformed)
+                Positioned(
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 8,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.amber.shade900.withValues(alpha: 0.92),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.3),
+                          blurRadius: 4,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(
+                          Icons.warning_amber_rounded,
+                          size: 16,
+                          color: Colors.white,
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            l10n.gitConflictMalformedBanner,
+                            style: const TextStyle(
+                              fontSize: 12,
+                              color: Colors.white,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+
+              // 缩放实时字号悬浮胶囊
+              if (_isPinching && _activeZoomFontSize != null)
+                _buildZoomBadge(editorTheme, _activeZoomFontSize!),
+            ],
           ),
-        ),
-        if (_showZoomBadge) _buildZoomBadge(editorTheme, fontSize),
-      ],
+        );
+      },
     );
   }
 
-  /// 行号栏单行：行号 + 冲突段符号（当前侧 `+` 绿、传入侧 `~` 蓝）
-  Widget _buildGutterRow(
-    ConflictLine line,
-    double rowHeight,
-    double fontSize,
-    EditorTheme editorTheme,
-  ) {
-    final sign = switch (line.role) {
-      ConflictLineRole.oursContent => '+',
-      ConflictLineRole.theirsContent => '~',
-      _ => '',
-    };
-    final signColor = switch (line.role) {
-      ConflictLineRole.oursContent => const Color(0xFF3FB950),
-      ConflictLineRole.theirsContent => const Color(0xFF58A6FF),
-      _ => editorTheme.gutterTextColor,
-    };
-    final charW = fontSize * 0.62;
-    final signW = (charW + 4.0).clamp(14.0, 36.0);
+  // ---------------------------- 行号栏单元格构建 ----------------------------
+
+  Widget _buildGutterItem({
+    required ConflictLine line,
+    required EditorTheme editorTheme,
+    required AppFontItem editorFont,
+    required double fontSize,
+    required double baseRowHeight,
+    required double signW,
+  }) {
+    final isDark = editorTheme.isDark;
+    final rowHeight = _getLineHeight(line, baseRowHeight);
+
+    // 冲突符号与高亮颜色（VS Code 规范）
+    String sign = '';
+    Color? signColor;
+    if (line.isOurs) {
+      sign = line.role == ConflictLineRole.oursHeader ? '!' : '+';
+      signColor = isDark ? const Color(0xFF66BB6A) : const Color(0xFF2E7D32);
+    } else if (line.isTheirs) {
+      sign = line.role == ConflictLineRole.theirsHeader ? '!' : '~';
+      signColor = isDark ? const Color(0xFF58A6FF) : const Color(0xFF1976D2);
+    } else if (line.isBase) {
+      sign = '|';
+      signColor = editorTheme.gutterTextColor;
+    }
+
+    final isOursHeader = line.role == ConflictLineRole.oursHeader;
 
     return Container(
       height: rowHeight,
-      color: _rowBackground(line.role, editorTheme.isDark),
-      padding: const EdgeInsets.symmetric(horizontal: 4),
-      child: Row(
+      color: _getGutterBackgroundColor(line.role, isDark),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
         children: [
-          Expanded(
-            child: Text(
-              '${line.lineNumber}',
-              textAlign: TextAlign.right,
-              style: TextStyle(
-                fontSize: (fontSize - 1).clamp(
-                  SettingsProvider.minFontSize - 1.0,
-                  SettingsProvider.maxFontSize + 8.0,
-                ),
-                fontFamily: 'JetBrains Mono',
-                height: 1.4,
-                color: sign.isEmpty ? editorTheme.gutterTextColor : signColor,
+          // 若为冲突起始行，顶部预留与 CodeLens 相同的 32px 高度并居中展示合并图标
+          if (isOursHeader)
+            Container(
+              height: _codeLensBarHeight,
+              alignment: Alignment.center,
+              child: Icon(
+                Icons.call_merge_rounded,
+                size: 13,
+                color: signColor?.withValues(alpha: 0.8),
               ),
             ),
-          ),
-          const SizedBox(width: 4),
+          // 行号与符号展示区
           SizedBox(
-            width: signW,
-            child: Center(
-              child: Text(
-                sign,
-                style: TextStyle(
-                  fontSize: (fontSize - 1).clamp(
-                    SettingsProvider.minFontSize - 1.0,
-                    SettingsProvider.maxFontSize + 8.0,
+            height: baseRowHeight,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 4),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      '${line.lineNumber}',
+                      textAlign: TextAlign.right,
+                      style: TextStyle(
+                        fontSize: (fontSize - 1).clamp(
+                          SettingsProvider.minFontSize - 1.0,
+                          SettingsProvider.maxFontSize,
+                        ),
+                        fontFamily: editorFont.fontFamily,
+                        fontFamilyFallback: editorFont.fallback,
+                        height: 1.4,
+                        color: signColor ?? editorTheme.gutterTextColor,
+                      ),
+                    ),
                   ),
-                  fontWeight: FontWeight.bold,
-                  fontFamily: 'JetBrains Mono',
-                  height: 1.4,
-                  color: signColor,
-                ),
+                  const SizedBox(width: 4),
+                  SizedBox(
+                    width: signW,
+                    child: Center(
+                      child: Text(
+                        sign,
+                        style: TextStyle(
+                          fontSize: (fontSize - 1).clamp(
+                            SettingsProvider.minFontSize - 1.0,
+                            SettingsProvider.maxFontSize,
+                          ),
+                          fontWeight: FontWeight.bold,
+                          fontFamily: editorFont.fontFamily,
+                          fontFamilyFallback: editorFont.fallback,
+                          height: 1.4,
+                          color: signColor ?? editorTheme.gutterTextColor,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
           ),
@@ -646,239 +1406,378 @@ class _GitConflictResolvePageState extends State<GitConflictResolvePage> {
     );
   }
 
-  /// 代码区单行：按角色渲染
-  Widget _buildCodeRow(
-    ConflictLine line,
-    double rowHeight,
-    double fontSize,
-    EditorTheme editorTheme,
-    AppLocalizations l10n,
-  ) {
-    if (line.isHeader) {
-      return _buildHeaderBand(line, rowHeight, fontSize, editorTheme, l10n);
-    }
-    if (line.role == ConflictLineRole.separator) {
-      return Container(
+  // ---------------------------- 代码内容区单元格构建 ----------------------------
+
+  Widget _buildCodeItem({
+    required ConflictLine line,
+    required EditorTheme editorTheme,
+    required AppFontItem editorFont,
+    required double fontSize,
+    required double baseRowHeight,
+    required AppLocalizations l10n,
+    required double availableWidth,
+  }) {
+    final isDark = editorTheme.isDark;
+    final rowHeight = _getLineHeight(line, baseRowHeight);
+
+    // 1. 冲突标记行开头：渲染 CodeLens 操作栏 + 当前侧色带标头
+    if (line.role == ConflictLineRole.oursHeader) {
+      final blockIndex = line.blockIndex ?? 0;
+      return SizedBox(
         height: rowHeight,
-        alignment: Alignment.centerLeft,
-        padding: const EdgeInsets.only(left: 6, right: 160),
-        child: Container(
-          height: 3,
-          color: editorTheme.gutterTextColor.withValues(alpha: 0.55),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            AnimatedBuilder(
+              animation: _hController,
+              builder: (ctx, child) {
+                final scrollX =
+                    _hController.hasClients ? _hController.offset : 0.0;
+                return Padding(
+                  padding: EdgeInsets.only(left: math.max(0.0, scrollX)),
+                  child: child,
+                );
+              },
+              child: _ConflictCodeLensBar(
+                blockIndex: blockIndex,
+                editorTheme: editorTheme,
+                l10n: l10n,
+                availableWidth: availableWidth,
+                onTouchStart: () => _isInteractingWithCodeLens = true,
+                onTouchEnd: () => _isInteractingWithCodeLens = false,
+                onAcceptCurrent: () => _acceptCurrent(blockIndex),
+                onAcceptIncoming: () => _acceptIncoming(blockIndex),
+                onAcceptBoth: () => _acceptBoth(blockIndex),
+                onCompare: () => _showCompareDialog(
+                  blockIndex,
+                  editorTheme,
+                  editorFont,
+                  fontSize,
+                ),
+              ),
+            ),
+            _buildOursHeaderBand(
+              line: line,
+              baseRowHeight: baseRowHeight,
+              fontSize: fontSize,
+              editorTheme: editorTheme,
+              editorFont: editorFont,
+              l10n: l10n,
+            ),
+          ],
         ),
       );
     }
 
+    // 2. 传入侧标头色带
+    if (line.role == ConflictLineRole.theirsHeader) {
+      return _buildTheirsHeaderBand(
+        line: line,
+        baseRowHeight: baseRowHeight,
+        fontSize: fontSize,
+        editorTheme: editorTheme,
+        editorFont: editorFont,
+        l10n: l10n,
+      );
+    }
+
+    // 3. 基线侧标头色带
+    if (line.role == ConflictLineRole.baseHeader) {
+      return _buildBaseHeaderBand(
+        line: line,
+        baseRowHeight: baseRowHeight,
+        fontSize: fontSize,
+        editorTheme: editorTheme,
+        editorFont: editorFont,
+        l10n: l10n,
+      );
+    }
+
+    // 4. 分隔线 (=======)
+    if (line.role == ConflictLineRole.separator) {
+      return _buildSeparatorLine(
+        baseRowHeight: baseRowHeight,
+        editorTheme: editorTheme,
+      );
+    }
+
+    // 5. 普通上下文行或冲突内容行
     final baseStyle = TextStyle(
       fontSize: fontSize,
-      fontFamily: _editorFont.fontFamily,
-      fontFamilyFallback: _editorFont.fallback,
+      fontFamily: editorFont.fontFamily,
+      fontFamilyFallback: editorFont.fallback,
       height: 1.4,
       color: editorTheme.textColor,
     );
 
-    return Container(
-      height: rowHeight,
-      color: _rowBackground(line.role, editorTheme.isDark),
-      alignment: Alignment.centerLeft,
-      padding: const EdgeInsets.only(left: 6.0, right: 160.0),
-      child: Text.rich(
-        _highlight(line.text, baseStyle, editorTheme, fontSize),
-        overflow: TextOverflow.visible,
-        softWrap: false,
-      ),
+    final span = _getHighlightedLineSpan(
+      code: line.text,
+      baseStyle: baseStyle,
+      editorTheme: editorTheme,
     );
-  }
 
-  /// 冲突标记行 → 色带标题（含内联操作）
-  Widget _buildHeaderBand(
-    ConflictLine line,
-    double rowHeight,
-    double fontSize,
-    EditorTheme editorTheme,
-    AppLocalizations l10n,
-  ) {
-    final isCurrent = line.role == ConflictLineRole.oursHeader;
-    final isIncoming = line.role == ConflictLineRole.theirsHeader;
+    final contentBg = _getCodeRowBackgroundColor(line.role, isDark);
 
-    final bandColor = isCurrent
-        ? const Color(0xFF3FB950)
-        : (isIncoming ? const Color(0xFF58A6FF) : const Color(0xFF8B949E));
-
-    // 保留 git 原始标记文本，并补上"哪一侧"的说明
-    final suffix = isCurrent
-        ? '  (${l10n.gitConflictSectionOurs})'
-        : (isIncoming ? '  (${l10n.gitConflictSectionTheirs})' : '');
-    final blockIndex = line.blockIndex ?? 0;
+    // 左侧高亮边条色 (对标 VS Code 编辑区边缘指示色带)
+    Color? leftIndicatorColor;
+    if (line.role == ConflictLineRole.oursContent) {
+      leftIndicatorColor =
+          isDark ? const Color(0xFF66BB6A) : const Color(0xFF2E7D32);
+    } else if (line.role == ConflictLineRole.theirsContent) {
+      leftIndicatorColor =
+          isDark ? const Color(0xFF58A6FF) : const Color(0xFF1976D2);
+    } else if (line.role == ConflictLineRole.baseContent) {
+      leftIndicatorColor = editorTheme.gutterTextColor.withValues(alpha: 0.6);
+    }
 
     return Container(
-      constraints: BoxConstraints(minHeight: rowHeight),
-      color: bandColor.withValues(alpha: editorTheme.isDark ? 0.30 : 0.22),
-      padding: const EdgeInsets.only(left: 6, right: 8, top: 2, bottom: 2),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min,
+      height: baseRowHeight,
+      color: contentBg,
+      child: Stack(
         children: [
-          Text(
-            '${line.text}$suffix',
-            style: TextStyle(
-              fontSize: fontSize - 0.5,
-              fontFamily: _editorFont.fontFamily,
-              fontFamilyFallback: _editorFont.fallback,
-              height: 1.4,
-              fontWeight: FontWeight.w600,
-              color: bandColor,
+          if (leftIndicatorColor != null)
+            Positioned(
+              left: 0,
+              top: 0,
+              bottom: 0,
+              width: 3.0,
+              child: Container(color: leftIndicatorColor),
             ),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
+          Positioned.fill(
+            child: Container(
+              alignment: Alignment.centerLeft,
+              padding: const EdgeInsets.only(left: 8.0, right: 160.0),
+              child: Text.rich(
+                span,
+                overflow: TextOverflow.visible,
+                softWrap: false,
+              ),
+            ),
           ),
-          // 基线段仅作参考，不提供操作
-          if (isCurrent || isIncoming)
-            _buildInlineActions(blockIndex, fontSize, editorTheme, l10n),
         ],
       ),
     );
   }
 
-  /// 内联操作行（VS Code 命名固定，不随所在侧变化）
-  Widget _buildInlineActions(
-    int blockIndex,
-    double fontSize,
-    EditorTheme editorTheme,
-    AppLocalizations l10n,
-  ) {
-    const actionColor = Color(0xFF58A6FF);
-    final s = (fontSize - 1.5).clamp(9.0, 16.0);
 
-    Widget action(String label, VoidCallback onTap, String keySuffix) {
-      return InkWell(
-        key: ValueKey('git_conflict_${keySuffix}_$blockIndex'),
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
-          child: Text(
-            label,
+  // ---------------------------- 各侧标头色带构建 (VS Code 规范) ----------------------------
+
+  Widget _buildOursHeaderBand({
+    required ConflictLine line,
+    required double baseRowHeight,
+    required double fontSize,
+    required EditorTheme editorTheme,
+    required AppFontItem editorFont,
+    required AppLocalizations l10n,
+  }) {
+    final isDark = editorTheme.isDark;
+    final greenColor =
+        isDark ? const Color(0xFF66BB6A) : const Color(0xFF2E7D32);
+
+    return Container(
+      height: baseRowHeight,
+      decoration: BoxDecoration(
+        color: greenColor.withValues(alpha: isDark ? 0.30 : 0.20),
+        border: Border(
+          top: BorderSide(color: greenColor.withValues(alpha: 0.8), width: 1.5),
+        ),
+      ),
+      padding: const EdgeInsets.only(left: 8.0, right: 16.0),
+      alignment: Alignment.centerLeft,
+      child: Row(
+        children: [
+          Icon(Icons.arrow_downward_rounded, size: 13, color: greenColor),
+          const SizedBox(width: 4),
+          Text(
+            '${line.text} · ${l10n.gitConflictSectionOurs}',
             style: TextStyle(
-              fontSize: s,
-              color: actionColor,
-              fontFamily: _editorFont.fontFamily,
-              decoration: TextDecoration.underline,
-              decorationColor: actionColor.withValues(alpha: 0.5),
+              fontSize: (fontSize - 1).clamp(
+                SettingsProvider.minFontSize - 1.0,
+                SettingsProvider.maxFontSize,
+              ),
+              fontWeight: FontWeight.bold,
+              fontFamily: editorFont.fontFamily,
+              fontFamilyFallback: editorFont.fallback,
+              color: greenColor,
             ),
           ),
-        ),
-      );
-    }
+        ],
+      ),
+    );
+  }
 
-    Widget sep() => Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 2),
+  Widget _buildTheirsHeaderBand({
+    required ConflictLine line,
+    required double baseRowHeight,
+    required double fontSize,
+    required EditorTheme editorTheme,
+    required AppFontItem editorFont,
+    required AppLocalizations l10n,
+  }) {
+    final isDark = editorTheme.isDark;
+    final blueColor =
+        isDark ? const Color(0xFF58A6FF) : const Color(0xFF1976D2);
+
+    return Container(
+      height: baseRowHeight,
+      decoration: BoxDecoration(
+        color: blueColor.withValues(alpha: isDark ? 0.30 : 0.20),
+        border: Border(
+          bottom: BorderSide(
+            color: blueColor.withValues(alpha: 0.8),
+            width: 1.5,
+          ),
+        ),
+      ),
+      padding: const EdgeInsets.only(left: 8.0, right: 16.0),
+      alignment: Alignment.centerLeft,
+      child: Row(
+        children: [
+          Icon(Icons.arrow_upward_rounded, size: 13, color: blueColor),
+          const SizedBox(width: 4),
+          Text(
+            '${line.text} · ${l10n.gitConflictSectionTheirs}',
+            style: TextStyle(
+              fontSize: (fontSize - 1).clamp(
+                SettingsProvider.minFontSize - 1.0,
+                SettingsProvider.maxFontSize,
+              ),
+              fontWeight: FontWeight.bold,
+              fontFamily: editorFont.fontFamily,
+              fontFamilyFallback: editorFont.fallback,
+              color: blueColor,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildBaseHeaderBand({
+    required ConflictLine line,
+    required double baseRowHeight,
+    required double fontSize,
+    required EditorTheme editorTheme,
+    required AppFontItem editorFont,
+    required AppLocalizations l10n,
+  }) {
+    final grayColor = editorTheme.gutterTextColor;
+    final isDark = editorTheme.isDark;
+
+    return Container(
+      height: baseRowHeight,
+      color: grayColor.withValues(alpha: isDark ? 0.22 : 0.15),
+      padding: const EdgeInsets.only(left: 8.0, right: 16.0),
+      alignment: Alignment.centerLeft,
       child: Text(
-        '|',
+        '${line.text} · ${l10n.gitConflictSectionBaseline}',
         style: TextStyle(
-          fontSize: s,
-          color: editorTheme.gutterTextColor.withValues(alpha: 0.7),
+          fontSize: (fontSize - 1).clamp(
+            SettingsProvider.minFontSize - 1.0,
+            SettingsProvider.maxFontSize,
+          ),
+          fontWeight: FontWeight.w600,
+          fontFamily: editorFont.fontFamily,
+          fontFamilyFallback: editorFont.fallback,
+          color: grayColor,
         ),
       ),
     );
+  }
 
-    return Wrap(
-      crossAxisAlignment: WrapCrossAlignment.center,
-      children: [
-        action(
-          l10n.gitConflictAcceptCurrent,
-          () => _acceptCurrent(blockIndex),
-          'accept_current',
-        ),
-        sep(),
-        action(
-          l10n.gitConflictAcceptIncoming,
-          () => _acceptIncoming(blockIndex),
-          'accept_incoming',
-        ),
-        sep(),
-        action(
-          l10n.gitConflictAcceptBoth,
-          () => _acceptBoth(blockIndex),
-          'accept_both',
-        ),
-        sep(),
-        action(l10n.gitConflictCompare, _openInEditor, 'compare'),
-      ],
+  Widget _buildSeparatorLine({
+    required double baseRowHeight,
+    required EditorTheme editorTheme,
+  }) {
+    final isDark = editorTheme.isDark;
+    return Container(
+      height: baseRowHeight,
+      color: isDark ? const Color(0xFF1E2227) : const Color(0xFFF1F5F9),
+      alignment: Alignment.centerLeft,
+      padding: const EdgeInsets.only(left: 8.0, right: 160.0),
+      child: Row(
+        children: [
+          Expanded(
+            child: Container(
+              height: 1.0,
+              color: editorTheme.gutterTextColor.withValues(alpha: 0.4),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 8.0),
+            child: Text(
+              '=======',
+              style: TextStyle(
+                fontSize: 11,
+                fontFamily: 'JetBrains Mono',
+                fontWeight: FontWeight.bold,
+                color: editorTheme.gutterTextColor.withValues(alpha: 0.6),
+              ),
+            ),
+          ),
+          Expanded(
+            child: Container(
+              height: 1.0,
+              color: editorTheme.gutterTextColor.withValues(alpha: 0.4),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
-  TextSpan _highlight(
-    String code,
-    TextStyle baseStyle,
-    EditorTheme editorTheme,
-    double fontSize,
-  ) {
-    if (code.isEmpty) return TextSpan(text: '', style: baseStyle);
-    final key = '$fontSize-${editorTheme.id}-$code';
-    final cached = _highlightCache[key];
-    if (cached != null) return cached;
-    final span = SyntaxHighlightHelper.highlightLine(
-      code: code,
-      filePath: widget.file.relativePath,
-      baseStyle: baseStyle,
-      highlightTheme: editorTheme.highlightTheme,
-    );
-    _highlightCache[key] = span;
-    return span;
-  }
+  // ---------------------------- 色彩映射辅助 ----------------------------
 
-  /// 整段底色：当前侧绿、传入侧蓝、基线灰（与 VS Code 一致）
-  Color? _rowBackground(ConflictLineRole role, bool isDark) {
+  Color? _getGutterBackgroundColor(ConflictLineRole role, bool isDark) {
     return switch (role) {
-      ConflictLineRole.oursContent => const Color(
-        0xFF3FB950,
-      ).withValues(alpha: isDark ? 0.18 : 0.13),
-      ConflictLineRole.theirsContent => const Color(
-        0xFF58A6FF,
-      ).withValues(alpha: isDark ? 0.18 : 0.13),
-      ConflictLineRole.baseContent => const Color(
-        0xFF8B949E,
-      ).withValues(alpha: isDark ? 0.10 : 0.08),
+      ConflictLineRole.oursHeader ||
+      ConflictLineRole.oursContent =>
+        Colors.green.withValues(alpha: isDark ? 0.16 : 0.09),
+      ConflictLineRole.theirsHeader ||
+      ConflictLineRole.theirsContent =>
+        Colors.blue.withValues(alpha: isDark ? 0.16 : 0.09),
+      ConflictLineRole.baseHeader ||
+      ConflictLineRole.baseContent =>
+        Colors.grey.withValues(alpha: isDark ? 0.12 : 0.06),
+      ConflictLineRole.separator =>
+        isDark ? const Color(0xFF1E2227) : const Color(0xFFF1F5F9),
+      ConflictLineRole.context => null,
+    };
+  }
+
+  Color? _getCodeRowBackgroundColor(ConflictLineRole role, bool isDark) {
+    return switch (role) {
+      ConflictLineRole.oursContent =>
+        Colors.green.withValues(alpha: isDark ? 0.14 : 0.08),
+      ConflictLineRole.theirsContent =>
+        Colors.blue.withValues(alpha: isDark ? 0.14 : 0.08),
+      ConflictLineRole.baseContent =>
+        Colors.grey.withValues(alpha: isDark ? 0.10 : 0.05),
       _ => null,
     };
   }
 
-  Widget _buildZoomBadge(EditorTheme editorTheme, double fontSize) {
-    return Positioned(
-      left: 0,
-      right: 0,
-      bottom: 12,
-      child: Center(
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-          decoration: BoxDecoration(
-            color: editorTheme.backgroundColor.withValues(alpha: 0.94),
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(
-              color: editorTheme.gutterTextColor.withValues(alpha: 0.35),
-            ),
-          ),
-          child: Text(
-            '${fontSize.toStringAsFixed(1)}pt',
-            style: TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.bold,
-              color: editorTheme.textColor,
-            ),
-          ),
-        ),
-      ),
-    );
-  }
+  // ---------------------------- 底部操作栏 ----------------------------
 
-  Widget _buildBottomBar(AppLocalizations l10n, EditorTheme editorTheme) {
+  Widget _buildBottomBar(
+    BuildContext context,
+    AppLocalizations l10n,
+    EditorTheme editorTheme,
+    int remainingConflicts,
+  ) {
+    final theme = Theme.of(context);
+    final isDone = !_parsed.isMalformed &&
+        remainingConflicts == 0 &&
+        !GitConflictParser.containsMarkers(_content);
+
     return Container(
-      padding: const EdgeInsets.fromLTRB(10, 8, 10, 8),
+      padding: const EdgeInsets.symmetric(horizontal: 14.0, vertical: 10.0),
       decoration: BoxDecoration(
-        color: editorTheme.gutterBackgroundColor ?? editorTheme.backgroundColor,
+        color: theme.colorScheme.surface,
         border: Border(
           top: BorderSide(
-            color: editorTheme.gutterTextColor.withValues(alpha: 0.3),
+            color: theme.colorScheme.outlineVariant.withValues(alpha: 0.5),
+            width: 1.0,
           ),
         ),
       ),
@@ -886,10 +1785,15 @@ class _GitConflictResolvePageState extends State<GitConflictResolvePage> {
         top: false,
         child: Row(
           children: [
-            Expanded(
+            // 手动编辑
+            Flexible(
+              flex: 2,
               child: OutlinedButton.icon(
                 key: const ValueKey('git_conflict_edit_manually'),
                 onPressed: _openInEditor,
+                style: OutlinedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(horizontal: 8),
+                ),
                 icon: const Icon(Icons.edit_outlined, size: 15),
                 label: Text(
                   l10n.gitConflictEditManually,
@@ -900,15 +1804,29 @@ class _GitConflictResolvePageState extends State<GitConflictResolvePage> {
               ),
             ),
             const SizedBox(width: 8),
-            Expanded(
-              flex: 2,
+            // 保存并标记已解决
+            Flexible(
+              flex: 3,
               child: FilledButton.icon(
                 key: const ValueKey('git_conflict_save_and_mark'),
                 onPressed: _saveAndMark,
-                icon: const Icon(Icons.check, size: 16),
+                style: FilledButton.styleFrom(
+                  backgroundColor: isDone ? Colors.green : null,
+                  foregroundColor: isDone ? Colors.white : null,
+                  padding: const EdgeInsets.symmetric(horizontal: 8),
+                ),
+                icon: Icon(
+                  isDone ? Icons.check_circle_rounded : Icons.check_rounded,
+                  size: 16,
+                ),
                 label: Text(
-                  l10n.gitConflictSaveAndMark,
-                  style: const TextStyle(fontSize: 12),
+                  isDone
+                      ? l10n.gitConflictResolvedCommit
+                      : l10n.gitConflictSaveAndMarkShort,
+                  style: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                  ),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
@@ -919,108 +1837,500 @@ class _GitConflictResolvePageState extends State<GitConflictResolvePage> {
       ),
     );
   }
+}
 
-  // ---------------------------- 手势（Listener 原生指针跟踪） ----------------------------
+// ==============================================================================
+// 冲突操作 CodeLens 悬浮胶囊栏（支持水平手势自由拖动，彻底杜绝 RenderFlex 溢出）
+// ==============================================================================
 
-  void _handlePointerDown(PointerDownEvent event, double fontSize) {
-    _pointers[event.pointer] = event.position;
-    if (_pointers.length >= 2 && !_isPinching) {
-      final keys = _pointers.keys.toList();
-      _pointer1 = keys[0];
-      _pointer2 = keys[1];
-      final p1 = _pointers[_pointer1]!;
-      final p2 = _pointers[_pointer2]!;
-      _initialDistance = (p1 - p2).distance;
-      _initialFontSize = fontSize;
-      _isPinching = true;
-      _lastPanPos = null;
-      setState(() => _showZoomBadge = true);
-    } else if (_pointers.length == 1) {
-      _lastPanPos = event.position;
-    }
+class _ConflictCodeLensBar extends StatefulWidget {
+  const _ConflictCodeLensBar({
+    required this.blockIndex,
+    required this.editorTheme,
+    required this.l10n,
+    required this.availableWidth,
+    required this.onAcceptCurrent,
+    required this.onAcceptIncoming,
+    required this.onAcceptBoth,
+    required this.onCompare,
+    this.onTouchStart,
+    this.onTouchEnd,
+  });
+
+  final int blockIndex;
+  final EditorTheme editorTheme;
+  final AppLocalizations l10n;
+  final double availableWidth;
+  final VoidCallback onAcceptCurrent;
+  final VoidCallback onAcceptIncoming;
+  final VoidCallback onAcceptBoth;
+  final VoidCallback onCompare;
+  final VoidCallback? onTouchStart;
+  final VoidCallback? onTouchEnd;
+
+  @override
+  State<_ConflictCodeLensBar> createState() => _ConflictCodeLensBarState();
+}
+
+class _ConflictCodeLensBarState extends State<_ConflictCodeLensBar> {
+  late final ScrollController _scrollController;
+
+  @override
+  void initState() {
+    super.initState();
+    _scrollController = ScrollController();
   }
 
-  void _handlePointerMove(PointerMoveEvent event) {
-    if (!_pointers.containsKey(event.pointer)) return;
-    _pointers[event.pointer] = event.position;
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
 
-    if (_isPinching && _pointer1 != null && _pointer2 != null) {
-      final p1 = _pointers[_pointer1];
-      final p2 = _pointers[_pointer2];
-      if (p1 == null || p2 == null || _initialDistance == null) return;
-      if (_initialDistance! <= 0) return;
+  @override
+  Widget build(BuildContext context) {
+    final isDark = widget.editorTheme.isDark;
+    final barBg = isDark ? const Color(0xFF1E2227) : const Color(0xFFF3F4F6);
+    final borderColor = widget.editorTheme.gutterTextColor.withValues(alpha: 0.2);
 
-      final ratio = (p1 - p2).distance / _initialDistance!;
-      final base = _initialFontSize ?? _baseFontSize;
-      final target = (base * ratio).clamp(
-        SettingsProvider.minFontSize.toDouble(),
-        SettingsProvider.maxFontSize.toDouble(),
-      );
-
-      final oldRowHeight = _rowHeight;
-      setState(() => _activeZoomFontSize = target);
-      final newRowHeight = _rowHeight;
-
-      // 以双指中心为锚点，避免缩放时内容跳动
-      if (_vController.hasClients && oldRowHeight > 0) {
-        final focalDy = ((p1 + p2) / 2).dy;
-        final lineUnderFocal = (focalDy + _vController.offset) / oldRowHeight;
-        final desired = lineUnderFocal * newRowHeight - focalDy;
-        _vController.jumpTo(
-          desired.clamp(
-            _vController.position.minScrollExtent,
-            _vController.position.maxScrollExtent,
+    return Container(
+      height: 32.0,
+      width: math.max(100.0, widget.availableWidth),
+      decoration: BoxDecoration(
+        color: barBg,
+        border: Border(
+          top: BorderSide(color: borderColor, width: 1.0),
+          bottom: BorderSide(color: borderColor, width: 0.5),
+        ),
+      ),
+      child: Listener(
+        behavior: HitTestBehavior.opaque,
+        onPointerDown: (_) => widget.onTouchStart?.call(),
+        onPointerUp: (_) => widget.onTouchEnd?.call(),
+        onPointerCancel: (_) => widget.onTouchEnd?.call(),
+        child: ScrollConfiguration(
+          behavior: ScrollConfiguration.of(context).copyWith(
+            dragDevices: {
+              PointerDeviceKind.touch,
+              PointerDeviceKind.mouse,
+              PointerDeviceKind.trackpad,
+              PointerDeviceKind.stylus,
+            },
           ),
-        );
-      }
-      return;
-    }
-
-    // 单指平移：垂直 + 水平
-    if (_lastPanPos != null && !_isPinching) {
-      final delta = event.position - _lastPanPos!;
-      _lastPanPos = event.position;
-      if (_vController.hasClients) {
-        _vController.jumpTo(
-          (_vController.offset - delta.dy).clamp(
-            _vController.position.minScrollExtent,
-            _vController.position.maxScrollExtent,
+          child: SingleChildScrollView(
+            controller: _scrollController,
+            scrollDirection: Axis.horizontal,
+            physics: const BouncingScrollPhysics(),
+            padding: const EdgeInsets.symmetric(horizontal: 6.0),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _buildChip(
+                  key: ValueKey('conflict_accept_current_${widget.blockIndex}'),
+                  label: widget.l10n.gitConflictAcceptCurrentShort,
+                  icon: Icons.check_rounded,
+                  color: isDark ? const Color(0xFF66BB6A) : const Color(0xFF2E7D32),
+                  onTap: widget.onAcceptCurrent,
+                  tooltip: widget.l10n.gitConflictAcceptCurrent,
+                ),
+                const SizedBox(width: 6),
+                _buildChip(
+                  key: ValueKey('conflict_accept_incoming_${widget.blockIndex}'),
+                  label: widget.l10n.gitConflictAcceptIncomingShort,
+                  icon: Icons.check_rounded,
+                  color: isDark ? const Color(0xFF58A6FF) : const Color(0xFF1976D2),
+                  onTap: widget.onAcceptIncoming,
+                  tooltip: widget.l10n.gitConflictAcceptIncoming,
+                ),
+                const SizedBox(width: 6),
+                _buildChip(
+                  key: ValueKey('conflict_accept_both_${widget.blockIndex}'),
+                  label: widget.l10n.gitConflictAcceptBothShort,
+                  icon: Icons.call_merge_rounded,
+                  color: isDark ? const Color(0xFFCE93D8) : const Color(0xFF7B1FA2),
+                  onTap: widget.onAcceptBoth,
+                  tooltip: widget.l10n.gitConflictAcceptBoth,
+                ),
+                const SizedBox(width: 6),
+                _buildChip(
+                  key: ValueKey('conflict_compare_${widget.blockIndex}'),
+                  label: widget.l10n.gitConflictCompareShort,
+                  icon: Icons.difference_outlined,
+                  color: isDark ? const Color(0xFFFFB74D) : const Color(0xFFE65100),
+                  onTap: widget.onCompare,
+                  tooltip: widget.l10n.gitConflictCompare,
+                ),
+              ],
+            ),
           ),
-        );
-      }
-      if (_hController.hasClients) {
-        _hController.jumpTo(
-          (_hController.offset - delta.dx).clamp(
-            _hController.position.minScrollExtent,
-            _hController.position.maxScrollExtent,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildChip({
+    Key? key,
+    required String label,
+    required IconData icon,
+    required Color color,
+    required VoidCallback onTap,
+    required String tooltip,
+  }) {
+    return Tooltip(
+      message: tooltip,
+      child: Material(
+        key: key,
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(6),
+          onTap: onTap,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(6),
+              border: Border.all(
+                color: color.withValues(alpha: 0.35),
+                width: 0.8,
+              ),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(icon, size: 12.5, color: color),
+                const SizedBox(width: 4),
+                Text(
+                  label,
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                    color: color,
+                  ),
+                ),
+              ],
+            ),
           ),
-        );
-      }
-    }
-  }
-
-  void _handlePointerUp(PointerUpEvent event) {
-    _pointers.remove(event.pointer);
-    if (_pointers.length < 2 && _isPinching) _finishPinch();
-    if (_pointers.isEmpty) _lastPanPos = null;
-  }
-
-  void _handlePointerCancel(PointerCancelEvent event) {
-    _pointers.remove(event.pointer);
-    if (_pointers.length < 2 && _isPinching) _finishPinch();
-    if (_pointers.isEmpty) _lastPanPos = null;
-  }
-
-  void _finishPinch() {
-    _isPinching = false;
-    _pointer1 = null;
-    _pointer2 = null;
-    _initialDistance = null;
-    final zoomed = _activeZoomFontSize;
-    setState(() {
-      if (zoomed != null) _committedFontSize = zoomed;
-      _activeZoomFontSize = null;
-      _showZoomBadge = false;
-    });
+        ),
+      ),
+    );
   }
 }
+
+// ==============================================================================
+// 冲突比较查看弹窗 (Compare Changes Modal Dialog)
+// ==============================================================================
+
+class _ConflictCompareDialog extends StatelessWidget {
+  const _ConflictCompareDialog({
+    required this.blockIndex,
+    required this.oursLabel,
+    required this.theirsLabel,
+    required this.oursText,
+    required this.theirsText,
+    required this.splitDiff,
+    required this.editorTheme,
+    required this.editorFont,
+    required this.fontSize,
+    required this.onAcceptCurrent,
+    required this.onAcceptIncoming,
+    required this.onAcceptBoth,
+  });
+
+  final int blockIndex;
+  final String oursLabel;
+  final String theirsLabel;
+  final String oursText;
+  final String theirsText;
+  final SplitDiffResult splitDiff;
+  final EditorTheme editorTheme;
+  final AppFontItem editorFont;
+  final double fontSize;
+
+  final VoidCallback onAcceptCurrent;
+  final VoidCallback onAcceptIncoming;
+  final VoidCallback onAcceptBoth;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context)!;
+    final rowH = (fontSize * 1.35 + 2.0).roundToDouble();
+
+    return Dialog(
+      insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
+      backgroundColor: editorTheme.backgroundColor,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 820, maxHeight: 600),
+        child: Column(
+          children: [
+            // 顶栏标头
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              decoration: BoxDecoration(
+                color: theme.colorScheme.surface,
+                borderRadius: const BorderRadius.vertical(
+                  top: Radius.circular(14),
+                ),
+                border: Border(
+                  bottom: BorderSide(
+                    color: theme.colorScheme.outlineVariant.withValues(
+                      alpha: 0.5,
+                    ),
+                  ),
+                ),
+              ),
+              child: Row(
+                children: [
+                  const Icon(
+                    Icons.difference_rounded,
+                    size: 18,
+                    color: Color(0xFFFF9800),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      l10n.gitConflictCompareTitle(blockIndex + 1),
+                      style: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.close_rounded, size: 18),
+                    onPressed: () => Navigator.of(context).pop(),
+                  ),
+                ],
+              ),
+            ),
+
+            // 双侧标题标签
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              color: editorTheme.isDark
+                  ? const Color(0xFF1E2227)
+                  : const Color(0xFFEEEEEE),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Row(
+                      children: [
+                        const Icon(
+                          Icons.arrow_downward_rounded,
+                          size: 13,
+                          color: Color(0xFF4CAF50),
+                        ),
+                        const SizedBox(width: 4),
+                        Flexible(
+                          child: Text(
+                            l10n.gitConflictCurrentWithLabel(oursLabel),
+                            style: const TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.bold,
+                              color: Color(0xFF4CAF50),
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Container(
+                    width: 1,
+                    height: 16,
+                    color: editorTheme.gutterTextColor.withValues(alpha: 0.3),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Row(
+                      children: [
+                        const Icon(
+                          Icons.arrow_upward_rounded,
+                          size: 13,
+                          color: Color(0xFF2196F3),
+                        ),
+                        const SizedBox(width: 4),
+                        Flexible(
+                          child: Text(
+                            l10n.gitConflictIncomingWithLabel(theirsLabel),
+                            style: const TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.bold,
+                              color: Color(0xFF2196F3),
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            // 差异双栏对比内容
+            Expanded(
+              child: splitDiff.leftLines.isEmpty && splitDiff.rightLines.isEmpty
+                  ? Center(
+                      child: Text(
+                        l10n.gitConflictBothEmpty,
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: editorTheme.gutterTextColor,
+                        ),
+                      ),
+                    )
+                  : Row(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        // 左侧 (当前版本)
+                        Expanded(
+                          child: ListView.builder(
+                            itemCount: splitDiff.leftLines.length,
+                            itemExtent: rowH,
+                            itemBuilder: (ctx, i) {
+                              final line = splitDiff.leftLines[i];
+                              final isDel = line.type == DiffLineType.deleted;
+                              final isEmpty = line.type == DiffLineType.empty;
+                              Color? bg;
+                              if (isDel) {
+                                bg = Colors.red.withValues(
+                                  alpha: editorTheme.isDark ? 0.22 : 0.12,
+                                );
+                              } else if (isEmpty) {
+                                bg = editorTheme.isDark
+                                    ? Colors.white.withValues(alpha: 0.03)
+                                    : Colors.black.withValues(alpha: 0.03);
+                              }
+                              return Container(
+                                color: bg,
+                                alignment: Alignment.centerLeft,
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 6,
+                                ),
+                                child: Text(
+                                  line.text,
+                                  style: TextStyle(
+                                    fontSize: fontSize - 1,
+                                    fontFamily: editorFont.fontFamily,
+                                    fontFamilyFallback: editorFont.fallback,
+                                    color: isDel
+                                        ? (editorTheme.isDark
+                                            ? const Color(0xFFEF5350)
+                                            : const Color(0xFFD32F2F))
+                                        : editorTheme.textColor,
+                                  ),
+                                  overflow: TextOverflow.visible,
+                                  softWrap: false,
+                                ),
+                              );
+                            },
+                          ),
+                        ),
+                        Container(
+                          width: 1.0,
+                          color: editorTheme.gutterTextColor.withValues(
+                            alpha: 0.2,
+                          ),
+                        ),
+                        // 右侧 (传入版本)
+                        Expanded(
+                          child: ListView.builder(
+                            itemCount: splitDiff.rightLines.length,
+                            itemExtent: rowH,
+                            itemBuilder: (ctx, i) {
+                              final line = splitDiff.rightLines[i];
+                              final isAdd = line.type == DiffLineType.added;
+                              final isEmpty = line.type == DiffLineType.empty;
+                              Color? bg;
+                              if (isAdd) {
+                                bg = Colors.green.withValues(
+                                  alpha: editorTheme.isDark ? 0.22 : 0.12,
+                                );
+                              } else if (isEmpty) {
+                                bg = editorTheme.isDark
+                                    ? Colors.white.withValues(alpha: 0.03)
+                                    : Colors.black.withValues(alpha: 0.03);
+                              }
+                              return Container(
+                                color: bg,
+                                alignment: Alignment.centerLeft,
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 6,
+                                ),
+                                child: Text(
+                                  line.text,
+                                  style: TextStyle(
+                                    fontSize: fontSize - 1,
+                                    fontFamily: editorFont.fontFamily,
+                                    fontFamilyFallback: editorFont.fallback,
+                                    color: isAdd
+                                        ? (editorTheme.isDark
+                                            ? const Color(0xFF66BB6A)
+                                            : const Color(0xFF2E7D32))
+                                        : editorTheme.textColor,
+                                  ),
+                                  overflow: TextOverflow.visible,
+                                  softWrap: false,
+                                ),
+                              );
+                            },
+                          ),
+                        ),
+                      ],
+                    ),
+            ),
+
+            // 底栏快速决策按钮
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+              decoration: BoxDecoration(
+                color: theme.colorScheme.surface,
+                borderRadius: const BorderRadius.vertical(
+                  bottom: Radius.circular(14),
+                ),
+                border: Border(
+                  top: BorderSide(
+                    color: theme.colorScheme.outlineVariant.withValues(
+                      alpha: 0.5,
+                    ),
+                  ),
+                ),
+              ),
+              child: Row(
+                children: [
+                  OutlinedButton(
+                    onPressed: () => Navigator.of(context).pop(),
+                    child: Text(l10n.cancel),
+                  ),
+                  const Spacer(),
+                  OutlinedButton.icon(
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: const Color(0xFF2196F3),
+                    ),
+                    icon: const Icon(Icons.arrow_upward_rounded, size: 14),
+                    label: Text(l10n.gitConflictAcceptIncoming),
+                    onPressed: onAcceptIncoming,
+                  ),
+                  const SizedBox(width: 8),
+                  FilledButton.icon(
+                    style: FilledButton.styleFrom(
+                      backgroundColor: const Color(0xFF4CAF50),
+                      foregroundColor: Colors.white,
+                    ),
+                    icon: const Icon(Icons.arrow_downward_rounded, size: 14),
+                    label: Text(l10n.gitConflictAcceptCurrent),
+                    onPressed: onAcceptCurrent,
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+

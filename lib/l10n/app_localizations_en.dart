@@ -1601,6 +1601,20 @@ class AppLocalizationsEn extends AppLocalizations {
       'Request real semantic types and function parameters from background compilers';
 
   @override
+  String get codeCompletionSwitchTitle => 'Code Completion';
+
+  @override
+  String get codeCompletionSwitchSubtitle =>
+      'Real-time function, variable, and syntax suggestions while typing';
+
+  @override
+  String get codeDiagnosticsSwitchTitle => 'Code Correction';
+
+  @override
+  String get codeDiagnosticsSwitchSubtitle =>
+      'Real-time syntax checking, error squiggles, and quick fixes';
+
+  @override
   String get internalEngineTitle =>
       'Runtime & Code Intelligence Engine (Ubuntu)';
 
@@ -2472,6 +2486,66 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get gitConflictGoResolve => 'Resolve first';
+
+  @override
+  String get gitConflictAllResolvedBadge => 'All Resolved';
+
+  @override
+  String gitConflictUnresolvedBadge(int count) {
+    return '$count Unresolved';
+  }
+
+  @override
+  String get gitConflictResetToInitial => 'Reset to Initial State';
+
+  @override
+  String get gitConflictReloadFromDisk => 'Reload from Disk';
+
+  @override
+  String get gitConflictResolvedCommit => 'Resolved · Save & Commit';
+
+  @override
+  String get gitConflictMoreOptions => 'More Options';
+
+  @override
+  String get gitConflictAcceptCurrentShort => 'Current';
+
+  @override
+  String get gitConflictAcceptIncomingShort => 'Incoming';
+
+  @override
+  String get gitConflictAcceptBothShort => 'Both';
+
+  @override
+  String get gitConflictCompareShort => 'Compare';
+
+  @override
+  String get gitConflictSaveAndMarkShort => 'Save & Finish';
+
+  @override
+  String get gitConflictMalformedBanner =>
+      'Malformed or nested conflict markers detected. Auto-resolution is disabled. Please edit manually.';
+
+  @override
+  String get gitConflictMalformedBadge => 'Malformed';
+
+  @override
+  String gitConflictCompareTitle(int index) {
+    return 'Compare Conflict #$index';
+  }
+
+  @override
+  String get gitConflictBothEmpty => 'Both sides are empty';
+
+  @override
+  String gitConflictCurrentWithLabel(String label) {
+    return 'Current: $label';
+  }
+
+  @override
+  String gitConflictIncomingWithLabel(String label) {
+    return 'Incoming: $label';
+  }
 
   @override
   String get gitRemoteBranches => 'Remote Branches';

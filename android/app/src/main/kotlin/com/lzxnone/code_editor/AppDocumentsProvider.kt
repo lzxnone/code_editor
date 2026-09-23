@@ -1,4 +1,4 @@
-package com.example.code_editor
+package com.lzxnone.code_editor
 
 import android.database.Cursor
 import android.database.MatrixCursor

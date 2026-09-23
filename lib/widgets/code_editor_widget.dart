@@ -1020,6 +1020,13 @@ class _CodeEditorWidgetState extends State<CodeEditorWidget> {
     required TextSpan textSpan,
     required TextStyle style,
   }) {
+    try {
+      final settings = _getSettingsProvider(context);
+      if (!settings.enableLspCompletion || !settings.enableCodeDiagnostics) {
+        return textSpan;
+      }
+    } catch (_) {}
+
     return _diagnosticController.buildDiagnosticSpans(
       context: context,
       filePath: _currentLoadedPath ?? widget.filePath,
@@ -1218,6 +1225,8 @@ class _CodeEditorWidgetState extends State<CodeEditorWidget> {
     bool showLineNumbers = true;
     bool pinLineNumbers = true;
     bool enableLspCompletion = true;
+    bool enableCodeCompletion = true;
+    bool enableCodeDiagnostics = true;
     try {
       final settings = _getSettingsProvider(context, listen: true);
       activeTheme = settings.editorTheme;
@@ -1229,12 +1238,17 @@ class _CodeEditorWidgetState extends State<CodeEditorWidget> {
       keyboardConfig = settings.virtualKeyboardConfig;
       activeEditorFont = settings.editorFont;
       enableLspCompletion = settings.enableLspCompletion;
+      enableCodeCompletion = settings.enableCodeCompletion;
+      enableCodeDiagnostics = settings.enableCodeDiagnostics;
       if (_currentIndentSize != null && _currentIndentSize != settings.indentSize) {
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (mounted) _loadFileContent();
         });
       }
     } catch (_) {}
+
+    final bool effectiveCompletion = enableLspCompletion && enableCodeCompletion;
+    final bool effectiveDiagnostics = enableLspCompletion && enableCodeDiagnostics;
 
     final double displayFontSize = _activeZoomFontSize ?? activeFontSize;
 
@@ -1262,7 +1276,7 @@ class _CodeEditorWidgetState extends State<CodeEditorWidget> {
                         final promptsBuilder = SmartCodeAutocompletePromptsBuilder(
                           controller: controller,
                           filePath: _currentLoadedPath ?? widget.filePath,
-                          enableLspCompletion: enableLspCompletion,
+                          enableLspCompletion: effectiveCompletion,
                         );
                         return EditorOverlayScope(
                           key: ValueKey(_currentLoadedPath),
@@ -1316,6 +1330,7 @@ class _CodeEditorWidgetState extends State<CodeEditorWidget> {
                                             controller: editingController,
                                             notifier: notifier,
                                             lineDecorationBuilder: (lineIndex) {
+                                              if (!effectiveDiagnostics) return null;
                                               final filePath = _currentLoadedPath ?? widget.filePath;
                                               if (filePath == null) return null;
                                               final diags = LspDiagnosticsStore.instance.getDiagnosticsForLine(filePath, lineIndex);
@@ -1406,7 +1421,7 @@ class _CodeEditorWidgetState extends State<CodeEditorWidget> {
               ),
             ),
           ),
-          if (_currentCursorLine >= 0 && (_currentLoadedPath ?? widget.filePath) != null) ...[
+          if (effectiveDiagnostics && _currentCursorLine >= 0 && (_currentLoadedPath ?? widget.filePath) != null) ...[
             Builder(
               builder: (ctx) {
                 final diags = LspDiagnosticsStore.instance.getDiagnosticsForLine(

@@ -46,7 +46,9 @@ class SettingsProvider extends ChangeNotifier {
   static const String _keyShowHiddenFiles = 'show_hidden_files'; //显示隐藏文件
 
   //代码补全
-  static const String _keyEnableLspCompletion = 'enable_lsp_completion'; //LSP智能代码补全启用
+  static const String _keyEnableLspCompletion = 'enable_lsp_completion'; //LSP智能代码补全总开关
+  static const String _keyEnableCodeCompletion = 'enable_code_completion'; //代码补全子开关
+  static const String _keyEnableCodeDiagnostics = 'enable_code_diagnostics'; //代码纠错子开关
 
   //语言
   static const String _keyAppLocale = 'app_locale';
@@ -83,6 +85,8 @@ class SettingsProvider extends ChangeNotifier {
   VirtualKeyboardConfig _terminalKeyboardConfig = VirtualKeyboardConfig.defaultTerminalConfiguration();
   bool _showHiddenFiles = true;
   bool _enableLspCompletion = true;
+  bool _enableCodeCompletion = true;
+  bool _enableCodeDiagnostics = true;
   ContainerRuntimeMode _containerRuntimeMode = ContainerRuntimeMode.auto;
   bool _hasPromptedRootRequest = false;
   Locale? _locale;
@@ -91,6 +95,8 @@ class SettingsProvider extends ChangeNotifier {
   @Deprecated('本地补全已完全移除')
   bool get enableLocalCompletion => false;
   bool get enableLspCompletion => _enableLspCompletion;
+  bool get enableCodeCompletion => _enableCodeCompletion;
+  bool get enableCodeDiagnostics => _enableCodeDiagnostics;
   ContainerRuntimeMode get containerRuntimeMode => _containerRuntimeMode;
   bool get hasPromptedRootRequest => _hasPromptedRootRequest;
 
@@ -323,6 +329,14 @@ class SettingsProvider extends ChangeNotifier {
       if (savedEnableLspCompletion != null) {
         _enableLspCompletion = savedEnableLspCompletion;
       }
+      final savedEnableCodeCompletion = prefs.getBool(_keyEnableCodeCompletion);
+      if (savedEnableCodeCompletion != null) {
+        _enableCodeCompletion = savedEnableCodeCompletion;
+      }
+      final savedEnableCodeDiagnostics = prefs.getBool(_keyEnableCodeDiagnostics);
+      if (savedEnableCodeDiagnostics != null) {
+        _enableCodeDiagnostics = savedEnableCodeDiagnostics;
+      }
 
       //设置语言
       final savedLocale = prefs.getString(_keyAppLocale);
@@ -549,7 +563,7 @@ class SettingsProvider extends ChangeNotifier {
   @Deprecated('本地补全已完全移除')
   Future<void> setEnableLocalCompletion(bool enable) async {}
 
-  /// 设置是否启用LSP后端代码补全
+  /// 设置是否启用LSP后端代码补全（总开关）
   Future<void> setEnableLspCompletion(bool enable) async {
     if (_enableLspCompletion == enable) return;
     _enableLspCompletion = enable;
@@ -557,6 +571,28 @@ class SettingsProvider extends ChangeNotifier {
     try {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setBool(_keyEnableLspCompletion, enable);
+    } catch (_) {}
+  }
+
+  /// 设置是否启用代码补全子功能
+  Future<void> setEnableCodeCompletion(bool enable) async {
+    if (_enableCodeCompletion == enable) return;
+    _enableCodeCompletion = enable;
+    notifyListeners();
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool(_keyEnableCodeCompletion, enable);
+    } catch (_) {}
+  }
+
+  /// 设置是否启用代码纠错子功能
+  Future<void> setEnableCodeDiagnostics(bool enable) async {
+    if (_enableCodeDiagnostics == enable) return;
+    _enableCodeDiagnostics = enable;
+    notifyListeners();
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool(_keyEnableCodeDiagnostics, enable);
     } catch (_) {}
   }
 }

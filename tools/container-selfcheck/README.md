@@ -35,7 +35,7 @@ NDK=<ndk>/toolchains/llvm/prebuilt/<host>/bin
 前提：app 为 **debug** 构建（`run-as` 需要），设备已连 adb。
 
 ```bash
-PKG=com.example.code_editor
+PKG=com.lzxnone.code_editor
 BASE=/data/data/$PKG/files/distros/alpine
 R=$BASE/rootfs
 

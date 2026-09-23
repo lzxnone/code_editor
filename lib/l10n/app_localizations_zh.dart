@@ -1550,6 +1550,18 @@ class AppLocalizationsZh extends AppLocalizations {
   String get lspCompletionSubtitle => '向后台编译器守护进程请求真实语义类型与函数参数补全';
 
   @override
+  String get codeCompletionSwitchTitle => '代码补全';
+
+  @override
+  String get codeCompletionSwitchSubtitle => '输入时实时提示函数、变量与语法补全';
+
+  @override
+  String get codeDiagnosticsSwitchTitle => '代码纠错';
+
+  @override
+  String get codeDiagnosticsSwitchSubtitle => '实时语法检查、错误波浪线提示与修复建议';
+
+  @override
   String get internalEngineTitle => '代码运行与智能补全引擎 (Ubuntu)';
 
   @override
@@ -2398,6 +2410,65 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get gitConflictGoResolve => '去处理';
+
+  @override
+  String get gitConflictAllResolvedBadge => '已全部解决';
+
+  @override
+  String gitConflictUnresolvedBadge(int count) {
+    return '$count 未解决';
+  }
+
+  @override
+  String get gitConflictResetToInitial => '重置为初始冲突状态';
+
+  @override
+  String get gitConflictReloadFromDisk => '重新从磁盘读取';
+
+  @override
+  String get gitConflictResolvedCommit => '冲突已解决 · 保存并提交';
+
+  @override
+  String get gitConflictMoreOptions => '更多操作';
+
+  @override
+  String get gitConflictAcceptCurrentShort => '当前';
+
+  @override
+  String get gitConflictAcceptIncomingShort => '传入';
+
+  @override
+  String get gitConflictAcceptBothShort => '双方';
+
+  @override
+  String get gitConflictCompareShort => '对比';
+
+  @override
+  String get gitConflictSaveAndMarkShort => '保存并完成';
+
+  @override
+  String get gitConflictMalformedBanner => '检测到冲突标记嵌套或不完整，自动解析已禁用，请点击下方手动编辑';
+
+  @override
+  String get gitConflictMalformedBadge => '标记异常';
+
+  @override
+  String gitConflictCompareTitle(int index) {
+    return '冲突对比 · 第 $index 处';
+  }
+
+  @override
+  String get gitConflictBothEmpty => '两端内容均为空';
+
+  @override
+  String gitConflictCurrentWithLabel(String label) {
+    return '当前侧: $label';
+  }
+
+  @override
+  String gitConflictIncomingWithLabel(String label) {
+    return '传入侧: $label';
+  }
 
   @override
   String get gitRemoteBranches => '远端分支';

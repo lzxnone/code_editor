@@ -7,6 +7,7 @@ import '../../providers/git_provider.dart';
 import '../../providers/tab_provider.dart';
 import '../../utils/dialog_utils.dart';
 import '../../utils/git_error_mapper.dart';
+import '../../views/main_view.dart';
 import 'git_conflict_resolve_page.dart';
 
 /// 冲突解决面板（底部弹出）
@@ -518,9 +519,6 @@ class _ConflictFileTile extends StatelessWidget {
     await provider.refreshConflictState();
     if (!context.mounted) return;
 
-    // 先收起面板与抽屉，再压入解决页 —— 否则返回时层级会错乱
-    Navigator.of(context).maybePop();
-
     await Navigator.of(context).push(
       GitConflictResolvePage.route(file: file, gitProvider: provider),
     );
@@ -539,11 +537,9 @@ class _ConflictFileTile extends StatelessWidget {
     await tabProvider.openFile(file.absolutePath);
     if (!context.mounted) return;
 
-    // 先收起 bottom sheet 面板，再显式关闭抽屉。
-    // 这里不能用连续两次 maybePop()：抽屉是 Scaffold 管理的路由，
-    // 用 closeDrawer() 才是项目内一致且可靠的做法（见 file_item_widget）。
-    Navigator.of(context).maybePop();
-    Scaffold.maybeOf(context)?.closeDrawer();
+    // 先收起 bottom sheet 冲突面板，再关闭侧边栏抽屉，直达主代码编辑区
+    Navigator.of(context).pop();
+    MainView.closeDrawerIfOpen();
   }
 
   Future<void> _takeSide(

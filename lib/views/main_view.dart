@@ -38,6 +38,16 @@ import 'package:provider/provider.dart';
 class MainView extends StatefulWidget {
   const MainView({super.key});
 
+  /// 全局主页面 Scaffold Key，用于从任何弹窗、底部面板或子页面关闭主界面抽屉侧边栏
+  static final GlobalKey<ScaffoldState> scaffoldKey = GlobalKey<ScaffoldState>();
+
+  /// 方便调用的关闭主界面侧边栏抽屉辅助方法
+  static void closeDrawerIfOpen() {
+    if (scaffoldKey.currentState?.isDrawerOpen ?? false) {
+      scaffoldKey.currentState?.closeDrawer();
+    }
+  }
+
   /// 清除指定语言或全部语言的防打扰提示记录（卸载组件后恢复提示资格并重置当前文件检查）
   static void clearPromptedLanguage(String? languageId) {
     _MainViewState.clearPromptedLanguage(languageId);
@@ -653,6 +663,7 @@ class _MainViewState extends State<MainView> {
         }
       },
       child: Scaffold(
+        key: MainView.scaffoldKey,
         appBar: CodeEditorAppBar(
           filePath: currentFile,
           rootPath: rootPath,

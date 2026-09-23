@@ -68,6 +68,18 @@ class ConflictLine {
       role == ConflictLineRole.oursContent ||
       role == ConflictLineRole.baseContent ||
       role == ConflictLineRole.theirsContent;
+
+  bool get isOurs =>
+      role == ConflictLineRole.oursHeader ||
+      role == ConflictLineRole.oursContent;
+
+  bool get isTheirs =>
+      role == ConflictLineRole.theirsHeader ||
+      role == ConflictLineRole.theirsContent;
+
+  bool get isBase =>
+      role == ConflictLineRole.baseHeader ||
+      role == ConflictLineRole.baseContent;
 }
 
 /// 把冲突文件内容摊平成可渲染的行序列

@@ -844,6 +844,10 @@
   "localCompletionSubtitle": "包含语言内置关键字与当前文档词法启发式提取",
   "lspCompletionTitle": "后端语言服务补全",
   "lspCompletionSubtitle": "向后台编译器守护进程请求真实语义类型与函数参数补全",
+  "codeCompletionSwitchTitle": "代码补全",
+  "codeCompletionSwitchSubtitle": "输入时实时提示函数、变量与语法补全",
+  "codeDiagnosticsSwitchTitle": "代码纠错",
+  "codeDiagnosticsSwitchSubtitle": "实时语法检查、错误波浪线提示与修复建议",
   "internalEngineTitle": "代码运行与智能补全引擎 (Ubuntu)",
   "internalEngineStatusReady": "引擎已就绪",
   "internalEngineStatusNotReady": "引擎未启动",
@@ -1413,6 +1417,51 @@
   "gitConflictMarkWithMarkersHint": "标记为已解决会把它们当作正常内容提交进仓库。建议先处理干净。",
   "gitConflictMarkAnyway": "仍然标记",
   "gitConflictGoResolve": "去处理",
+  "gitConflictAllResolvedBadge": "已全部解决",
+  "gitConflictUnresolvedBadge": "{count} 未解决",
+  "@gitConflictUnresolvedBadge": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "gitConflictResetToInitial": "重置为初始冲突状态",
+  "gitConflictReloadFromDisk": "重新从磁盘读取",
+  "gitConflictResolvedCommit": "冲突已解决 · 保存并提交",
+  "gitConflictMoreOptions": "更多操作",
+  "gitConflictAcceptCurrentShort": "当前",
+  "gitConflictAcceptIncomingShort": "传入",
+  "gitConflictAcceptBothShort": "双方",
+  "gitConflictCompareShort": "对比",
+  "gitConflictSaveAndMarkShort": "保存并完成",
+  "gitConflictMalformedBanner": "检测到冲突标记嵌套或不完整，自动解析已禁用，请点击下方手动编辑",
+  "gitConflictMalformedBadge": "标记异常",
+  "gitConflictCompareTitle": "冲突对比 · 第 {index} 处",
+  "@gitConflictCompareTitle": {
+    "placeholders": {
+      "index": {
+        "type": "int"
+      }
+    }
+  },
+  "gitConflictBothEmpty": "两端内容均为空",
+  "gitConflictCurrentWithLabel": "当前侧: {label}",
+  "@gitConflictCurrentWithLabel": {
+    "placeholders": {
+      "label": {
+        "type": "String"
+      }
+    }
+  },
+  "gitConflictIncomingWithLabel": "传入侧: {label}",
+  "@gitConflictIncomingWithLabel": {
+    "placeholders": {
+      "label": {
+        "type": "String"
+      }
+    }
+  },
 
   "gitRemoteBranches": "远端分支",
   "gitLocalBranches": "本地分支",

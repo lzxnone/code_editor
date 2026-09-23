@@ -51,7 +51,7 @@ if ((Test-Path $patch) -and -not (Select-String -Path (Join-Path $SrcDir "shmem.
 # --- app id（决定 _PATH_TMP：命名 shm key 的 symlink 存放位置）-------------
 if (-not $AppId) {
     $m = Select-String -Path "android\app\build.gradle.kts" -Pattern 'applicationId\s*=\s*"([^"]+)"' | Select-Object -First 1
-    $AppId = if ($m) { $m.Matches.Groups[1].Value } else { "com.example.code_editor" }
+    $AppId = if ($m) { $m.Matches.Groups[1].Value } else { "com.lzxnone.code_editor" }
 }
 $tmpDef = "-D_PATH_TMP=`"/data/data/$AppId/cache/`""
 Write-Host "applicationId=$AppId  _PATH_TMP=/data/data/$AppId/cache/" -ForegroundColor Cyan
