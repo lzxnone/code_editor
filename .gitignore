@@ -41,6 +41,8 @@ desktop.ini
 .pub/
 /build/
 /coverage/
+/releases/
+*.apk
 pubspec-overrides.yaml
 
 # Sensitive & Environment
@@ -65,24 +67,12 @@ android/**/GeneratedPluginRegistrant.java
 /android/app/release/
 /android/app/build/
 
-# iOS / macOS
-**/ios/Flutter/Generated.xcconfig
-**/ios/Flutter/app.flx
-**/ios/Flutter/flutter_assets/
-**/ios/Flutter/Flutter.framework
-**/ios/Flutter/Flutter.podspec
-**/ios/Pods/
-**/ios/.symlinks/
-**/ios/profile/
-**/ios/debug/
-**/ios/release/
-**/macos/Flutter/GeneratedPluginRegistrant.swift
-**/macos/Flutter/ephemeral/
-**/macos/Pods/
-
-# Windows / Linux ephemeral
-windows/flutter/ephemeral/
-linux/flutter/ephemeral/
+# Other Platforms (Project is Android-only)
+/ios/
+/windows/
+/macos/
+/linux/
+/web/
 
 # Project Specific (PRoot 构建与临时目录)
 proot-source/
